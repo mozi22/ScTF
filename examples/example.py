@@ -47,7 +47,6 @@ if tf.test.is_gpu_available(True):
 else: # running on cpu requires channels_last data format
     data_format='channels_last'
 
-# 
 # DeMoN has been trained for specific internal camera parameters.
 #
 # If you use your own images try to adapt the intrinsics by cropping
@@ -112,4 +111,3 @@ saver = tf.train.Saver()
 #         translation=translation)
 # except ImportError as err:
 #     print("Cannot visualize as pointcloud.", err)
-

@@ -27,6 +27,10 @@ else:  # try to find the lib in the build directory relative to this file
 if not os.path.isfile(_lib_path):
     raise ValueError(
         'Cannot find lmbspecialops.so . Set the environment variable LMBSPECIALOPS_LIB to the path to lmbspecialops.so file')
+<<<<<<< HEAD
+=======
+
+>>>>>>> 9995261094178f65fc929c7726a108884f455a34
 lmbspecialopslib = tf.load_op_library(_lib_path)
 print('Using {0}'.format(_lib_path), flush=True)
 

@@ -54,11 +54,19 @@ def _predict_flow_caffe_padding(inp, predict_confidence=False, **kwargs ):
 def _upsample_prediction(inp, num_outputs, **kwargs ):
     """Upconvolution for upsampling predictions
     
+<<<<<<< HEAD
     inp: Tensor 
         Tensor with the prediction
         
     num_outputs: int
         Number of output channels. 
+=======
+    inp: Tensor
+        Tensor with the prediction
+        
+    num_outputs: int
+        Number of output channels.
+>>>>>>> 9995261094178f65fc929c7726a108884f455a34
         Usually this should match the number of channels in the predictions
     """
     output = tf.layers.conv2d_transpose(
@@ -137,6 +145,7 @@ def flow_block_demon_original(image_pair, image2_2=None, intrinsics=None, prev_p
     """
     conv_params = {'data_format':data_format}
 
+<<<<<<< HEAD
     # contracting part
     conv1 = convrelu2_caffe_padding(name='conv1', inputs=image_pair, num_outputs=32, kernel_size=9, stride=2, **conv_params)
 
@@ -187,6 +196,13 @@ def flow_block_demon_original(image_pair, image2_2=None, intrinsics=None, prev_p
         conv2_1 = convrelu2_caffe_padding(name='conv2_1', inputs=conv2_concat, num_outputs=64, kernel_size=3, stride=1, **conv_params)
     
     
+=======
+    conv1 = convrelu2_caffe_padding(name='conv1', inputs=image_pair, num_outputs=32, kernel_size=9, stride=2, **conv_params)
+
+    conv2 = convrelu2_caffe_padding(name='conv2', inputs=conv1, num_outputs=64, kernel_size=7, stride=2, **conv_params)
+    conv2_1 = convrelu2_caffe_padding(name='conv2_1', inputs=conv2, num_outputs=64, kernel_size=3, stride=1, **conv_params)
+
+>>>>>>> 9995261094178f65fc929c7726a108884f455a34
     conv3 = convrelu2_caffe_padding(name='conv3', inputs=conv2_1, num_outputs=128, kernel_size=5, stride=2, **conv_params)
     conv3_1 = convrelu2_caffe_padding(name='conv3_1', inputs=conv3, num_outputs=128, kernel_size=3, stride=1, **conv_params)
     

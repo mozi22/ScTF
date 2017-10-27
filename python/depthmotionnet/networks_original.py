@@ -44,6 +44,7 @@ class BootstrapNet:
             self.predict_flow5, self.predict_conf5 = tf.split(value=netFlow1_result['predict_flowconf5'], num_or_size_splits=2, axis=1 if data_format=='channels_first' else 3)
             self.predict_flow2, self.predict_conf2 = tf.split(value=netFlow1_result['predict_flowconf2'], num_or_size_splits=2, axis=1 if data_format=='channels_first' else 3)
 
+<<<<<<< HEAD
         with tf.variable_scope('netDM1'):
             self.netDM1_result = depthmotion_block_demon_original(
                     image_pair=self.placeholder_image_pair, 
@@ -52,6 +53,9 @@ class BootstrapNet:
                     prev_flowconf2=self.netFlow1_result['predict_flowconf2'], 
                     data_format=data_format
                     )
+=======
+            self.session.run(self.predict_flow5)
+>>>>>>> 9995261094178f65fc929c7726a108884f455a34
 
 
     def eval(self, image_pair, image2_2):
@@ -84,6 +88,7 @@ class BootstrapNet:
                 }
         return self.session.run(fetches, feed_dict=feed_dict)
 
+<<<<<<< HEAD
 
 
 class IterativeNet:
@@ -244,3 +249,5 @@ class RefinementNet:
                 }
         return self.session.run(fetches, feed_dict=feed_dict)
 
+=======
+>>>>>>> 9995261094178f65fc929c7726a108884f455a34

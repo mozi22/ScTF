@@ -104,11 +104,14 @@ xarray
 Note that the evaluation code also depends on the data reader op.
 
 
+<<<<<<< HEAD
 ## Training code
 
 Instructions for training a clean tensorflow version of DeMoN are [here](training/README.md).
 Note that the tensorflow training code and model are work in progress and are not identical to the original Caffe version.
 
+=======
+>>>>>>> 9995261094178f65fc929c7726a108884f455a34
 
 ## License
 
