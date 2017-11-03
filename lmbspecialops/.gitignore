@@ -1,9 +1,0 @@
-*~
-*.swp
-*.o
-Makefile*
-build
-release
-debug
-CMakeCache.txt
-CMakeFiles
