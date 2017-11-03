@@ -6,20 +6,11 @@ import os
 import sys
 import json
 import glob
-import datareader as datareader
 
 import network
 import import_data
 import helpers
 import losses
-
-def get_available_gpus():
-    local_device_protos = device_lib.list_local_devices()
-    return [x.name for x in local_device_protos if x.device_type == 'CPU']
-
-
-
-
 
 
 # # read data
@@ -53,9 +44,10 @@ reader_params = {
 _data_dir = './demon/datasets/traindata'
 reader_params = datareader.add_sources(reader_params, glob.glob(os.path.join(_data_dir,'sun3d_train_0.01m_to_0.1m.h5')), 0.8)
 
-print(datareader.multi_vi_h5_data_reader)
 
 with tf.name_scope("datareader"):
+
+
     reader_tensors = datareader.multi_vi_h5_data_reader(len(top_output), json.dumps(reader_params))
     data_tensors = reader_tensors[2]
     data_dict_all = dict(zip(top_output, data_tensors))

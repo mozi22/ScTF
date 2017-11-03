@@ -41,4 +41,3 @@ def read_flo_file(file_path):
 			# Reshape data into 3D array (columns, rows, bands)
 			data2D = np.resize(data, (w, h, 2))
 			return data2D
-
