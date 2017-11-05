@@ -20,9 +20,6 @@ import losses
 # input_data = prepare_input_data(img1,img2,data_format)
 
 # print(get_available_gpus())
-
-
-
         
 
 batch_size = 32
@@ -48,7 +45,6 @@ reader_params = datareader.add_sources(reader_params, glob.glob(os.path.join(_da
 with tf.name_scope("datareader"):
 
 
-    reader_tensors = datareader.multi_vi_h5_data_reader(len(top_output), json.dumps(reader_params))
     data_tensors = reader_tensors[2]
     data_dict_all = dict(zip(top_output, data_tensors))
     num_test_iterations, current_batch_buffer, max_batch_buffer, current_read_buffer, max_read_buffer = tf.unstack(reader_tensors[0])

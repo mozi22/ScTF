@@ -1,8 +1,16 @@
-import convert_data_to_tfrecords
-import import_data
+import dataset_writer
+import dataset_reader
+import numpy as np
+from PIL import Image
 
 
-flo_data = import_data.read_flo_file('flow10.flo')
 
-converter = convert_data_to_tfrecords.TFRecordsConverter('SAME','./')
-converter.convert_file('frame10.png','frame11.png',flo_data)
+writer = dataset_writer.DatasetWriter('SAME','./')
+flo_data = writer.read_flo_file('flow10.flo')
+writer.convert_file('frame10.png','frame11.png',flo_data)
+writer.close_writer()
+
+
+reader = dataset_reader.DatasetReader()
+
+
