@@ -36,7 +36,6 @@ class DatasetWriter:
 		img1 = np.array(Image.open(image1))
 		img2 = np.array(Image.open(image2))
 
-
 		# image sizes for both are expected to be the same
 		flattened_pixels = img1.shape[0]*img1.shape[1]
 
@@ -45,11 +44,12 @@ class DatasetWriter:
 		flat_img1 = img1.reshape((flattened_pixels,3))
 		flat_img2 = img2.reshape((flattened_pixels,3))
 
-		print(flat_img1[2])
+		flat_flow = gt_flow.reshape((flattened_pixels,2))
 
-		img_raw_1 = flat_img1.tostring()
-		img_raw_2 = flat_img2.tostring()
-		gt_flow = gt_flow.tostring()
+		img_pair = np.concatenate((flat_img1,flat_img2),axis=1)
+
+		flat_flow = flat_flow.tostring()
+		img_pair = img_pair.tostring()
 
 		example = tf.train.Example(features=tf.train.Features(
 			feature={
@@ -57,9 +57,8 @@ class DatasetWriter:
 				# we already know that there will be 3 columns (R-G-B). Hence we just keep track of the 
 				# number of rows, which is width * height of the image.
 			    'rows': self._int64_feature(flattened_pixels),
-			    'img1': self._bytes_feature(img_raw_1),
-			    'img2': self._bytes_feature(img_raw_2),
-			    'flow': self._bytes_feature(gt_flow)
+			    'img_pair': self._bytes_feature(img_pair),
+			    'flow': self._bytes_feature(flat_flow)
 		    }),
 		)
 

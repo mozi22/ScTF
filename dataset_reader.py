@@ -18,16 +18,14 @@ class DatasetReader:
 				example.ParseFromString(string_record)
 
 				rows = int(example.features.feature['rows'].int64_list.value[0])
-				img1 = (example.features.feature['img1'].bytes_list.value[0])
-				img2 = (example.features.feature['img2'].bytes_list.value[0])
+				img_pair = (example.features.feature['img_pair'].bytes_list.value[0])
 				flow = (example.features.feature['flow'].bytes_list.value[0])
 			
 			# original image
-			img_orig_1 = np.fromstring(img1, dtype=np.uint8)
-			img_orig_2 = np.fromstring(img2, dtype=np.uint8)
+			img_pair_orig = np.fromstring(img_pair, dtype=np.uint8)
 
 			# reshape images to original form
-			img_reshaped_1 = img_orig_1.reshape((rows,3))
-			img_reshaped_2 = img_orig_2.reshape((rows,3))
+			img_reshaped_1 = img_pair_orig.reshape((rows,6))
+
+			print(img_reshaped_1)
 			
-			print(img_reshaped_1[2])
