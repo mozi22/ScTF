@@ -2,7 +2,9 @@
 import tensorflow as tf
 import numpy as np
 from PIL import Image
-
+from os import walk
+from os import listdir
+from os.path import isfile, join
 class DatasetWriter:
 
 
@@ -16,6 +18,9 @@ class DatasetWriter:
 
 		self.TFRecordFileName = "optical_flow.tfrecords"
 
+		self.training_path = './dataset/training'
+		self.test_path = './dataset/labels'
+
 		self.import_option_type = import_option_type
 
 		if self.import_option_type == 'DIFF':
@@ -26,8 +31,25 @@ class DatasetWriter:
 		self.writer = tf.python_io.TFRecordWriter(self.TFRecordFileName)
 
 
-	def traverse_subfolders(self,root_folder):
-		print('muazzam')
+	def create_dataset_array(self):
+
+		for index,x in enumerate(walk(self.training_path)):
+
+			if index == 0:
+				continue
+
+			folder_name = x[0].split('/')[-1]
+
+			related_test_path = self.test_path + '/' + folder_name
+
+			onlyfiles = [f for f in listdir(related_test_path) if isfile(join(related_test_path, f))]
+
+			self.convert_file(x[0]+'/'+x[2][0],x[0]+'/'+x[2][1],self.read_flo_file(related_test_path+'/'+onlyfiles[0]))
+
+
+
+
+
 
 	# image1: path to first image of the pair
 	# image2: path to second image of the pair

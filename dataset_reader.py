@@ -12,8 +12,10 @@ class DatasetReader:
 
 	def iterate(self,iterator):
 
+			index = 0
 			for string_record in iterator:
-
+				print('iteration '+str(index))
+				index = index + 1
 				example = tf.train.Example()
 				example.ParseFromString(string_record)
 
