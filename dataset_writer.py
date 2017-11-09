@@ -45,7 +45,6 @@ class DatasetWriter:
 			onlyfiles = [f for f in listdir(related_test_path) if isfile(join(related_test_path, f))]
 
 			self.convert_file(x[0]+'/'+x[2][0],x[0]+'/'+x[2][1],self.read_flo_file(related_test_path+'/'+onlyfiles[0]))
-			break
 
 
 
@@ -71,6 +70,7 @@ class DatasetWriter:
 
 		img_pair = np.concatenate((flat_img1,flat_img2),axis=1)
 
+		print(flat_flow.shape)
 		flat_flow = flat_flow.tostring()
 		img_pair = img_pair.tostring()
 

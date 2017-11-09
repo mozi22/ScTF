@@ -27,7 +27,7 @@ class DatasetReader:
 
 			# Convert the image data from string back to the numbers
 			image = tf.decode_raw(features['img_pair'],tf.uint8)
-			# label = np.fromstring(features['flow'], tf.int32)
+			label = tf.decode_raw(features['flow'], tf.uint8)
 			rows = tf.cast(features['rows'], tf.int32)
 
 			# print(image.eval())
@@ -36,18 +36,27 @@ class DatasetReader:
 			# flow = (fullExample.features.feature['flow'].bytes_list.value[0])
 
 
-			# image = tf.reshape(image, [rows,6])
 
 			init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
 			sess.run(init_op)
 			coord = tf.train.Coordinator()
 			threads = tf.train.start_queue_runners(coord=coord)
 
-			print(image.eval())
+
+			value = rows.eval()
+			image = tf.reshape(image,[value,6])
+			label = tf.reshape(label, [value,2])
+
+			images, labels = tf.train.shuffle_batch([image, label], batch_size=4, capacity=20, num_threads=1, min_after_dequeue=10)
+
+			# print(images.eval())
+
+			# # print(value)
+			# image.set_shape(5)
+			# print(label.eval())
 
 			coord.request_stop()
 			coord.join(threads)
-			# images, labels = tf.train.shuffle_batch([image, label], batch_size=10, capacity=30, num_threads=1, min_after_dequeue=10)
 
 			# init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
 			# sess.run(init_op)
