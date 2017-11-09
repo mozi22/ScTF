@@ -161,16 +161,16 @@ def convrelu2(name,inputs, filters, kernel_size, stride):
 
 def train_network(image_pair):
     # contracting part
-    conv1 = convrelu2(name='conv1', inputs=image_pair, num_outputs=(24,32), kernel_size=9, stride=2, **conv_params)
+    conv1 = convrelu2(name='conv1', inputs=image_pair, num_outputs=(24,32), kernel_size=9, stride=2)
 
-    conv2 = convrelu2(name='conv2', inputs=conv1, num_outputs=(48,64), kernel_size=7, stride=2, **conv_params)
-    conv2_1 = convrelu2(name='conv2_1', inputs=conv2, num_outputs=64, kernel_size=3, stride=1, **conv_params)    
+    conv2 = convrelu2(name='conv2', inputs=conv1, num_outputs=(48,64), kernel_size=7, stride=2)
+    conv2_1 = convrelu2(name='conv2_1', inputs=conv2, num_outputs=64, kernel_size=3, stride=1)    
 
-    conv3 = convrelu2(name='conv3', inputs=conv2_1, num_outputs=(96,128), kernel_size=5, stride=2, **conv_params)
-    conv3_1 = convrelu2(name='conv3_1', inputs=conv3, num_outputs=128, kernel_size=3, stride=1, **conv_params)
+    conv3 = convrelu2(name='conv3', inputs=conv2_1, num_outputs=(96,128), kernel_size=5, stride=2)
+    conv3_1 = convrelu2(name='conv3_1', inputs=conv3, num_outputs=128, kernel_size=3, stride=1)
 
-    conv4 = convrelu2(name='conv4', inputs=conv3_1, num_outputs=(192,256), kernel_size=5, stride=2, **conv_params)
-    conv4_1 = convrelu2(name='conv4_1', inputs=conv4, num_outputs=256, kernel_size=3, stride=1, **conv_params)
+    conv4 = convrelu2(name='conv4', inputs=conv3_1, num_outputs=(192,256), kernel_size=5, stride=2)
+    conv4_1 = convrelu2(name='conv4_1', inputs=conv4, num_outputs=256, kernel_size=3, stride=1)
 
-    conv5 = convrelu2(name='conv5', inputs=conv4_1, num_outputs=384, kernel_size=5, stride=2, **conv_params)
-    conv5_1 = convrelu2(name='conv5_1', inputs=conv5, num_outputs=384, kernel_size=3, stride=1, **conv_params)
+    conv5 = convrelu2(name='conv5', inputs=conv4_1, num_outputs=384, kernel_size=5, stride=2)
+    conv5_1 = convrelu2(name='conv5_1', inputs=conv5, num_outputs=384, kernel_size=3, stride=1)

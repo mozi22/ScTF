@@ -12,7 +12,7 @@ class DatasetReader:
 		with tf.Session() as sess:
 
 			# Create a list of filenames and pass it to a queue
-			filename_queue = tf.train.string_input_producer(filenames, num_epochs=1)
+			filename_queue = tf.train.string_input_producer(filenames)
 			# Define a reader and read the next record
 			recordReader = tf.TFRecordReader()
 
@@ -37,17 +37,23 @@ class DatasetReader:
 
 
 
-			init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
-			sess.run(init_op)
+			# init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+			# sess.run(init_op)
+			# coord = tf.train.Coordinator()
+
+			# threads = tf.train.start_queue_runners(coord=coord)
+
+
+			image = tf.reshape(image,[226592,6])
+			label = tf.reshape(label, [226592,2])
+
+
+			images, labels = tf.train.shuffle_batch([image, label], batch_size=1, capacity=20, num_threads=1, min_after_dequeue=10)
+
 			coord = tf.train.Coordinator()
-			threads = tf.train.start_queue_runners(coord=coord)
+			tf.train.start_queue_runners(sess, coord=coord)
+			print(image.eval())
 
-
-			value = rows.eval()
-			image = tf.reshape(image,[value,6])
-			label = tf.reshape(label, [value,2])
-
-			images, labels = tf.train.shuffle_batch([image, label], batch_size=4, capacity=20, num_threads=1, min_after_dequeue=10)
 
 			# print(images.eval())
 
@@ -55,8 +61,8 @@ class DatasetReader:
 			# image.set_shape(5)
 			# print(label.eval())
 
-			coord.request_stop()
-			coord.join(threads)
+			# coord.request_stop()
+			# coord.join(threads)
 
 			# init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
 			# sess.run(init_op)

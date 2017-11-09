@@ -70,7 +70,6 @@ class DatasetWriter:
 
 		img_pair = np.concatenate((flat_img1,flat_img2),axis=1)
 
-		print(flat_flow.shape)
 		flat_flow = flat_flow.tostring()
 		img_pair = img_pair.tostring()
 
