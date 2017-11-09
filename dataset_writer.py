@@ -45,6 +45,7 @@ class DatasetWriter:
 			onlyfiles = [f for f in listdir(related_test_path) if isfile(join(related_test_path, f))]
 
 			self.convert_file(x[0]+'/'+x[2][0],x[0]+'/'+x[2][1],self.read_flo_file(related_test_path+'/'+onlyfiles[0]))
+			break
 
 
 
@@ -75,7 +76,6 @@ class DatasetWriter:
 
 		example = tf.train.Example(features=tf.train.Features(
 			feature={
-
 				# we already know that there will be 3 columns (R-G-B). Hence we just keep track of the 
 				# number of rows, which is width * height of the image.
 			    'rows': self._int64_feature(flattened_pixels),
@@ -115,6 +115,3 @@ class DatasetWriter:
 
 	def _int64_feature(self,value):
 	    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
-
-	def _float_feature(self,value):
-	    return tf.train.Feature(int64_list=tf.train.FloatList(value=[value]))
