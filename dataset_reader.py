@@ -20,7 +20,8 @@ class DatasetReader:
 
 			# Decode the record read by the reader
 			features = tf.parse_single_example(fullExample,{
-				'rows': tf.FixedLenFeature([], tf.int64),
+				'width': tf.FixedLenFeature([], tf.int64),
+				'height': tf.FixedLenFeature([], tf.int64),
 				'img_pair': tf.FixedLenFeature([], tf.string),
 				'flow': tf.FixedLenFeature([], tf.string)
 			})
@@ -28,11 +29,12 @@ class DatasetReader:
 			# Convert the image data from binary back to arrays(Tensors)
 			image = tf.decode_raw(features['img_pair'],tf.uint8)
 			label = tf.decode_raw(features['flow'], tf.float32)
-			rows = tf.cast(features['rows'], tf.int32)
+			width = tf.cast(features['width'], tf.int32)
+			height = tf.cast(features['height'], tf.int32)
 
 			# reshape data to its original form
-			image = tf.reshape(image,[226592,6])
-			label = tf.reshape(label, [226592,2])
+			image = tf.reshape(image,[584,388,6])
+			label = tf.reshape(label, [584,388,2])
 
 			# shuffle the data and get them as batches
 			images, labels = tf.train.shuffle_batch([image, label],
@@ -45,7 +47,6 @@ class DatasetReader:
 
 			# our image is 584x388 and each pixel has values RGBRGB i.e 6 channels.
 			placeholder_image_pair = tf.placeholder(dtype=tf.float32, shape=(1,388,584,6))
-
 
 			# build the network here
 			network.train_network(placeholder_image_pair)

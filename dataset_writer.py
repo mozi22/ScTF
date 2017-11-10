@@ -45,7 +45,6 @@ class DatasetWriter:
 			onlyfiles = [f for f in listdir(related_test_path) if isfile(join(related_test_path, f))]
 
 			self.convert_file(x[0]+'/'+x[2][0],x[0]+'/'+x[2][1],self.read_flo_file(related_test_path+'/'+onlyfiles[0]))
-			break
 
 
 
@@ -68,26 +67,27 @@ class DatasetWriter:
 		# flat_img2 = img2.reshape((flattened_pixels,3))
 
 		# flat_flow = gt_flow.reshape((flattened_pixels,2))
-
-		print(gt_flow.shape)
-		print(img1.shape)
 		img_pair = np.concatenate((img1,img2),axis=-1)
-		print(img_pair.shape)
+		img_pair = img_pair.transpose([1,0,2])
 
-		# flat_flow = flat_flow.tostring()
-		# img_pair = img_pair.tostring()
+		height = img_pair.shape[0]
+		width = img_pair.shape[1]
 
-		# example = tf.train.Example(features=tf.train.Features(
-		# 	feature={
-		# 		# we already know that there will be 3 columns (R-G-B). Hence we just keep track of the 
-		# 		# number of rows, which is width * height of the image.
-		# 	    'rows': self._int64_feature(flattened_pixels),
-		# 	    'img_pair': self._bytes_feature(img_pair),
-		# 	    'flow': self._bytes_feature(flat_flow)
-		#     }),
-		# )
+		flat_flow = gt_flow.tostring()
+		img_pair = img_pair.tostring()
 
-		# self.writer.write(example.SerializeToString())
+		example = tf.train.Example(features=tf.train.Features(
+			feature={
+				# we already know that there will be 3 columns (R-G-B). Hence we just keep track of the 
+				# number of rows, which is width * height of the image.
+			    'width': self._int64_feature(width),
+			    'height': self._int64_feature(height),
+			    'img_pair': self._bytes_feature(img_pair),
+			    'flow': self._bytes_feature(flat_flow)
+		    }),
+		)
+
+		self.writer.write(example.SerializeToString())
 
 	# file_path: path to the flo file
 	def read_flo_file(self,file_path):

@@ -4,8 +4,8 @@ import numpy as np
 from PIL import Image
 import os
 import tensorflow as tf
-
 writer = dataset_writer.DatasetWriter('SAME','./')
+
 writer.create_dataset_array()
 # writer.close_writer()
 # # flo_data = writer.read_flo_file('flow10.flo')
@@ -15,8 +15,6 @@ writer.create_dataset_array()
 
 # from tensorflow.examples.tutorials.mnist import input_data
 # mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
-
-
 # examples_dir = os.path.dirname(__file__)
 
 
@@ -33,8 +31,6 @@ writer.create_dataset_array()
 #     img1_arr = np.array(img1).astype(np.float32)/255 -0.5
 #     img2_arr = np.array(img2).astype(np.float32)/255 -0.5
 #     img2_2_arr = np.array(img2_2).astype(np.float32)/255 -0.5
-
-    
 #     if data_format == 'channels_first':
 #         img1_arr = img1_arr.transpose([2,0,1])
 #         img2_arr = img2_arr.transpose([2,0,1])
@@ -43,6 +39,7 @@ writer.create_dataset_array()
 #     else:
 #         image_pair = np.concatenate((img1_arr,img2_arr),axis=-1)
     
+#     print(image_pair.shape)
 #     result = {
 #         'image_pair': image_pair[np.newaxis,:],
 #         'image1': img1_arr[np.newaxis,:], # first image
