@@ -45,6 +45,7 @@ class DatasetWriter:
 			onlyfiles = [f for f in listdir(related_test_path) if isfile(join(related_test_path, f))]
 
 			self.convert_file(x[0]+'/'+x[2][0],x[0]+'/'+x[2][1],self.read_flo_file(related_test_path+'/'+onlyfiles[0]))
+			break
 
 
 
@@ -59,31 +60,34 @@ class DatasetWriter:
 		img2 = np.array(Image.open(image2))
 
 		# image sizes for both are expected to be the same
-		flattened_pixels = img1.shape[0]*img1.shape[1]
+		# flattened_pixels = img1.shape[0]*img1.shape[1]
 
 
 		# reshape the image to nx3 where 3 are the rgb values for pixel at n
-		flat_img1 = img1.reshape((flattened_pixels,3))
-		flat_img2 = img2.reshape((flattened_pixels,3))
+		# flat_img1 = img1.reshape((flattened_pixels,3))
+		# flat_img2 = img2.reshape((flattened_pixels,3))
 
-		flat_flow = gt_flow.reshape((flattened_pixels,2))
+		# flat_flow = gt_flow.reshape((flattened_pixels,2))
 
-		img_pair = np.concatenate((flat_img1,flat_img2),axis=1)
+		print(gt_flow.shape)
+		print(img1.shape)
+		img_pair = np.concatenate((img1,img2),axis=-1)
+		print(img_pair.shape)
 
-		flat_flow = flat_flow.tostring()
-		img_pair = img_pair.tostring()
+		# flat_flow = flat_flow.tostring()
+		# img_pair = img_pair.tostring()
 
-		example = tf.train.Example(features=tf.train.Features(
-			feature={
-				# we already know that there will be 3 columns (R-G-B). Hence we just keep track of the 
-				# number of rows, which is width * height of the image.
-			    'rows': self._int64_feature(flattened_pixels),
-			    'img_pair': self._bytes_feature(img_pair),
-			    'flow': self._bytes_feature(flat_flow)
-		    }),
-		)
+		# example = tf.train.Example(features=tf.train.Features(
+		# 	feature={
+		# 		# we already know that there will be 3 columns (R-G-B). Hence we just keep track of the 
+		# 		# number of rows, which is width * height of the image.
+		# 	    'rows': self._int64_feature(flattened_pixels),
+		# 	    'img_pair': self._bytes_feature(img_pair),
+		# 	    'flow': self._bytes_feature(flat_flow)
+		#     }),
+		# )
 
-		self.writer.write(example.SerializeToString())
+		# self.writer.write(example.SerializeToString())
 
 	# file_path: path to the flo file
 	def read_flo_file(self,file_path):
