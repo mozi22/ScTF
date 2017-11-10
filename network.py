@@ -168,7 +168,6 @@ def train_network(image_pair):
     conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=10, stride=2)
     conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=8, stride=2)
 
-
     # dense_slice_shape = conv5_1.get_shape().as_list()
 
     # dense5 = tf.layers.dense(
