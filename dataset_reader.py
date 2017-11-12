@@ -33,20 +33,20 @@ class DatasetReader:
 			height = tf.cast(features['height'], tf.int32)
 
 			# reshape data to its original form
-			image = tf.reshape(image,[388,584,6])
-			label = tf.reshape(label, [388,584,2])
+			image = tf.reshape(image,[480,640,6])
+			label = tf.reshape(label, [480,640,2])
 
 			# shuffle the data and get them as batches
 			images, labels = tf.train.shuffle_batch([image, label],
-													batch_size=1, 
+													batch_size=2, 
 													capacity=20, 
 													num_threads=1, 
 													min_after_dequeue=10)
 
 
 
-			# our image is 584x388 and each pixel has values RGBRGB i.e 6 channels.
-			placeholder_image_pair = tf.placeholder(dtype=tf.float32, shape=(1,584,388,6))
+			# our image is 480x640 and each pixel has values RGBRGB i.e 6 channels.
+			placeholder_image_pair = tf.placeholder(dtype=tf.float32, shape=(1,480,640,6))
 
 			# build the network here
 			network.train_network(placeholder_image_pair)
@@ -59,7 +59,6 @@ class DatasetReader:
 
 
 			# start passing the data to the feed_dict here and running everything after initializing the variables			
-
 
 			# finalise 
 			coord.request_stop()

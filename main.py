@@ -12,8 +12,6 @@ import dataset_reader
 # print(get_available_gpus())
         
 
-
-
 # with tf.name_scope("datareader"):
 filenames = ['optical_flow.tfrecords']
 reader = dataset_reader.DatasetReader()

@@ -162,20 +162,16 @@ def convrelu2(name,inputs, filters, kernel_size, stride):
 def train_network(image_pair):
 
     # contracting part
-    conv1 = convrelu2(name='conv1', inputs=image_pair, filters=32, kernel_size=14, stride=2)
+    conv1 = convrelu2(name='conv1', inputs=image_pair, filters=32, kernel_size=13, stride=2)
     conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=12, stride=2)
     conv3 = convrelu2(name='conv3', inputs=conv2, filters=128, kernel_size=10, stride=2)
     conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=10, stride=2)
     conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=8, stride=2)
 
-    # dense_slice_shape = conv5_1.get_shape().as_list()
 
-    # dense5 = tf.layers.dense(
-    #         tf.contrib.layers.flatten(tf.slice(conv5_1, [0,0,0,0], dense_slice_shape)),
-    #         units=units,
-    #         activation=myLeakyRelu,
-    #         kernel_initializer=default_weights_initializer(),
-    #         kernel_regularizer=kernel_regularizer,
-    #         name='dense5'
-    #         )
-    # conv5_1_dense5 = tf.concat((conv5_1,tf.reshape(dense5, dense_slice_shape)),  axis=1 if data_format=='channels_first' else 3)
+
+    conv5_shape = conv5.get_shape().as_list()
+
+    sliced = tf.slice(conv5, [0,0,0,0], conv5_shape)
+    result = tf.contrib.layers.flatten(sliced)
+    dense = tf.layers.dense(inputs=result, units=1024, activation=tf.nn.relu)
