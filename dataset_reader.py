@@ -47,15 +47,31 @@ class DatasetReader:
 
 			# our image is 480x640 and each pixel has values RGBRGB i.e 6 channels.
 			placeholder_image_pair = tf.placeholder(dtype=tf.float32, shape=(1,480,640,6))
+			Y = tf.placeholder(dtype=tf.float32, shape=(1,480,640,6))
 
 			# build the network here
-			network.train_network(placeholder_image_pair)
+			out = network.train_network(placeholder_image_pair)
+
+			# # measure of error of our model
+			# # this needs to be minimised by adjusting W and b
+			# mse = tf.reduce_mean(tf.squared_difference(out, Y))
+
+			# # define training step which minimises cross entropy
+			# optimizer = tf.train.AdamOptimizer(1e-4).minimize(mse)
+
+
+
+
+			# initialize the variables
+			# sess.run(tf.global_variables_initializer())
 
 			# initialize the threads coordinator
 			coord = tf.train.Coordinator()
 
 			# start enqueing the data to be dequeued for batch training
 			threads = tf.train.start_queue_runners(sess, coord=coord)
+
+			# sess.run(opt, feed_dict={X: batch_x, Y: batch_y})
 
 
 			# start passing the data to the feed_dict here and running everything after initializing the variables			
