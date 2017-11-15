@@ -54,16 +54,16 @@ class DatasetReader:
 
 			# # measure of error of our model
 			# # this needs to be minimised by adjusting W and b
-			# mse = tf.reduce_mean(tf.squared_difference(out, Y))
+			mse = tf.reduce_mean(tf.squared_difference(out, Y))
 
-			# # define training step which minimises cross entropy
-			# optimizer = tf.train.AdamOptimizer(1e-4).minimize(mse)
+			# # define training step which minimizes cross entropy
+			optimizer = tf.train.AdamOptimizer(1e-4).minimize(mse)
 
 
 
 
 			# initialize the variables
-			# sess.run(tf.global_variables_initializer())
+			sess.run(tf.global_variables_initializer())
 
 			# initialize the threads coordinator
 			coord = tf.train.Coordinator()
@@ -71,7 +71,8 @@ class DatasetReader:
 			# start enqueing the data to be dequeued for batch training
 			threads = tf.train.start_queue_runners(sess, coord=coord)
 
-			# sess.run(opt, feed_dict={X: batch_x, Y: batch_y})
+			batch_x, batch_y = sess.run([images, labels])
+			sess.run(optimizer, feed_dict={X: batch_x, Y: batch_y})
 
 
 			# start passing the data to the feed_dict here and running everything after initializing the variables			
