@@ -27,7 +27,6 @@ with tf.Graph().as_default():
     # Specify the optimizer and create the train op:
     optimizer = tf.train.AdamOptimizer(learning_rate=0.01)
     train_op = slim.learning.create_train_op(total_loss, optimizer)
-
     # Run the training:
     final_loss = slim.learning.train(
       train_op,
