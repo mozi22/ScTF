@@ -10,7 +10,7 @@ print('Will save model to %s' % train_dir)
 with tf.Graph().as_default():
     tf.logging.set_verbosity(tf.logging.INFO)
 
-    dataset = flowers.get_split('train', 'flower_dataset')
+    dataset = flowers.get_split('train', 'sintel_dataset')
     images, _, labels = helpers.load_batch(dataset)
   
     # Create the model:

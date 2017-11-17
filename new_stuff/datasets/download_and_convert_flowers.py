@@ -30,6 +30,7 @@ import math
 import os
 import random
 import sys
+import numpy as np
 
 import tensorflow as tf
 
@@ -48,7 +49,7 @@ _NUM_VALIDATION = 350
 _RANDOM_SEED = 0
 
 # The number of shards per dataset split.
-_NUM_SHARDS = 7
+_NUM_SHARDS = 1
 
 class ImageReader(object):
   """Helper class that provides TensorFlow image coding utilities."""
@@ -69,25 +70,27 @@ class ImageReader(object):
     assert image.shape[2] == 3
     return image
 
-def _get_filenames_and_classes(dataset_dir):
+def _get_filenames_and_classes(data_dir,label_dir):
   """Returns a list of filenames and inferred class names.
 
   Args:
-    dataset_dir: A directory containing a set of subdirectories representing
-      class names. Each subdirectory should contain PNG or JPG encoded images.
+    data_dir: A directory containing a set of subdirectories with features(images).
+    label_dir: A directory containing a set of subdirectories with labels(images).
 
   Returns:
     A list of image file paths, relative to `dataset_dir` and the list of
     subdirectories, representing class names.
   """
-  flower_root = os.path.join(dataset_dir, 'sintel_photos')
+  data_root = os.path.join(data_dir)
+  label_root = os.path.join(label_dir)
   directories = []
   class_names = []
-  for filename in os.listdir(flower_root):
-    path = os.path.join(flower_root, filename)
-    if os.path.isdir(path):
-      directories.append(path)
-      class_names.append(filename)
+  for filename in os.listdir(data_root):
+    path_feature = os.path.join(data_root, filename)
+    path_label = os.path.join(label_root, filename)
+    if os.path.isdir(path_feature) and os.path.isdir(path_label):
+      directories.append(path_feature)
+      class_names.append(path_label)
 
   photo_filenames = []
   for directory in directories:
@@ -95,7 +98,13 @@ def _get_filenames_and_classes(dataset_dir):
       path = os.path.join(directory, filename)
       photo_filenames.append(path)
 
-  return photo_filenames, sorted(class_names)
+  flo_filenames = []
+  for directory in class_names:
+    for filename in os.listdir(directory):
+      path = os.path.join(directory, filename)
+      flo_filenames.append(path)
+
+  return photo_filenames, flo_filenames
 
 
 def _get_dataset_filename(dataset_dir, split_name, shard_id):
@@ -104,20 +113,19 @@ def _get_dataset_filename(dataset_dir, split_name, shard_id):
   return os.path.join(dataset_dir, output_filename)
 
 
-def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
-  """Converts the given filenames to a TFRecord dataset.
+def _convert_dataset(split_name, images, labels, dataset_dir):
+  """Converts the given images to a TFRecord dataset.
 
   Args:
     split_name: The name of the dataset, either 'train' or 'validation'.
-    filenames: A list of absolute paths to png or jpg images.
+    images: A list of absolute paths to png or jpg images.
     class_names_to_ids: A dictionary from class names (strings) to ids
       (integers).
     dataset_dir: The directory where the converted datasets are stored.
   """
   assert split_name in ['train', 'validation']
 
-  num_per_shard = int(math.ceil(len(filenames) / float(_NUM_SHARDS)))
-
+  num_per_shard = int(math.ceil(len(images) / float(_NUM_SHARDS)))
   with tf.Graph().as_default():
     image_reader = ImageReader()
 
@@ -128,25 +136,44 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
 
         with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
           start_ndx = shard_id * num_per_shard
-          end_ndx = min((shard_id+1) * num_per_shard, len(filenames))
+          end_ndx = min((shard_id+1) * num_per_shard, len(images))
           for i in range(start_ndx, end_ndx):
             sys.stdout.write('\r>> Converting image %d/%d shard %d' % (
-                i+1, len(filenames), shard_id))
+                i+1, len(images), shard_id))
             sys.stdout.flush()
 
             # Read the filename:
-            image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
+            image_data = tf.gfile.FastGFile(images[i], 'rb').read()
             height, width = image_reader.read_image_dims(sess, image_data)
+            img_flo = read_flo_file(labels[i])
+            print(img_flo.shape)
 
-            class_name = os.path.basename(os.path.dirname(filenames[i]))
-            class_id = class_names_to_ids[class_name]
+            # class_name = os.path.basename(os.path.dirname(images[i]))
+            # class_id = class_names_to_ids[class_name]
 
             example = dataset_utils.image_to_tfexample(
-                image_data, b'jpg', height, width, class_id)
+                image_data, b'jpg', height, width, img_flo.tostring())
             tfrecord_writer.write(example.SerializeToString())
-
   sys.stdout.write('\n')
   sys.stdout.flush()
+
+
+def read_flo_file(file_path):
+  with open(file_path, 'rb') as f:
+
+    magic = np.fromfile(f, np.float32, count=1)
+
+    if 202021.25 != magic:
+      print('Magic number incorrect. Invalid .flo file')
+    else:
+      w = np.fromfile(f, np.int32, count=1)[0]
+      h = np.fromfile(f, np.int32, count=1)[0]
+
+      data = np.fromfile(f, np.float32, count=2*w*h)
+
+      # Reshape data into 3D array (columns, rows, bands)
+      data2D = np.resize(data, (w, h, 2))
+      return data2D
 
 
 def _clean_up_temporary_files(dataset_dir):
@@ -173,40 +200,45 @@ def _dataset_exists(dataset_dir):
   return True
 
 
-def run(dataset_dir):
+def run(data_dir,label_dir):
   """Runs the download and conversion operation.
 
   Args:
     dataset_dir: The dataset directory where the dataset is stored.
   """
-  if not tf.gfile.Exists(dataset_dir):
-    tf.gfile.MakeDirs(dataset_dir)
+  if not tf.gfile.Exists(data_dir):
+    tf.gfile.MakeDirs(data_dir)
 
-  if _dataset_exists(dataset_dir):
-    print('Dataset files already exist. Exiting without re-creating them.')
-    return
+  if not tf.gfile.Exists(label_dir):
+    tf.gfile.MakeDirs(label_dir)
+
+  # if _dataset_exists(dataset_dir):
+  #   print('Dataset files already exist. Exiting without re-creating them.')
+  #   return
 
   # dataset_utils.download_and_uncompress_tarball(_DATA_URL, dataset_dir)
 
 
-  photo_filenames, class_names = _get_filenames_and_classes(dataset_dir)
-  class_names_to_ids = dict(zip(class_names, range(len(class_names))))
+  photo_filenames, labels = _get_filenames_and_classes(data_dir,label_dir)
+  # class_names_to_ids = dict(zip(class_names, range(len(class_names))))
+  # # Divide into train and test:
+  # random.seed(_RANDOM_SEED)
+  # random.shuffle(photo_filenames)
+  # training_filenames = photo_filenames[_NUM_VALIDATION]
+  # validation_filenames = photo_filenames[:_NUM_VALIDATION]
+  training_filenames = photo_filenames
+  training_lbls_filenames = labels
 
-  # Divide into train and test:
-  random.seed(_RANDOM_SEED)
-  random.shuffle(photo_filenames)
-  training_filenames = photo_filenames[_NUM_VALIDATION:]
-  validation_filenames = photo_filenames[:_NUM_VALIDATION]
+  # training_lbls_filenames = labels[_NUM_VALIDATION]
+  # validation_lbls_filenames = labels[:_NUM_VALIDATION]
+  # # First, convert the training and validation sets.
+  _convert_dataset('train', training_filenames, training_lbls_filenames, './tffiles')
+  # _convert_dataset('validation', validation_filenames, class_names_to_ids,
+  #                  dataset_dir)
 
-  # First, convert the training and validation sets.
-  _convert_dataset('train', training_filenames, class_names_to_ids,
-                   dataset_dir)
-  _convert_dataset('validation', validation_filenames, class_names_to_ids,
-                   dataset_dir)
+  # # Finally, write the labels file:
+  # labels_to_class_names = dict(zip(range(len(class_names)), class_names))
+  # dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
-  # Finally, write the labels file:
-  labels_to_class_names = dict(zip(range(len(class_names)), class_names))
-  dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
-
-  _clean_up_temporary_files(dataset_dir)
-  print('\nFinished converting the Flowers dataset!')
+  # _clean_up_temporary_files(dataset_dir)
+  # print('\nFinished converting the Flowers dataset!')
