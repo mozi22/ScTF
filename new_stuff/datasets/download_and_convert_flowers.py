@@ -26,11 +26,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from collections import defaultdict
 import math
 import os
 import random
 import sys
 import numpy as np
+from PIL import Image
 
 import tensorflow as tf
 
@@ -81,6 +83,8 @@ def _get_filenames_and_classes(data_dir,label_dir):
     A list of image file paths, relative to `dataset_dir` and the list of
     subdirectories, representing class names.
   """
+
+
   data_root = os.path.join(data_dir)
   label_root = os.path.join(label_dir)
   directories = []
@@ -93,16 +97,26 @@ def _get_filenames_and_classes(data_dir,label_dir):
       class_names.append(path_label)
 
   photo_filenames = []
-  for directory in directories:
+  for i,directory in enumerate(directories):    
+
+    images = []
+
     for filename in os.listdir(directory):
       path = os.path.join(directory, filename)
-      photo_filenames.append(path)
+      images.append(path)
+
+    photo_filenames.append(images)
 
   flo_filenames = []
-  for directory in class_names:
+  for i,directory in enumerate(class_names):
+
+    flos = []
+
     for filename in os.listdir(directory):
       path = os.path.join(directory, filename)
-      flo_filenames.append(path)
+      flos.append(path)
+
+    flo_filenames.append(flos)
 
   return photo_filenames, flo_filenames
 
@@ -113,12 +127,19 @@ def _get_dataset_filename(dataset_dir, split_name, shard_id):
   return os.path.join(dataset_dir, output_filename)
 
 
+def combine_images(img1,img2):
+  img1 = np.array(Image.open(img1))
+  img2 = np.array(Image.open(img2))
+  return np.concatenate((img1,img2),axis=-1)
+
+
+
 def _convert_dataset(split_name, images, labels, dataset_dir):
   """Converts the given images to a TFRecord dataset.
 
   Args:
     split_name: The name of the dataset, either 'train' or 'validation'.
-    images: A list of absolute paths to png or jpg images.
+    images: A list of absolute paths to png o-r jpg images.
     class_names_to_ids: A dictionary from class names (strings) to ids
       (integers).
     dataset_dir: The directory where the converted datasets are stored.
@@ -142,18 +163,19 @@ def _convert_dataset(split_name, images, labels, dataset_dir):
                 i+1, len(images), shard_id))
             sys.stdout.flush()
 
-            # Read the filename:
-            image_data = tf.gfile.FastGFile(images[i], 'rb').read()
-            height, width = image_reader.read_image_dims(sess, image_data)
-            img_flo = read_flo_file(labels[i])
-            print(img_flo.shape)
+            img_pair = combine_images(images[i][0],images[i][1])
+            img_flo = read_flo_file(labels[i][0])
 
-            # class_name = os.path.basename(os.path.dirname(images[i]))
-            # class_id = class_names_to_ids[class_name]
+            height = img_pair.shape[0]
+            width = img_pair.shape[1]
+
+            img = img_pair.tostring()
+            flo = img_flo.tostring()
 
             example = dataset_utils.image_to_tfexample(
-                image_data, b'jpg', height, width, img_flo.tostring())
+                img, height, width, flo)
             tfrecord_writer.write(example.SerializeToString())
+
   sys.stdout.write('\n')
   sys.stdout.flush()
 
@@ -188,7 +210,6 @@ def _clean_up_temporary_files(dataset_dir):
 
   tmp_dir = os.path.join(dataset_dir, 'opticflow_photos')
   tf.gfile.DeleteRecursively(tmp_dir)
-
 
 def _dataset_exists(dataset_dir):
   for split_name in ['train', 'validation']:

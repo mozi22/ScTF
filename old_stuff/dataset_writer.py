@@ -44,6 +44,7 @@ class DatasetWriter:
 
 			onlyfiles = [f for f in listdir(related_test_path) if isfile(join(related_test_path, f))]
 
+			print(related_test_path+'/'+onlyfiles[0])
 			self.convert_file(x[0]+'/'+x[2][0],x[0]+'/'+x[2][1],self.read_flo_file(related_test_path+'/'+onlyfiles[0]))
 			# break
 
@@ -72,7 +73,7 @@ class DatasetWriter:
 
 
 		# gt_flow = gt_flow.transpose([1,0,2])
-		gt_flow = np.random.rand(120,160,2)
+		# gt_flow = np.random.rand(120,160,2)
 		# print(gt_flow.shape)
 		height = img_pair.shape[0]
 		width = img_pair.shape[1]

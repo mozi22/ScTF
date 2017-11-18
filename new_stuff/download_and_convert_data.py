@@ -42,7 +42,7 @@ from datasets import download_and_convert_flowers
 
 def main(_):
 
-    download_and_convert_flowers.run('/home/muazzam/Downloads/opticflow_ds/sintel_features/','/home/muazzam/Downloads/opticflow_ds/sintel_labels/')
+    download_and_convert_flowers.run('./dataset/training','./dataset/labels')
 
 if __name__ == '__main__':
   tf.app.run()
