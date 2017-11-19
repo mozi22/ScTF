@@ -173,7 +173,7 @@ def _convert_dataset(split_name, images, labels, dataset_dir):
             flo = img_flo.tostring()
 
             example = dataset_utils.image_to_tfexample(
-                img, height, width, flo)
+                img, height, width, flo, b'png')
             tfrecord_writer.write(example.SerializeToString())
 
   sys.stdout.write('\n')

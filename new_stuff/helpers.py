@@ -35,10 +35,21 @@ def load_batch(dataset, batch_size=32, height=299, width=299, is_training=False)
         dataset, common_queue_capacity=32,
         common_queue_min=8)
     image_raw, label = data_provider.get(['image', 'label'])
-    
+
+    # sess = tf.Session()
+    # # initialize the variables
+    # sess.run(tf.global_variables_initializer())
+    # print('ala15')
+    # # initialize the threads coordinator
+    # coord = tf.train.Coordinator()
+    # print('ala16')
+    # # start enqueing the data to be dequeued for batch training
+    # threads = tf.train.start_queue_runners(sess, coord=coord)
+    # print(image_raw.eval(session=sess))
     # Preprocess image for usage by Inception.
+
     image = inception_preprocessing.preprocess_image(image_raw, height, width, is_training=is_training)
-    
+
     # Preprocess the image for display purposes.
     image_raw = tf.expand_dims(image_raw, 0)
     image_raw = tf.image.resize_images(image_raw, [height, width])
@@ -50,5 +61,4 @@ def load_batch(dataset, batch_size=32, height=299, width=299, is_training=False)
           batch_size=batch_size,
           num_threads=1,
           capacity=2 * batch_size)
-    
     return images, images_raw, labels

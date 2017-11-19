@@ -66,9 +66,10 @@ def float_feature(values):
   return tf.train.Feature(float_list=tf.train.FloatList(value=values))
 
 
-def image_to_tfexample(image_data, height, width, flo):
+def image_to_tfexample(image_data, height, width, flo, img_format):
   return tf.train.Example(features=tf.train.Features(feature={
-      'image/encoded': bytes_feature(image_data),
+      'image/img_pair': bytes_feature(image_data),
+      'image/format': bytes_feature(img_format),
       'image/flo': bytes_feature(flo),
       'image/height': int64_feature(height),
       'image/width': int64_feature(width),

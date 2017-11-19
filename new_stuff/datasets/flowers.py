@@ -70,32 +70,34 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   if reader is None:
     reader = tf.TFRecordReader
 
-  keys_to_features = {
-      'image/encoded': tf.FixedLenFeature((), tf.string, default_value=''),
-      'image/flo': tf.FixedLenFeature([], tf.string),
-      'image/format': tf.FixedLenFeature((), tf.string, default_value='png')
-      # 'image/class/label': tf.FixedLenFeature(
-      #     [], tf.int64, default_value=tf.zeros([], dtype=tf.int64)),
+  keys_to_features =  {
+      'image/width': tf.FixedLenFeature([], tf.int64),
+      'image/height': tf.FixedLenFeature([], tf.int64),
+      'image/format': tf.FixedLenFeature((), tf.string, default_value='png'),
+      'image/img_pair': tf.FixedLenFeature([], tf.string),
+      'image/flo': tf.FixedLenFeature([], tf.string)
   }
 
-  label = tf.decode_raw(keys_to_features['image/flo'],tf.float32)
-  print(label)
-  return label
   # items_to_handlers = {
-  #     'image': slim.tfexample_decoder.Image(),
-  #     'label': slim.tfexample_decoder.Tensor('image/class/flo'),
+  #   'image': slim.tfexample_decoder.decode_raw('image/img_pair'),
+  #   'label': slim.tfexample_decoder.Tensor('image/flo'),
   # }
+  items_to_handlers = {
+    'image': slim.tfexample_decoder.Image(
+      image_key = 'image/img_pair',
+      format_key = 'image/format',
+      shape=[640, 480],
+      channels=6),
+    'label': slim.tfexample_decoder.Tensor('image/flo'),
+  }
 
-  # decoder = slim.tfexample_decoder.TFExampleDecoder(keys_to_features, items_to_handlers)
 
-  # labels_to_names = None
-  # # if dataset_utils.has_labels(dataset_dir):
-  # #   labels_to_names = dataset_utils.read_label_file(dataset_dir)
 
-  # return slim.dataset.Dataset(
-  #     data_sources=file_pattern,
-  #     reader=reader,
-  #     decoder=decoder,
-  #     num_samples=SPLITS_TO_SIZES[split_name],
-  #     items_to_descriptions=_ITEMS_TO_DESCRIPTIONS,
-  #     num_classes=_NUM_CLASSES)
+  decoder = slim.tfexample_decoder.TFExampleDecoder(keys_to_features, items_to_handlers)
+
+  return slim.dataset.Dataset(
+      data_sources=file_pattern,
+      reader=reader,
+      decoder=decoder,
+      num_samples=SPLITS_TO_SIZES[split_name],
+      items_to_descriptions=_ITEMS_TO_DESCRIPTIONS)
