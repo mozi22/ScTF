@@ -74,7 +74,8 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
       'image/width': tf.FixedLenFeature([], tf.int64),
       'image/height': tf.FixedLenFeature([], tf.int64),
       'image/format': tf.FixedLenFeature((), tf.string, default_value='png'),
-      'image/img_pair': tf.FixedLenFeature([], tf.string),
+      'image/img1': tf.FixedLenFeature([], tf.string),
+      'image/img2': tf.FixedLenFeature([], tf.string),
       'image/flo': tf.FixedLenFeature([], tf.string)
   }
 
@@ -83,12 +84,20 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   #   'label': slim.tfexample_decoder.Tensor('image/flo'),
   # }
   items_to_handlers = {
-    'image': slim.tfexample_decoder.Image(
-      image_key = 'image/img_pair',
+    'image1': slim.tfexample_decoder.Image(
+      image_key = 'image/img1',
       format_key = 'image/format',
       shape=[640, 480],
-      channels=6),
-    'label': slim.tfexample_decoder.Tensor('image/flo'),
+      channels=3),
+    'image2': slim.tfexample_decoder.Image(
+      image_key = 'image/img2',
+      format_key = 'image/format',
+      shape=[640, 480],
+      channels=3),
+    'flo': slim.tfexample_decoder.Image(
+      image_key = 'image/flo',
+      format_key = 'image/format',
+      shape=[640, 480])
   }
 
 

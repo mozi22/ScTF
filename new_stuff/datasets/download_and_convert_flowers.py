@@ -163,17 +163,20 @@ def _convert_dataset(split_name, images, labels, dataset_dir):
                 i+1, len(images), shard_id))
             sys.stdout.flush()
 
-            img_pair = combine_images(images[i][0],images[i][1])
+            # img_pair = combine_images(images[i][0],images[i][1])
+            img1 = np.array(Image.open(images[i][0]))
+            img2 = np.array(Image.open(images[i][1]))
             img_flo = read_flo_file(labels[i][0])
 
-            height = img_pair.shape[0]
-            width = img_pair.shape[1]
+            height = img1.shape[0]
+            width = img1.shape[1]
 
-            img = img_pair.tostring()
+            img1 = img1.tostring()
+            img2 = img2.tostring()
             flo = img_flo.tostring()
 
             example = dataset_utils.image_to_tfexample(
-                img, height, width, flo, b'png')
+                img1,img2, height, width, flo, b'png')
             tfrecord_writer.write(example.SerializeToString())
 
   sys.stdout.write('\n')
