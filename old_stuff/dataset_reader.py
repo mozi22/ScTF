@@ -36,7 +36,8 @@ class DatasetReader:
                                                     batch_size=1,
                                                     capacity=5,
                                                     num_threads=1,
-                                                    min_after_dequeue=1)
+                                                    min_after_dequeue=1,
+                                                    enqueue_many=True)
 
             # our image is 480x640 and each pixel has values RGBRGB i.e 6 channels.
             X = tf.placeholder(dtype=tf.float32, shape=(1, 96, 128, 6))
@@ -64,7 +65,6 @@ class DatasetReader:
             threads = tf.train.start_queue_runners(sess, coord=coord)
             # start passing the data to the feed_dict here and running everything after initializing the variables
             # Retrieve a single instance:
-            print(label.eval())
             batch_xs, batch_ys = sess.run([imageBatch, labelBatch])
             optimizer.run(feed_dict={X: batch_xs, Y: batch_ys})
 
