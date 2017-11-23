@@ -48,15 +48,20 @@ class DatasetWriter:
 			self.convert_file(x[0]+'/'+x[2][0],x[0]+'/'+x[2][1],self.read_flo_file(related_test_path+'/'+onlyfiles[0]))
 			# break
 
-
-
-
+	def resize_img(self,img_path,img_type='JPEG'):
+		size = 128,128
+		pil_img_1 = Image.open(img_path)
+		pil_img_1.thumbnail(size, Image.ANTIALIAS)
+		pil_img_1.save(img_path+'_updated', img_type)
 
 
 	# image1: path to first image of the pair
 	# image2: path to second image of the pair
 	# gt_flow: the .flo file np array, representing the ground truth
 	def convert_file(self,image1,image2,gt_flow):
+
+		print(image1)
+
 		img1 = np.array(Image.open(image1))
 		img2 = np.array(Image.open(image2))
 
@@ -73,11 +78,9 @@ class DatasetWriter:
 
 
 		# gt_flow = gt_flow.transpose([1,0,2])
-		# gt_flow = np.random.rand(120,160,2)
-		# print(gt_flow.shape)
+		gt_flow = np.random.rand(24,32,2).astype(np.float32)
 		height = img_pair.shape[0]
 		width = img_pair.shape[1]
-
 
 		flat_flow = gt_flow.tostring()
 		img_pair = img_pair.tostring()
@@ -116,7 +119,6 @@ class DatasetWriter:
 	# close the file writer
 	def close_writer(self):
 		self.writer.close()
-
 
 	# value: the value needed to be converted to feature
 	def _bytes_feature(self,value):
