@@ -100,12 +100,6 @@ def _refine(inp, num_outputs, upsampled_prediction=None, features_direct=None):
     )
     inputs = [upsampled_features, features_direct, upsampled_prediction]
     concat_inputs = [ x for x in inputs if not x is None ]
-    print('sandwich1')
-    print(upsampled_features)
-    print(features_direct)
-    print(upsampled_prediction)
-    print(concat_inputs)
-    print('sandwich2')
     return tf.concat(concat_inputs, axis=3)
 
 
@@ -118,26 +112,26 @@ def train_network(image_pair):
     conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=10, stride=2)
     conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=8, stride=2)
 
+    # print(conv1.get_shape())
+    # print(conv2.get_shape())
+    # print(conv3.get_shape())
+    # print(conv4.get_shape())
+    # print(conv5.get_shape())
+
     conv5_shape = conv5.get_shape().as_list()
 
     sliced = tf.slice(conv5, [0,0,0,0], conv5_shape)
     result = tf.contrib.layers.flatten(sliced)
-
 
     units = 1
     for i in range(1,len(conv5_shape)):
         units *= conv5_shape[i]
 
 
-    print(result.get_shape())
     dense = tf.layers.dense(inputs=result, units=units, activation=tf.nn.relu)
-    print('yaha masla hai')
-    print(dense.get_shape())
 
     # reshaping back to convolution structure
     conv5_flow = tf.concat((conv5,tf.reshape(dense, conv5_shape)),axis=3)
-    print('yaha masla hai2')
-    print(conv5_flow.get_shape())
 
     # predict flow
     with tf.variable_scope('predict_flow5'):
@@ -179,6 +173,4 @@ def train_network(image_pair):
     with tf.variable_scope('predict_flow2'):
         predict_flow2 = _predict_flow(concat2)
 
-    print('lala lori')
-    print(predict_flow2)
     return predict_flow5, predict_flow2 
