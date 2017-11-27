@@ -87,17 +87,17 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
     'image1': slim.tfexample_decoder.Image(
       image_key = 'image/img1',
       format_key = 'image/format',
-      shape=[640, 480],
+      shape=[96, 128],
       channels=3),
     'image2': slim.tfexample_decoder.Image(
       image_key = 'image/img2',
       format_key = 'image/format',
-      shape=[640, 480],
+      shape=[96, 128],
       channels=3),
     'flo': slim.tfexample_decoder.Image(
       image_key = 'image/flo',
-      format_key = 'image/format',
-      shape=[640, 480])
+      dtype = tf.float32,
+      shape=[24, 32])
   }
 
 

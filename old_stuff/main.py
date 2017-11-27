@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-import dataset_reader
+import run_main
 
 
 # # read data
@@ -13,5 +13,5 @@ import dataset_reader
 
 # with tf.name_scope("datareader"):
 filenames = ['optical_flow.tfrecords']
-reader = dataset_reader.DatasetReader()
+reader = run_main.DatasetReader()
 reader.iterate(filenames)

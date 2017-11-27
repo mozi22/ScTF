@@ -3,22 +3,16 @@ import tensorflow as tf
 from datasets import flowers
 from tensorflow.contrib import slim
 from preprocessing import inception_preprocessing
+import network
 
 
-def my_cnn(images, num_classes, is_training):  # is_training is not used...
-    with slim.arg_scope([slim.max_pool2d], kernel_size=[3, 3], stride=2):
-        net = slim.conv2d(images, 64, [5, 5])
-        net = slim.max_pool2d(net)
-        net = slim.conv2d(net, 64, [5, 5])
-        net = slim.max_pool2d(net)
-        net = slim.flatten(net)
-        net = slim.fully_connected(net, 192)
-        net = slim.fully_connected(net, num_classes, activation_fn=None)       
-        return net
+def my_cnn(img_pair):  # is_training is not used...
+        predict_flow5, predict_flow2 = network.train_network(img_pair)
+        return predict_flow5, predict_flow2
 
-def load_batch(dataset, batch_size=32, height=299, width=299, is_training=False):
+def load_batch(dataset, batch_size=32, height=96, width=128, is_training=True):
     """Loads a single batch of data.
-    
+
     Args:
       dataset: The dataset to load.
       batch_size: The number of images in the batch.
@@ -36,29 +30,55 @@ def load_batch(dataset, batch_size=32, height=299, width=299, is_training=False)
         common_queue_min=8)
     image1, image2, flo = data_provider.get(['image1', 'image2','flo'])
 
-    # sess = tf.Session()
-    # # initialize the variables
-    # sess.run(tf.global_variables_initializer())
-    # print('ala15')
-    # # initialize the threads coordinator
-    # coord = tf.train.Coordinator()
-    # print('ala16')
-    # # start enqueing the data to be dequeued for batch training
-    # threads = tf.train.start_queue_runners(sess, coord=coord)
-    # print(image_raw.eval(session=sess))
-    # Preprocess image for usage by Inception.
+    image1, image2, flo = fix_variables_randomness(image1,image2,flo)
+    # image1 = inception_preprocessing.preprocess_image(image1, height, width, is_training=is_training)
+    # image2 = inception_preprocessing.preprocess_image(image2, height, width, is_training=is_training)
+    # flo = inception_preprocessing.preprocess_image(flo, height, width, is_training=is_training)
+    
+    # Preprocess the image for display purposes.
 
-    # image = inception_preprocessing.preprocess_image(image_raw, height, width, is_training=is_training)
-
-    # # Preprocess the image for display purposes.
     # image_raw = tf.expand_dims(image_raw, 0)
     # image_raw = tf.image.resize_images(image_raw, [height, width])
     # image_raw = tf.squeeze(image_raw)
 
-    # # Batch it up.
-    # images, images_raw, labels = tf.train.batch(
-    #       [image, image_raw, label],
-    #       batch_size=batch_size,
-    #       num_threads=1,
-    #       capacity=2 * batch_size)
-    # return images, images_raw, labels
+    # Batch it up.
+    images, images_raw, labels = tf.train.batch(
+          [image1, image2, flo],
+          batch_size=batch_size,
+          num_threads=1,
+          capacity=2 * batch_size)
+    return image1, image2, flo
+
+
+def fix_variables_randomness(var1,var2,var3):
+
+  name1 = "image/img1:0"
+  name2 = "image/img2:0"
+  name3 = "image/flo:0"
+
+  image1 = None
+  image2 = None
+  flo = None
+
+  if var1.name == name1:
+    image1 = var1
+  elif var1.name == name2:
+    image2 = var1
+  elif var1.name == name3:
+    flo = var1
+
+  if var2.name == name1:
+    image1 = var2
+  elif var2.name == name2:
+    image2 = var2
+  elif var2.name == name3:
+    flo = var2
+
+  if var3.name == name1:
+    image1 = var3
+  elif var3.name == name2:
+    image2 = var3
+  elif var3.name == name3:
+    flo = var3
+
+  return image1,image2,flo

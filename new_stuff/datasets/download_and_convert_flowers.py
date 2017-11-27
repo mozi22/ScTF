@@ -166,14 +166,15 @@ def _convert_dataset(split_name, images, labels, dataset_dir):
             # img_pair = combine_images(images[i][0],images[i][1])
             img1 = np.array(Image.open(images[i][0]))
             img2 = np.array(Image.open(images[i][1]))
-            img_flo = read_flo_file(labels[i][0])
+            # img_flo = read_flo_file(labels[i][0])
+            gt_flow = np.random.rand(24,32,2).astype(np.float32)
 
             height = img1.shape[0]
             width = img1.shape[1]
 
             img1 = img1.tostring()
             img2 = img2.tostring()
-            flo = img_flo.tostring()
+            flo = gt_flow.tostring()
 
             example = dataset_utils.image_to_tfexample(
                 img1,img2, height, width, flo, b'png')

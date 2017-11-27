@@ -73,7 +73,7 @@ def image_to_tfexample(image_data1,image_data2, height, width, flo, img_format):
       'image/format': bytes_feature(img_format),
       'image/flo': bytes_feature(flo),
       'image/height': int64_feature(height),
-      'image/width': int64_feature(width),
+      'image/width': int64_feature(width)
   }))
 
 
