@@ -94,3 +94,7 @@ class DatasetReader:
     def save_model(self,sess):
         saver = tf.train.Saver()
         saver.save(sess, 'muazzam/my_test_model',global_step=1000)
+
+
+    def load_from_ckpt():
+        
