@@ -14,4 +14,4 @@ import run_main
 # with tf.name_scope("datareader"):
 filenames = ['optical_flow.tfrecords']
 reader = run_main.DatasetReader()
-reader.iterate(filenames)
+reader.iterate(filenames,False)
