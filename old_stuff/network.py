@@ -113,6 +113,12 @@ def train_network(image_pair):
         conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=10, stride=2)
         conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=8, stride=2)
 
+    # print(conv1.get_shape())
+    # print(conv2.get_shape())
+    # print(conv3.get_shape())
+    # print(conv4.get_shape())
+    # print(conv5.get_shape())
+
     conv5_shape = conv5.get_shape().as_list()
 
     sliced = tf.slice(conv5, [0,0,0,0], conv5_shape)
