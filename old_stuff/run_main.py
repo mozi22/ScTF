@@ -140,7 +140,3 @@ class DatasetReader:
     def load_model_ckpt(self,sess):
         saver = tf.train.Saver()
         saver.restore(sess,'muazzam/my_test_model.ckpt')
-
-
-
-        
