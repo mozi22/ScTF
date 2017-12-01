@@ -134,9 +134,9 @@ class DatasetReader:
  
     def save_model(self,sess):
         saver = tf.train.Saver()
-        saver.save(sess, 'muazzam/my_test_model.ckpt')
+        saver.save(sess, 'ckpt/my_test_model.ckpt')
 
 
     def load_model_ckpt(self,sess):
         saver = tf.train.Saver()
-        saver.restore(sess,'muazzam/my_test_model.ckpt')
+        saver.restore(sess,'ckpt/my_test_model.ckpt')

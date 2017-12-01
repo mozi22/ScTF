@@ -1,41 +1,41 @@
+import re
+import numpy as np
+import sys
+ 
 
-def ease_in_quad( current_time, start_value, change_value, duration ):
-    """
-    current_time: float or Tensor
-        The current time
+def readPFM(file):
+    file = open(file, 'rb')
 
-    start_value: float or Tensor
-        The start value
+    color = None
+    width = None
+    height = None
+    scale = None
+    endian = None
 
-    change_value: float or Tensor
-        The value change of the duration. The final value is start_value + change_value
+    header = file.readline().rstrip()
+    if header == 'PF':
+        color = True
+    elif header == 'Pf':
+        color = False
+    else:
+        raise Exception('Not a PFM file.')
 
-    duration: float or Tensor
-        The duration
+    dim_match = re.match(r'^(\d+)\s(\d+)\s$', file.readline())
+    if dim_match:
+        width, height = map(int, dim_match.groups())
+    else:
+        raise Exception('Malformed PFM header.')
 
-    Returns the value for the current time
-    """
-    with tf.name_scope("ease_in_quad"):
-        t = tf.clip_by_value(current_time/duration, 0, 1)
-        return tf.to_float(change_value*t*t + start_value)
+    scale = float(file.readline().rstrip())
+    if scale < 0: # little-endian
+        endian = '<'
+        scale = -scale
+    else:
+        endian = '>' # big-endian
 
+    data = np.fromfile(file, endian + 'f')
+    shape = (height, width, 3) if color else (height, width)
 
-def ease_out_quad( current_time, start_value, change_value, duration ):
-    """
-    current_time: float or Tensor
-        The current time
-
-    start_value: float or Tensor
-        The start value
-
-    change_value: float or Tensor
-        The value change of the duration. The final value is start_value + change_value
-
-    duration: float or Tensor
-        The duration
-
-    Returns the value for the current time
-    """
-    with tf.name_scope("ease_out_quad"):
-        t = tf.clip_by_value(current_time/duration, 0, 1)
-        return tf.to_float(-change_value*t*(t-2) + start_value)
+    data = np.reshape(data, shape)
+    data = np.flipud(data)
+    return data, scale
