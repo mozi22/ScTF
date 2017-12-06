@@ -16,5 +16,4 @@ import helpers
 # reader = run_main.DatasetReader()
 # reader.iterate(filenames,False)
 
-
 print(helpers.readPFM('0006.pfm'))

@@ -38,8 +38,6 @@ class DatasetReader:
 
         return img_pair[np.newaxis,:]
 
-
-
     def iterate(self, filenames,feed_for_train = True):
     
 
@@ -64,7 +62,6 @@ class DatasetReader:
                                                         capacity=100,
                                                         num_threads=1,
                                                         min_after_dequeue=6)
-
 
             with tf.name_scope('create_graph'):
 
@@ -101,9 +98,6 @@ class DatasetReader:
 
                 v = sess.run({'prediction': predict_flow2},feed_dict=feed_dict)
                 print(v['prediction'].shape)
-
-
-
 
     def train_network(self,sess):
         merged_summary_op = tf.summary.merge_all()
