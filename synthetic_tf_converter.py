@@ -233,7 +233,6 @@ class SyntheticTFRecordsWriter:
 
 
 	def parse_flyingthings3d_dataset(self,dataset):
-		test_examples_counter = 1
 
 		path = ''
 		for tnt in self.tnts:
@@ -282,7 +281,9 @@ class SyntheticTFRecordsWriter:
 
 
 	def parse_monkaa_dataset(self,dataset):
-		path = ''
+
+		self.init_tfrecord_writer(dataset+'_TEST.tfrecords')
+		test_examples_counter = 1
 
 		for data_type in self.data_types:
 			for scene in self.monkaa_scenes:
@@ -292,16 +293,33 @@ class SyntheticTFRecordsWriter:
 
 				for direction in self.directions:
 					for time in self.times:
-						for file in range(0,self.monkaa_FILES):
-							disparity_path = (path + '/' + direction).replace('camera_data','disparity')
-							disparity_change_path = (path + '/' + time + '/' + direction).replace('camera_data','disparity_change')
-							optical_flow_path = (path + '/' + time + '/' + direction).replace('camera_data','optical_flow')
-							frames_finalpass_webp_path = (path + '/' + direction).replace('camera_data','frames_finalpass_webp')
+						for file_id in range(0,self.monkaa_FILES):
+							disparity_path = (path + '/' + direction).replace('camera_data','disparity') + '/' + str("%04d" % (file_id,)) + '.pfm'
+							disparity_change_path = (path + '/' + time + '/' + direction).replace('camera_data','disparity_change') + '/' + str("%04d" % (file_id,)) + '.pfm'
+							optical_flow_path = (path.replace('camera_data','optical_flow') + '/' + time + '/' + direction + '/' + self.get_optical_flow_file_name(direction,time,"%04d" % (file_id,))) + '.pfm'
+							frames_finalpass_webp_path = (path + '/' + direction).replace('camera_data','frames_finalpass_webp') + '/' + str("%04d" % (file_id,)) + '.webp'
 
-							print(disparity_path)
-							print(disparity_change_path)
-							print(optical_flow_path)
-							print(frames_finalpass_webp_path)
+
+							disparity,disparity_change,optical_flow,frames_finalpass_webp = self.from_paths_to_data(
+								disparity_path,
+								disparity_change_path,
+								optical_flow_path,
+								frames_finalpass_webp_path)
+
+							camera_L_R = self.get_frame_by_id(file_id)
+
+							self.create_tf_example(disparity,
+								disparity_change,
+								optical_flow,
+								frames_finalpass_webp,
+								camera_L_R)
+
+							if test_examples_counter == self.monkaa_TEST_FILES_COUNT:
+								test_examples_counter = 0
+								self.close_writer()
+								self.init_tfrecord_writer(dataset+'_TRAIN.tfrecords')
+							else:										
+								test_examples_counter = test_examples_counter + 1
 
 
 
@@ -318,7 +336,7 @@ class SyntheticTFRecordsWriter:
 		# self.parse_flyingthings3d_dataset('flyingthings3d')
 			# else:
 				# monkaa
-		self.parse_flyingthings3d_dataset('flyingthings3d')
+		self.parse_monkaa_dataset('monkaa')
 
 
 
