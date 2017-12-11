@@ -30,13 +30,14 @@
 import re
 import numpy as np
 from PIL import Image 
-
+import tensorflow as tf
 
 
 class SyntheticTFRecordsWriter:
 
 
 	def __init__(self):
+
 
 		# these params need to be updated when running on the bigger dataset
 
@@ -100,6 +101,8 @@ class SyntheticTFRecordsWriter:
 
 
 
+
+
 	# we load the content of the file in memory and refer the lines required
 	# in the for loop w.r.t each id (item).
 	def load_camera_file(self,path):
@@ -115,13 +118,15 @@ class SyntheticTFRecordsWriter:
 		left = self.camera_data[frame_line + 1]
 		right = self.camera_data[frame_line + 2]
 
-		return [left,right]
+		left_values = map(lambda x: float(x),left.split(' ')[1:])
+		right_values = map(lambda x: float(x),right.split(' ')[1:])
+
+		left_values_as_np = np.fromiter(left_values, dtype=np.float32)
+		right_values_as_np = np.fromiter(right_values, dtype=np.float32)
+
+		return [left_values_as_np,right_values_as_np]
 
 
-	def get_path_based_on_module(self,path_so_far,module,time,direction):
-
-		if module == self.data_types[0]:
-			disparity_path = path_so_far + '/' + direction
 
 
 	def get_optical_flow_file_name(self,direction,time,file_id):
@@ -135,6 +140,13 @@ class SyntheticTFRecordsWriter:
 			return 'OpticalFlowIntoPast_'+str(file_id)+'_R'
 
 	def parse_driving_dataset(self,dataset):
+
+		self.init_tfrecord_writer(dataset+'_TEST.tfrecords')
+		test_examples_counter = 1
+
+		# first we create the test file. And than the rest as training.
+
+
 		for data_type in self.data_types:
 			for camera_focal_length in self.camera_focal_lengths:
 				for scene_type in self.scene_types:
@@ -154,37 +166,58 @@ class SyntheticTFRecordsWriter:
 
 								for file_id in range(1,self.driving_FILES):
 
-									disparity = self.readPFM(disparity_path + '/' + "%04d" % (file_id,) + '.pfm')
-									disparity_change = self.readPFM(disparity_change_path + '/' + "%04d" % (file_id,) + '.pfm')
-									optical_flow = self.readPFM(optical_flow_path + '/' + self.get_optical_flow_file_name(direction,time,"%04d" % (file_id,)) + '.pfm')
-									frames_finalpass_webp = Image.open(frames_finalpass_webp_path + '/' + "%04d" % (file_id,) + '.webp')
+									disparity = disparity_path + '/' + "%04d" % (file_id,) + '.pfm'
+									disparity_change = disparity_change_path + '/' + "%04d" % (file_id,) + '.pfm'
+									optical_flow = optical_flow_path + '/' + self.get_optical_flow_file_name(direction,time,"%04d" % (file_id,)) + '.pfm'
+									frames_finalpass_webp = frames_finalpass_webp_path + '/' + "%04d" % (file_id,) + '.webp'
 
-									# read files.
-									frames_finalpass_webp, disparity, disparity_change, optical_flow = self.from_paths_to_data(disparity,disparity_change,optical_flow,frames_finalpass_webp)
+
+									disparity,disparity_change,optical_flow,frames_finalpass_webp = self.from_paths_to_data(
+										disparity,
+										disparity_change,
+										optical_flow,
+										frames_finalpass_webp)
 
 									camera_L_R = self.get_frame_by_id(file_id)
 
+									self.create_tf_example(disparity,
+										disparity_change,
+										optical_flow,
+										frames_finalpass_webp,
+										camera_L_R)
+
+									if test_examples_counter == self.driving_TEST_FILES_COUNT:
+										test_examples_counter = 0
+										self.close_writer()
+										self.init_tfrecord_writer(dataset+'_TRAIN.tfrecords')
+									else:										
+										test_examples_counter = test_examples_counter + 1
 
 
-	def create_tf_example(frames_finalpass_webp, disparity, disparity_change, optical_flow,camera_L_R):
 
-		
+	def create_tf_example(self,disparity, disparity_change, optical_flow,frames_finalpass_webp,camera_L_R):
+
+		disp = disparity.tostring()
+		disp_chng = disparity_change.tostring()
+		opt_flow = optical_flow.tostring()
+		cam_frame_L = camera_L_R[0].tostring()
+		cam_frame_R = camera_L_R[1].tostring()
+
 
 		example = tf.train.Example(features=tf.train.Features(
 			feature={
-				# we already know that there will be 3 columns (R-G-B). Hence we just keep track of the 
-				# number of rows, which is width * height of the image.
-			    'disparity_width': self._int64_feature(width),
-			    'disparity_height': self._int64_feature(height),
-			    'disparity_change_width': self._int64_feature(img_pair),
-			    'disparity_change_height': self._int64_feature(flat_flow),
-			    'optical_flow_width': self._int64_feature(flat_flow),
-			    'optical_flow_height': self._int64_feature(flat_flow),
-			    'disp': disparity,
-			    'disp_chng': disparity_change,
-			    'opt_flow': optical_flow,
-			    'cam_frame': camera_L_R,
-			    'image': frames_finalpass_webp
+			    'disparity_width': self._int64_feature(disparity.shape[1]),
+			    'disparity_height': self._int64_feature(disparity.shape[0]),
+			    'disparity_change_width': self._int64_feature(disparity_change.shape[1]),
+			    'disparity_change_height': self._int64_feature(disparity_change.shape[0]),
+			    'optical_flow_width': self._int64_feature(optical_flow.shape[1]),
+			    'optical_flow_height': self._int64_feature(optical_flow.shape[0]),
+			    'disp': self._bytes_feature(disp),
+			    'disp_chng': self._bytes_feature(disp_chng),
+			    'opt_flow': self._bytes_feature(opt_flow),
+			    'cam_frame_L': self._bytes_feature(cam_frame_L),
+			    'cam_frame_R': self._bytes_feature(cam_frame_R),
+			    'image': self._bytes_feature(frames_finalpass_webp)
 		    }),
 		)
 
@@ -192,43 +225,60 @@ class SyntheticTFRecordsWriter:
 
 
 	def from_paths_to_data(self,disparity,disparity_change,optical_flow,frames_finalpass_webp_path):
-		web_p_file = file = open(frames_finalpass_webp_path, 'rb')
-		disparity = self.readPFM(disparity)
-		disparity_change = self.readPFM(disparity_change)
-		optical_flow = self.readPFM(optical_flow)
-
-		return web_p_file, disparity, disparity_change, optical_flow
+		web_p_file = open(frames_finalpass_webp_path, 'rb').read()
+		disparity, _ = self.readPFM(disparity)
+		disparity_change, _ = self.readPFM(disparity_change)
+		optical_flow, _ = self.readPFM(optical_flow)
+		return disparity, disparity_change, optical_flow, web_p_file
 
 
 	def parse_flyingthings3d_dataset(self,dataset):
+		test_examples_counter = 1
 
 		path = ''
-		for data_type in self.data_types:
-			for tnt in self.tnts:
+		for tnt in self.tnts:
+
+			if tnt == self.tnts[0]:
+				self.init_tfrecord_writer(dataset+'_TRAIN.tfrecords')
+				folders_range = self.flying_data_folder_train_limit[1]
+			else:
+				self.close_writer()
+				self.init_tfrecord_writer(dataset+'_TEST.tfrecords')
+				folders_range = self.flying_data_folder_test_limit[1]
+
+			for data_type in self.data_types:
 				for let in self.letters:
 
-					if tnt == self.tnts[0]:
-						folders_range = self.flying_data_folder_train_limit[1]
-					else:
-						folders_range = self.flying_data_folder_test_limit[1]
 
 					for folder_id in range(0,folders_range):
 
 						path = self.dataset_root + '/'.join([dataset,'camera_data',tnt,let,"%04d" % (folder_id,)])
 						self.camera_data = self.load_camera_file(path)
 
-						for direction in self.directions:						
+						for direction in self.directions:
 							for time in self.times:
 								for file_id in range(self.flying_data_file_limit[0],self.flying_data_file_limit[1]):
 
-									disparity_path = (path + '/' + direction).replace('camera_data','disparity')
-									disparity_change_path = (path + '/' + time + '/' + direction).replace('camera_data','disparity_change')
-									optical_flow_path = (path + '/' + time + '/' + direction).replace('camera_data','optical_flow')
-									frames_finalpass_webp_path = (path + '/' + direction).replace('camera_data','frames_finalpass_webp')
+									disparity_path = (path + '/' + direction).replace('camera_data','disparity') + '/' + str("%04d" % (file_id,)) + '.pfm'
+									disparity_change_path = (path + '/' + time + '/' + direction).replace('camera_data','disparity_change') + '/' + str("%04d" % (file_id,)) + '.pfm'
+									optical_flow_path = (path.replace('camera_data','optical_flow') + '/' + time + '/' + direction + '/' + self.get_optical_flow_file_name(direction,time,"%04d" % (file_id,))) + '.pfm'
+
+									frames_finalpass_webp_path = (path + '/' + direction).replace('camera_data','frames_finalpass_webp') + '/' + str("%04d" % (file_id,)) + '.webp'
 
 
-									web_p_file = file = open(frames_finalpass_webp_path, 'rb')
+									disparity,disparity_change,optical_flow,frames_finalpass_webp = self.from_paths_to_data(
+										disparity_path,
+										disparity_change_path,
+										optical_flow_path,
+										frames_finalpass_webp_path)
 
+									camera_L_R = self.get_frame_by_id(file_id)
+
+									self.create_tf_example(disparity,
+										disparity_change,
+										optical_flow,
+										frames_finalpass_webp,
+										camera_L_R)
 
 
 	def parse_monkaa_dataset(self,dataset):
@@ -268,7 +318,7 @@ class SyntheticTFRecordsWriter:
 		# self.parse_flyingthings3d_dataset('flyingthings3d')
 			# else:
 				# monkaa
-		self.parse_driving_dataset('driving')
+		self.parse_flyingthings3d_dataset('flyingthings3d')
 
 
 
@@ -326,6 +376,9 @@ class SyntheticTFRecordsWriter:
 
 	def _int64_feature(self,value):
 	    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
+
+	def init_tfrecord_writer(self,filename):
+		self.writer = tf.python_io.TFRecordWriter(filename)
 
 
 
