@@ -33,6 +33,7 @@ from PIL import Image
 import tensorflow as tf
 import os, os.path
 import math
+from multiprocessing import Process
 class SyntheticTFRecordsWriter:
 
 
@@ -42,18 +43,13 @@ class SyntheticTFRecordsWriter:
 		# these params need to be updated when running on the bigger dataset
 
 		# here 2 means 0000 and 0001 i.e 2 records
-		self.flyingdata_TEST_FOLDERS_IDS = 2
-		self.flyingdata_TRAIN_FOLDERS_IDS = 2
-		self.flyingdata_FILES_IDS = [6,8]
-
-		# for driving 50 files will be kept as testing and the rest for training.
-		self.driving_TEST_FILES_COUNT = 50
-
-		# for monkaa 20 files will be kept as testing and the rest for training.
-		self.monkaa_TEST_FILES_COUNT = 20
+		self.flyingdata_TEST_FOLDERS_IDS = 150
+		self.flyingdata_TRAIN_FOLDERS_IDS = 750
+		self.flyingdata_FILES_IDS = [6,16]
 
 
-		self.dataset_root = '/home/muazzam/mywork/python/thesis/danda/dataset/'
+
+		self.dataset_root = '/misc/lmbraid19/muazzama/dataset_synthetic/'
 
 		self.datasets = ['driving','flyingthings3d','monkaa']
 		
@@ -115,9 +111,15 @@ class SyntheticTFRecordsWriter:
 		    return data
 
 	# gets the L,R frame values from camera_data based on the id passed.
-	def get_frame_by_id(self,idd):
+	def get_frame_by_id(self,idd, dataset_flying = False):
+
+		if dataset_flying:
+			if len(self.camera_data) < 37:
+				idd = 8
+
 
 		frame_line = idd * 4
+
 		left = self.camera_data[frame_line + 1]
 		right = self.camera_data[frame_line + 2]
 
@@ -187,7 +189,8 @@ class SyntheticTFRecordsWriter:
 										optical_flow,
 										frames_finalpass_webp)
 
-									camera_L_R = self.get_frame_by_id(file_id)
+
+									camera_L_R = self.get_frame_by_id(file_id - 1)
 
 									if file_id > test_files:
 										self.create_tf_example(disparity,
@@ -269,12 +272,20 @@ class SyntheticTFRecordsWriter:
 
 					for folder_id in range(0,folders_range):
 
+
+
 						path = self.dataset_root + '/'.join([dataset,'camera_data',tnt,let,"%04d" % (folder_id,)])
+
+						if os.path.isdir(path) == False:
+							continue
+
 						self.camera_data = self.load_camera_file(path)
 
 						for direction in self.directions:
 							for time in self.times:
 								for file_id in range(self.flying_data_file_limit[0],self.flying_data_file_limit[1]):
+
+
 
 									disparity_path = (path + '/' + direction).replace('camera_data','disparity') + '/' + str("%04d" % (file_id,)) + '.pfm'
 									disparity_change_path = (path + '/' + time + '/' + direction).replace('camera_data','disparity_change') + '/' + str("%04d" % (file_id,)) + '.pfm'
@@ -289,7 +300,7 @@ class SyntheticTFRecordsWriter:
 										optical_flow_path,
 										frames_finalpass_webp_path)
 
-									camera_L_R = self.get_frame_by_id(file_id)
+									camera_L_R = self.get_frame_by_id(file_id - 6,True)
 
 									if tnt == self.tnts[0]:
 										self.create_tf_example(disparity,
@@ -353,6 +364,7 @@ class SyntheticTFRecordsWriter:
 								optical_flow_path,
 								frames_finalpass_webp_path)
 
+							print(file_id)
 							camera_L_R = self.get_frame_by_id(file_id)
 
 							if file_id > test_files:
@@ -363,9 +375,6 @@ class SyntheticTFRecordsWriter:
 									camera_L_R,
 									train_writer)
 							else:
-
-
-
 								self.create_tf_example(disparity,
 									disparity_change,
 									optical_flow,
@@ -382,15 +391,21 @@ class SyntheticTFRecordsWriter:
 
 	def convert(self):
 
-		path = ''
+		# for dataset in self.datasets:
+		# 	if dataset == self.datasets[0]:
+		# 		self.parse_driving_dataset(dataset)
+		# 	elif dataset == self.datasets[1]:
+		# 		self.parse_flyingthings3d_dataset('flyingthings3d')
+		# 	else:
+		# 		self.parse_monkaa_dataset('monkaa')
 
-		for dataset in self.datasets:
-			if dataset == self.datasets[0]:
-				self.parse_driving_dataset(dataset)
-			elif dataset == self.datasets[1]:
-				self.parse_flyingthings3d_dataset('flyingthings3d')
-			else:
-				self.parse_monkaa_dataset('monkaa')
+	    p1 = Process(target = self.parse_driving_dataset(self.datasets[0]))
+	    p2 = Process(target = self.parse_flyingthings3d_dataset(self.datasets[1]))
+	    p3 = Process(target = self.parse_monkaa_dataset(self.datasets[2]))
+
+	    p1.start()
+	    p2.start()
+	    p3.start()
 
 	# reads the PFM file and returns an np matrix.
 	def readPFM(self,file):
