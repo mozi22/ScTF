@@ -364,7 +364,6 @@ class SyntheticTFRecordsWriter:
 								optical_flow_path,
 								frames_finalpass_webp_path)
 
-							print(file_id)
 							camera_L_R = self.get_frame_by_id(file_id)
 
 							if file_id > test_files:
