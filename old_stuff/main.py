@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-import run_main
+import run_network
 import helpers
 
 # # read data
@@ -10,10 +10,10 @@ import helpers
 # input_data = prepare_input_data(img1,img2,data_format)
 
 # print(get_available_gpus())
+prefix = '../../server/danda/'
 
 # with tf.name_scope("datareader"):
-# filenames = ['optical_flow.tfrecords']
-# reader = run_main.DatasetReader()
-# reader.iterate(filenames,False)
-
-print(helpers.readPFM('0006.pfm'))
+filenames = [prefix+'driving_TRAIN.tfrecords']
+reader = run_network.DatasetReader()
+reader.iterate(filenames)
+# print(helpers.readPFM('0006.pfm'))

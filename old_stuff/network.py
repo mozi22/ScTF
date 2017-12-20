@@ -11,6 +11,15 @@ def convrelu2(name,inputs, filters, kernel_size, stride):
     #     name=name+'y',
     #     activation=tf.nn.relu
     # )
+
+
+
+    if name == "conv2":
+        paddings = tf.constant([[0, 0],[1, 1], [0, 0],[0,0]])
+        inputs = tf.pad(inputs,paddings,"CONSTANT")
+
+    print(name)
+    print(inputs)
     return tf.layers.conv2d(
         inputs=inputs,
         filters=filters,
@@ -58,7 +67,7 @@ def _predict_flow(inp):
         filters=24,
         kernel_size=3,
         stride=1,
-        name="conv1"
+        name="conv1_pred_flow"
     )
     
     output = convrelu2(
@@ -66,7 +75,7 @@ def _predict_flow(inp):
         filters=2,
         kernel_size=3,
         stride=1,
-        name="conv2"
+        name="conv2_pred_flow"
     )
     
     return output
@@ -98,6 +107,10 @@ def _refine(inp, num_outputs, upsampled_prediction=None, features_direct=None):
         activation=tf.nn.relu,
         name="upconv"
     )
+    print('inside')
+    print(inp)
+    print(features_direct)
+    print(upsampled_features)
     inputs = [upsampled_features, features_direct, upsampled_prediction]
     concat_inputs = [ x for x in inputs if not x is None ]
     return tf.concat(concat_inputs, axis=3)
@@ -113,6 +126,7 @@ def train_network(image_pair):
         conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=10, stride=2)
         conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=8, stride=2)
 
+    print('mozi')
     # print(conv1.get_shape())
     # print(conv2.get_shape())
     # print(conv3.get_shape())
@@ -157,6 +171,7 @@ def train_network(image_pair):
             num_outputs=128, 
             features_direct=conv3
         )
+
 
     with tf.variable_scope('refine2'):
         concat2 = _refine(
