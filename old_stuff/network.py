@@ -70,7 +70,7 @@ def _predict_flow(inp):
     
     output = convrelu2(
         inputs=tmp,
-        filters=4,
+        filters=3,
         kernel_size=3,
         stride=1,
         name="conv2_pred_flow"
@@ -160,7 +160,7 @@ def train_network(image_pair):
 
 
     with tf.variable_scope('upsample_flow4to3'):
-        predict_flow4to3 = _upsample_prediction(predict_flow4, 2)
+        predict_flow4to3 = _upsample_prediction(predict_flow4, 3)
 
     with tf.variable_scope('refine3'):
         concat3 = _refine(
@@ -178,7 +178,6 @@ def train_network(image_pair):
     #         num_outputs=128, 
     #         features_direct=conv3
     #     )
-
 
     with tf.variable_scope('refine2'):
         concat2 = _refine(
