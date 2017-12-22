@@ -14,12 +14,10 @@ def convrelu2(name,inputs, filters, kernel_size, stride):
 
 
 
-    if name == "conv2":
-        paddings = tf.constant([[0, 0],[1, 1], [0, 0],[0,0]])
-        inputs = tf.pad(inputs,paddings,"CONSTANT")
+    # if name == "conv4":
+    #     paddings = tf.constant([[0, 0],[2, 2], [4, 4],[0,0]])
+    #     inputs = tf.pad(inputs,paddings,"CONSTANT",name=name)
 
-    print(name)
-    print(inputs)
     return tf.layers.conv2d(
         inputs=inputs,
         filters=filters,
@@ -72,7 +70,7 @@ def _predict_flow(inp):
     
     output = convrelu2(
         inputs=tmp,
-        filters=2,
+        filters=4,
         kernel_size=3,
         stride=1,
         name="conv2_pred_flow"
@@ -80,7 +78,7 @@ def _predict_flow(inp):
     
     return output
 
-def _refine(inp, num_outputs, upsampled_prediction=None, features_direct=None):
+def _refine(inp, num_outputs, upsampled_prediction=None, features_direct=None,name=None):
     """ Generates the concatenation of 
          - the previous features used to compute the flow/depth
          - the upsampled previous flow/depth
@@ -107,12 +105,18 @@ def _refine(inp, num_outputs, upsampled_prediction=None, features_direct=None):
         activation=tf.nn.relu,
         name="upconv"
     )
+
+
+
     print('inside')
     print(inp)
     print(features_direct)
     print(upsampled_features)
+
     inputs = [upsampled_features, features_direct, upsampled_prediction]
     concat_inputs = [ x for x in inputs if not x is None ]
+
+
     return tf.concat(concat_inputs, axis=3)
 
 
@@ -124,69 +128,75 @@ def train_network(image_pair):
         conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=12, stride=2)
         conv3 = convrelu2(name='conv3', inputs=conv2, filters=128, kernel_size=10, stride=2)
         conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=10, stride=2)
-        conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=8, stride=2)
+        # conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=8, stride=2)
 
     print('mozi')
-    # print(conv1.get_shape())
-    # print(conv2.get_shape())
-    # print(conv3.get_shape())
-    # print(conv4.get_shape())
-    # print(conv5.get_shape())
+    print(conv1)
+    print(conv2)
+    print(conv3)
+    print(conv4)
+    # print(conv5)
 
-    conv5_shape = conv5.get_shape().as_list()
+    conv4_shape = conv4.get_shape().as_list()
 
-    sliced = tf.slice(conv5, [0,0,0,0], conv5_shape)
+    sliced = tf.slice(conv4, [0,0,0,0], conv4_shape)
     result = tf.contrib.layers.flatten(sliced)
 
     units = 1
-    for i in range(1,len(conv5_shape)):
-        units *= conv5_shape[i]
+    for i in range(1,len(conv4_shape)):
+        units *= conv4_shape[i]
 
 
     dense = tf.layers.dense(inputs=result, units=units, activation=tf.nn.relu)
 
+    print("dense")
+    print(dense)
     # reshaping back to convolution structure
-    conv5_flow = tf.concat((conv5,tf.reshape(dense, conv5_shape)),axis=3)
+    conv4_flow = tf.concat((conv4,tf.reshape(dense, conv4_shape)),axis=3)
 
     # predict flow
     with tf.variable_scope('predict_flow5'):
-        predict_flow5 = _predict_flow(conv5_flow)
+        predict_flow4 = _predict_flow(conv4_flow)
 
 
-    with tf.variable_scope('upsample_flow5to4'):
-        predict_flow5to4 = _upsample_prediction(predict_flow5, 2)
-
-    with tf.variable_scope('refine4'):
-        concat4 = _refine(
-            inp=conv5_flow, 
-            num_outputs=256, 
-            upsampled_prediction=predict_flow5to4, 
-            features_direct=conv4
-        )
-
+    with tf.variable_scope('upsample_flow4to3'):
+        predict_flow4to3 = _upsample_prediction(predict_flow4, 2)
 
     with tf.variable_scope('refine3'):
         concat3 = _refine(
-            inp=concat4, 
-            num_outputs=128, 
-            features_direct=conv3
+            inp=conv4_flow, 
+            num_outputs=128,
+            upsampled_prediction=predict_flow4to3, 
+            features_direct=conv3,
+            name='paddit'
         )
+
+
+    # with tf.variable_scope('refine3'):
+    #     concat3 = _refine(
+    #         inp=concat4, 
+    #         num_outputs=128, 
+    #         features_direct=conv3
+    #     )
 
 
     with tf.variable_scope('refine2'):
         concat2 = _refine(
             inp=concat3, 
-            num_outputs=64, 
+            num_outputs=64,
             features_direct=conv2
         )
-    # with tf.variable_scope('refine1'):
-    #     concat1 = _refine(
-    #         inp=concat2, 
-    #         num_outputs=32, 
-    #         features_direct=conv1
-    #     )
+
+    with tf.variable_scope('refine1'):
+        concat1 = _refine(
+            inp=concat2, 
+            num_outputs=32, 
+            features_direct=conv1
+        )
+
 
     with tf.variable_scope('predict_flow2'):
-        predict_flow2 = _predict_flow(concat2)
+        predict_flow2 = _predict_flow(concat1)
 
-    return predict_flow5, predict_flow2 
+    print(predict_flow2)
+    return predict_flow4, predict_flow2 
