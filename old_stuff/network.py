@@ -124,10 +124,10 @@ def train_network(image_pair):
 
     # contracting part
     with tf.variable_scope('down_convs'):
-        conv1 = convrelu2(name='conv1', inputs=image_pair, filters=32, kernel_size=13, stride=2)
-        conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=12, stride=2)
-        conv3 = convrelu2(name='conv3', inputs=conv2, filters=128, kernel_size=10, stride=2)
-        conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=10, stride=2)
+        conv1 = convrelu2(name='conv1', inputs=image_pair, filters=32, kernel_size=5, stride=2)
+        conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=3, stride=2)
+        conv3 = convrelu2(name='conv3', inputs=conv2, filters=128, kernel_size=3, stride=2)
+        conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=3, stride=2)
         # conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=8, stride=2)
 
     print('mozi')

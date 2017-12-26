@@ -4,7 +4,7 @@ import numpy as np
 from   PIL import Image
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
-
+from tensorflow.python import debug as tf_debug
 class DatasetReader:
 
 
@@ -36,35 +36,53 @@ class DatasetReader:
         cam_frame_L = tf.decode_raw(features['cam_frame_L'], tf.float32)
         cam_frame_R = tf.decode_raw(features['cam_frame_R'], tf.float32)
 
-        input_dimensions = [54,96]
-        lbl_dimensions = [27,48]
+        self.input_pipeline_dimensions = [540, 960]
 
 
         image = tf.to_float(image)
         # reshape data to its original form
-        image = tf.reshape(image, [input_dimensions[0],input_dimensions[1], 3])
-        disp = tf.reshape(disp, [input_dimensions[0],input_dimensions[1]])
-        opt_flow = tf.reshape(opt_flow, [lbl_dimensions[0],lbl_dimensions[1],2])
-        disp_chng = tf.reshape(disp_chng,[lbl_dimensions[0],lbl_dimensions[1]])
+        image = tf.reshape(image, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1], 3])
+        disp = tf.reshape(disp, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1]])
+        opt_flow = tf.reshape(opt_flow, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1],2])
+        disp_chng = tf.reshape(disp_chng,[self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1]])
         depth,depth_change = self.get_depth_from_disparity(disp,disp_chng)
 
         # return opt_flow
+        image = tf.divide(image,[255]) -0.5
 
         inputt = self.combine_depth_values(image,depth,2)
         label = self.combine_depth_values(opt_flow,depth_change,2)
 
-        padding_input = tf.constant([[5, 5],[0, 0],[0, 0]])
-        padding_lbl = tf.constant([[2, 3],[0, 0],[0, 0]])
+        inputt = self.divide_inputs_to_patches(inputt,4)
+        label = self.divide_inputs_to_patches(label,3)
 
-        inputt = tf.pad(inputt,padding_input,'CONSTANT')
+
+        # padding_input = tf.constant([[0, 0],[5, 4],[0, 0]])
+        padding_lbl = tf.constant([[0, 0],[5, 5],[0, 0],[0,0]])
+
+        inputt = tf.pad(inputt,padding_lbl,'CONSTANT')
         label = tf.pad(label,padding_lbl,'CONSTANT')
 
-        # return inputt,label
+        label = tf.image.resize_images(label,[32,48],tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+
 
         return {
             'input': inputt,
             'label': label
         }
+
+
+    def divide_inputs_to_patches(self,image,last_dimension):
+
+        image = tf.expand_dims(image,0)
+        ksize = [1, 54, 96, 1]
+
+        image_patches = tf.extract_image_patches(
+            image, ksize, ksize, [1, 1, 1, 1], 'VALID')
+        image_patches_reshaped = tf.reshape(image_patches, [-1, 54, 96, last_dimension])
+
+        return image_patches_reshaped
+
 
     # combines the depth value in the image RGB values to make it an RGBD tensor.
     # where the resulting tensor will have depth values in the 4th element of 3rd dimension i.e [0][0][3].
@@ -99,6 +117,8 @@ class DatasetReader:
 
     def iterate(self, filenames,feed_for_train = True):
     
+            self.batch_size = 1
+            self.epochs = 2
 
             if feed_for_train == False:
                 img_pair = self.get_image_for_testing()
@@ -114,38 +134,37 @@ class DatasetReader:
                 key, fullExample = recordReader.read(filename_queue)
 
                 features = self.decode_features(fullExample)
-
+                print(features)
                 # shuffle the data and get them as batches
                 self.imageBatch, self.labelBatch = tf.train.shuffle_batch([ features['input'], 
                                                                             features['label']],
-                                                        batch_size=4,
+                                                        batch_size=self.batch_size,
                                                         capacity=100,
                                                         num_threads=1,
-                                                        min_after_dequeue=6)
-
+                                                        min_after_dequeue=6,
+                                                        enqueue_many=True)
 
             with tf.name_scope('create_graph'):
 
                 if feed_for_train == False:
-                    # our image is 480x640 and each pixel has values RGBRGB i.e 6 channels.
                     self.X = tf.placeholder(dtype=tf.float32, shape=(1, 80, 128, 4))
-                    self.Y = tf.placeholder(dtype=tf.float32, shape=(1, 40, 64, 4))
+                    self.Y = tf.placeholder(dtype=tf.float32, shape=(1, 40, 64, 3))
                 else:
-                    self.X = tf.placeholder(dtype=tf.float32, shape=(1, 64, 96, 4))
-                    self.Y = tf.placeholder(dtype=tf.float32, shape=(1, 32, 48, 3))
+                    self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 64, 96, 4))
+                    self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 32, 48, 3))
 
                 # build the network here
                 predict_flow5, predict_flow2 = network.train_network(self.X)
 
                 # measure of error of our model
                 # this needs to be minimised by adjusting W and b
-                mse = tf.reduce_mean(tf.squared_difference(predict_flow2, self.Y))
-
+                self.mse = tf.reduce_mean(tf.squared_difference(predict_flow2, self.Y),name="ye_hai_mean")
+                tf.summary.scalar('MSE', self.mse)
                 # # # define training step which minimizes cross entropy
-                self.optimizer = tf.train.AdamOptimizer(1e-4).minimize(mse)
+                self.optimizer = tf.train.AdamOptimizer(1e-4).minimize(self.mse)
 
 
-            sess = tf.InteractiveSession()
+            sess = tf.Session()
             self.train_network(sess,features)
 
             # if feed_for_train:
@@ -166,11 +185,13 @@ class DatasetReader:
 
 
     def train_network(self,sess,a):
-        # merged_summary_op = tf.summary.merge_all()
-        # summary_writer = tf.summary.FileWriter('./tb',graph=sess.graph)
 
-        tf.global_variables_initializer()
-        tf.local_variables_initializer()
+
+
+        merged_summary_op = tf.summary.merge_all()
+        summary_writer = tf.summary.FileWriter('./tb',graph=tf.get_default_graph())
+
+        sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
 
         # initialize the threads coordinator
         coord = tf.train.Coordinator()
@@ -178,16 +199,29 @@ class DatasetReader:
         threads = tf.train.start_queue_runners(sess, coord=coord)
         # start passing the data to the feed_dict here and running everything after initializing the variables
         # Retrieve a single instance:
-        # batch_xs, batch_ys = sess.run([self.imageBatch, self.labelBatch])
 
-        # sess.run(self.optimizer,feed_dict={self.X: batch_xs, self.Y: batch_ys})
+        # sess = tf_debug.LocalCLIDebugWrapperSession(sess)
+        # sess.add_tensor_filter("has_inf_or_nan", tf_debug.has_inf_or_nan)
 
+        # img = a['input'].eval(session=sess)
+        # for i in range(0,img.shape[0]):
+        #     for j in range(0,img.shape[1]):
+        #         print(img[i,j])
 
-        # print(a.eval().shape)
-        # summary_str = sess.run(merged_summary_op, feed_dict={self.X: batch_xs, self.Y: batch_ys})
-        # summary_writer.add_summary(summary_str, 1)
+        loss = 0
+        for i in range(0,self.epochs):
+            batch_xs, batch_ys = sess.run([self.imageBatch, self.labelBatch])
 
-        print('done')
+            summary, _,  epoch_loss = sess.run([merged_summary_op,self.optimizer,self.mse],feed_dict={self.X: batch_xs, self.Y: batch_ys})
+
+            loss = loss + epoch_loss
+
+            print('Epoch #  =',str(i))
+            print('Total Epoch loss = ', str(loss))
+
+            summary_writer.add_summary(summary, i)
+
+        summary_writer.close()
         # finalise
         coord.request_stop()
         coord.join(threads)

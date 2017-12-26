@@ -10,7 +10,7 @@ import helpers
 # input_data = prepare_input_data(img1,img2,data_format)
 
 # print(get_available_gpus())
-prefix = '../../danda/'
+prefix = '../../dataset_synthetic_sm/'
 
 # with tf.name_scope("datareader"):
 filenames = [prefix+'driving_TRAIN.tfrecords']
