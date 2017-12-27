@@ -48,7 +48,7 @@ class DatasetReader:
         depth,depth_change = self.get_depth_from_disparity(disp,disp_chng)
 
         # return opt_flow
-        image = tf.divide(image,[255]) -0.5
+        # image = tf.divide(image,[255]) -0.5
 
         inputt = self.combine_depth_values(image,depth,2)
         label = self.combine_depth_values(opt_flow,depth_change,2)
@@ -60,8 +60,8 @@ class DatasetReader:
         # padding_input = tf.constant([[0, 0],[5, 4],[0, 0]])
         padding_lbl = tf.constant([[0, 0],[5, 5],[0, 0],[0,0]])
 
-        inputt = tf.pad(inputt,padding_lbl,'CONSTANT')
-        label = tf.pad(label,padding_lbl,'CONSTANT')
+        inputt = tf.pad(inputt,padding_lbl,'SYMMETRIC')
+        label = tf.pad(label,padding_lbl,'SYMMETRIC')
 
         label = tf.image.resize_images(label,[32,48],tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
@@ -118,7 +118,7 @@ class DatasetReader:
     def iterate(self, filenames,feed_for_train = True):
     
             self.batch_size = 1
-            self.epochs = 2
+            self.epochs = 20
 
             if feed_for_train == False:
                 img_pair = self.get_image_for_testing()
@@ -161,7 +161,7 @@ class DatasetReader:
                 self.mse = tf.reduce_mean(tf.squared_difference(predict_flow2, self.Y),name="ye_hai_mean")
                 tf.summary.scalar('MSE', self.mse)
                 # # # define training step which minimizes cross entropy
-                self.optimizer = tf.train.AdamOptimizer(1e-4).minimize(self.mse)
+                self.optimizer = tf.train.AdamOptimizer(learning_rate=0.000001).minimize(self.mse)
 
 
             sess = tf.Session()
@@ -210,14 +210,33 @@ class DatasetReader:
 
         loss = 0
         for i in range(0,self.epochs):
+
+
+
             batch_xs, batch_ys = sess.run([self.imageBatch, self.labelBatch])
 
-            summary, _,  epoch_loss = sess.run([merged_summary_op,self.optimizer,self.mse],feed_dict={self.X: batch_xs, self.Y: batch_ys})
+            # result = tf.is_nan(self.labelBatch, name=None)
+            # arr = result.eval(session=sess)
+
+            # print(arr.shape)
+            # print(np.isnan(arr).any())
+            # for i in range(arr.shape[0]):
+            #     for j in range(arr.shape[1]):
+            #         for k in range(arr.shape[2]):
+            #             if arr[i,j,k] == True:
+            #                 print('(i,j,k) = ','(', str(i),',',str(k),',',str(j),')')
+
+
+            # print(batch_xs)
+            # print('diff')
+            # print(batch_ys)
+            # break
+
+            summary, _,  epoch_loss = sess.run([merged_summary_op,self.optimizer, self.mse],feed_dict={self.X: batch_xs, self.Y: batch_ys})
 
             loss = loss + epoch_loss
 
-            print('Epoch #  =',str(i))
-            print('Total Epoch loss = ', str(loss))
+            print('Epoch: '+str(i)+'     Loss = ',str(epoch_loss))
 
             summary_writer.add_summary(summary, i)
 
