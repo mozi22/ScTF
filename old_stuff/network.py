@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import re
 def convrelu2(name,inputs, filters, kernel_size, stride):
 
     # tmp_y = tf.layers.conv2d(
@@ -119,23 +119,61 @@ def _refine(inp, num_outputs, upsampled_prediction=None, features_direct=None,na
 
     return tf.concat(concat_inputs, axis=3)
 
+def change_nans_to_zeros(x):
+    
+    return tf.where(tf.is_nan(x), tf.zeros_like(x), x)
+
+def _activation_summary(x):
+  """Helper to create summaries for activations.
+  Creates a summary that provides a histogram of activations.
+  Creates a summary that measure the sparsity of activations.
+  Args:
+    x: Tensor
+  Returns:
+    nothing
+  """
+  tensor_name = re.sub('%s_[0-9]*/' % 'SceneFlow', '', x.op.name)
+  tf.summary.histogram(tensor_name + '/activations', x)
+  tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
+
+def _summarize_bias_n_weights(bias_name,weights_name=None):
+
+
+
+    if not weights_name == None:
+        kernel = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, weights_name)
+        tf.summary.histogram(weights_name,kernel)
+    
+    bias = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, bias_name)
+    tf.summary.histogram(bias_name,bias)
 
 def train_network(image_pair):
 
     # contracting part
     with tf.variable_scope('down_convs'):
         conv1 = convrelu2(name='conv1', inputs=image_pair, filters=32, kernel_size=3, stride=2)
+        # conv1 = change_nans_to_zeros(conv1)
+
         conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=2, stride=2)
+        # conv2 = change_nans_to_zeros(conv2)
+
         conv3 = convrelu2(name='conv3', inputs=conv2, filters=128, kernel_size=2, stride=2)
+        # conv3 = change_nans_to_zeros(conv3)
+
         conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=2, stride=2)
+        # conv4 = change_nans_to_zeros(conv4)
         # conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=8, stride=2)
 
-    print('mozi')
-    print(conv1)
-    print(conv2)
-    print(conv3)
-    print(conv4)
-    # print(conv5)
+        _summarize_bias_n_weights('down_convs/conv1x/bias:0','down_convs/conv1x/kernel:0')
+        _summarize_bias_n_weights('down_convs/conv2x/bias:0','down_convs/conv2x/kernel:0')
+        _summarize_bias_n_weights('down_convs/conv3x/bias:0','down_convs/conv3x/kernel:0')
+        _summarize_bias_n_weights('down_convs/conv4x/bias:0','down_convs/conv4x/kernel:0')
+
+
+        _activation_summary(conv1)
+        _activation_summary(conv2)
+        _activation_summary(conv3)
+        _activation_summary(conv4)
 
     conv4_shape = conv4.get_shape().as_list()
 
@@ -148,19 +186,27 @@ def train_network(image_pair):
 
 
     dense = tf.layers.dense(inputs=result, units=units, activation=tf.nn.sigmoid)
+    dense = change_nans_to_zeros(dense)
 
-    print("dense")
-    print(dense)
     # reshaping back to convolution structure
     conv4_flow = tf.concat((conv4,tf.reshape(dense, conv4_shape)),axis=3)
 
     # predict flow
     with tf.variable_scope('predict_flow5'):
+
+
         predict_flow4 = _predict_flow(conv4_flow)
+        # predict_flow4 = change_nans_to_zeros(predict_flow4)
+
+        _summarize_bias_n_weights('predict_flow5/conv2_pred_flowx/bias:0','predict_flow5/conv2_pred_flowx/kernel:0')
 
 
     with tf.variable_scope('upsample_flow4to3'):
         predict_flow4to3 = _upsample_prediction(predict_flow4, 3)
+        # predict_flow4to3 = change_nans_to_zeros(predict_flow4to3)
+
+        _summarize_bias_n_weights('upsample_flow4to3/upconv/bias:0','upsample_flow4to3/upconv/kernel:0')
+
 
     with tf.variable_scope('refine3'):
         concat3 = _refine(
@@ -170,6 +216,9 @@ def train_network(image_pair):
             features_direct=conv3,
             name='paddit'
         )
+        # concat3 = change_nans_to_zeros(concat3)
+
+        _summarize_bias_n_weights('refine3/upconv/bias:0','refine3/upconv/kernel:0')
 
 
     # with tf.variable_scope('refine3'):
@@ -185,6 +234,8 @@ def train_network(image_pair):
             num_outputs=64,
             features_direct=conv2
         )
+        # concat2 = change_nans_to_zeros(concat2)
+        _summarize_bias_n_weights('refine2/upconv/bias:0','refine2/upconv/kernel:0')
 
     with tf.variable_scope('refine1'):
         concat1 = _refine(
@@ -192,10 +243,28 @@ def train_network(image_pair):
             num_outputs=32, 
             features_direct=conv1
         )
+        # concat1 = change_nans_to_zeros(concat1)
+        _summarize_bias_n_weights('refine1/upconv/bias:0','refine1/upconv/kernel:0')
+
+    _activation_summary(predict_flow4to3)
+    _activation_summary(concat3)
+    _activation_summary(concat2)
+    _activation_summary(concat1)
+
+
 
 
     with tf.variable_scope('predict_flow2'):
-        predict_flow2 = _predict_flow(concat1)
 
-    print(predict_flow2)
+        predict_flow2 = _predict_flow(concat1)
+        # predict_flow2 = change_nans_to_zeros(predict_flow2)
+        # _summarize_bias_n_weights('predict_flow2/conv2_pred_flow/bias:0','predict_flow2/conv2_pred_flow/kernel:0')
+
+    _activation_summary(predict_flow2)
+    _activation_summary(predict_flow4)
+
+    # for v in tf.trainable_variables():
+    #     v = change_nans_to_zeros(v)
+    #     _summarize_bias_n_weights(v.name)
+
     return predict_flow4, predict_flow2 

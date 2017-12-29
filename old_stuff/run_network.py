@@ -49,6 +49,10 @@ class DatasetReader:
 
         # return opt_flow
         # image = tf.divide(image,[255]) -0.5
+        image2 = tf.expand_dims(image,0)
+        print(image2)
+        tf.summary.image('image', image2)
+
 
         inputt = self.combine_depth_values(image,depth,2)
         label = self.combine_depth_values(opt_flow,depth_change,2)
@@ -74,6 +78,7 @@ class DatasetReader:
 
     def divide_inputs_to_patches(self,image,last_dimension):
 
+        
         image = tf.expand_dims(image,0)
         ksize = [1, 54, 96, 1]
 
@@ -118,7 +123,7 @@ class DatasetReader:
     def iterate(self, filenames,feed_for_train = True):
     
             self.batch_size = 1
-            self.epochs = 20
+            self.epochs = 100
 
             if feed_for_train == False:
                 img_pair = self.get_image_for_testing()
@@ -158,11 +163,11 @@ class DatasetReader:
 
                 # measure of error of our model
                 # this needs to be minimised by adjusting W and b
-                self.mse = tf.reduce_mean(tf.squared_difference(predict_flow2, self.Y),name="ye_hai_mean")
+                # self.mse = tf.reduce_mean(tf.squared_difference(predict_flow2, self.Y))
+                self.mse = tf.reduce_mean(tf.sqrt(tf.reduce_sum((predict_flow2-self.Y)**2)))
                 tf.summary.scalar('MSE', self.mse)
                 # # # define training step which minimizes cross entropy
-                self.optimizer = tf.train.AdamOptimizer(learning_rate=0.000001).minimize(self.mse)
-
+                self.optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(self.mse)
 
             sess = tf.Session()
             self.train_network(sess,features)

@@ -1,0 +1,77 @@
+{'input': <tf.Tensor 'input_pipeline/MirrorPad:0' shape=(100, 64, 96, 4) dtype=float32>, 'label': <tf.Tensor 'input_pipeline/ResizeNearestNeighbor:0' shape=(100, 32, 48, 3) dtype=float32>}
+working
+[<tf.Variable 'down_convs/conv1x/kernel:0' shape=(3, 3, 4, 32) dtype=float32_ref>]
+[<tf.Variable 'down_convs/conv1x/bias:0' shape=(32,) dtype=float32_ref>]
+working
+[<tf.Variable 'down_convs/conv2x/kernel:0' shape=(2, 2, 32, 64) dtype=float32_ref>]
+[<tf.Variable 'down_convs/conv2x/bias:0' shape=(64,) dtype=float32_ref>]
+working
+[<tf.Variable 'down_convs/conv3x/kernel:0' shape=(2, 2, 64, 128) dtype=float32_ref>]
+[<tf.Variable 'down_convs/conv3x/bias:0' shape=(128,) dtype=float32_ref>]
+working
+[<tf.Variable 'down_convs/conv4x/kernel:0' shape=(2, 2, 128, 256) dtype=float32_ref>]
+[<tf.Variable 'down_convs/conv4x/bias:0' shape=(256,) dtype=float32_ref>]
+working
+[<tf.Variable 'predict_flow5/conv2_pred_flowx/kernel:0' shape=(3, 3, 24, 3) dtype=float32_ref>]
+[<tf.Variable 'predict_flow5/conv2_pred_flowx/bias:0' shape=(3,) dtype=float32_ref>]
+working
+[<tf.Variable 'upsample_flow4to3/upconv/kernel:0' shape=(4, 4, 3, 3) dtype=float32_ref>]
+[<tf.Variable 'upsample_flow4to3/upconv/bias:0' shape=(3,) dtype=float32_ref>]
+inside
+Tensor("create_graph/concat:0", shape=(1, 4, 6, 512), dtype=float32)
+Tensor("create_graph/down_convs/conv3x/Relu:0", shape=(1, 8, 12, 128), dtype=float32)
+Tensor("create_graph/refine3/upconv/Relu:0", shape=(1, 8, 12, 128), dtype=float32)
+working
+[<tf.Variable 'refine3/upconv/kernel:0' shape=(4, 4, 128, 512) dtype=float32_ref>]
+[<tf.Variable 'refine3/upconv/bias:0' shape=(128,) dtype=float32_ref>]
+inside
+Tensor("create_graph/refine3/concat:0", shape=(1, 8, 12, 259), dtype=float32)
+Tensor("create_graph/down_convs/conv2x/Relu:0", shape=(1, 16, 24, 64), dtype=float32)
+Tensor("create_graph/refine2/upconv/Relu:0", shape=(1, 16, 24, 64), dtype=float32)
+working
+[<tf.Variable 'refine2/upconv/kernel:0' shape=(4, 4, 64, 259) dtype=float32_ref>]
+[<tf.Variable 'refine2/upconv/bias:0' shape=(64,) dtype=float32_ref>]
+inside
+Tensor("create_graph/refine2/concat:0", shape=(1, 16, 24, 128), dtype=float32)
+Tensor("create_graph/down_convs/conv1x/Relu:0", shape=(1, 32, 48, 32), dtype=float32)
+Tensor("create_graph/refine1/upconv/Relu:0", shape=(1, 32, 48, 32), dtype=float32)
+working
+[<tf.Variable 'refine1/upconv/kernel:0' shape=(4, 4, 32, 128) dtype=float32_ref>]
+[<tf.Variable 'refine1/upconv/bias:0' shape=(32,) dtype=float32_ref>]
+working
+[]
+[]
+Epoch: 0     Loss =  1915.32
+Epoch: 1     Loss =  3572.54
+Epoch: 2     Loss =  6.84286e+06
+Epoch: 3     Loss =  2559.55
+Epoch: 4     Loss =  7.06634e+06
+Epoch: 5     Loss =  5928.26
+Epoch: 6     Loss =  1690.25
+Epoch: 7     Loss =  1734.67
+Epoch: 8     Loss =  3558.98
+Epoch: 9     Loss =  313536.0
+Epoch: 10     Loss =  3681.14
+Epoch: 11     Loss =  5.97467e+07
+Epoch: 12     Loss =  2128.98
+Epoch: 13     Loss =  1.42912e+06
+Epoch: 14     Loss =  6166.2
+Epoch: 15     Loss =  1439.86
+Epoch: 16     Loss =  1843.56
+Epoch: 17     Loss =  3397.28
+Epoch: 18     Loss =  603858.0
+Epoch: 19     Loss =  1.16426e+07
+Epoch: 20     Loss =  1444.29
+Epoch: 21     Loss =  1582.54
+Epoch: 22     Loss =  2123.57
+Epoch: 23     Loss =  2679.08
+Epoch: 24     Loss =  1.84064e+06
+Epoch: 25     Loss =  1631.72
+Epoch: 26     Loss =  2418.03
+Epoch: 27     Loss =  2788.44
+Epoch: 28     Loss =  1.69989e+06
+Epoch: 29     Loss =  7.13902e+06
+Epoch: 30     Loss =  2361.89
+Epoch: 31     Loss =  2377.07
+Epoch: 32     Loss =  1521.82
+Epoch: 33     Loss =  inf
