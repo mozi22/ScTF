@@ -1,5 +1,7 @@
 import tensorflow as tf
+from math import sqrt
 import re
+
 def convrelu2(name,inputs, filters, kernel_size, stride):
 
     # tmp_y = tf.layers.conv2d(
@@ -116,11 +118,71 @@ def _refine(inp, num_outputs, upsampled_prediction=None, features_direct=None,na
     inputs = [upsampled_features, features_direct, upsampled_prediction]
     concat_inputs = [ x for x in inputs if not x is None ]
 
-
+    print('inside concat')
+    print(concat_inputs)
     return tf.concat(concat_inputs, axis=3)
 
-def change_nans_to_zeros(x):
+def put_kernels_on_grid (kernel, pad = 1):
+
     
+    '''Visualize conv. filters as an image (mostly for the 1st layer).
+    Arranges filters into a grid, with some paddings between adjacent filters.
+    Args:
+    kernel:            tensor of shape [Y, X, NumChannels, NumKernels]
+    pad:               number of black pixels around each filter (between them)
+    Return:
+    Tensor of shape [1, (Y+2*pad)*grid_Y, (X+2*pad)*grid_X, NumChannels].
+    '''
+    
+    # get shape of the grid. NumKernels == grid_Y * grid_X
+    def factorization(n):
+        for i in range(int(sqrt(float(n))), 0, -1):
+          if n % i == 0:
+            if i == 1: print('Who would enter a prime number of filters')
+            return (i, int(n / i))
+
+    kernel = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, kernel)[0]
+
+    (grid_Y, grid_X) = factorization (kernel.get_shape()[3].value)
+
+
+
+    print ('grid: %d = (%d, %d)' % (kernel.get_shape()[3].value, grid_Y, grid_X))
+
+    x_min = tf.reduce_min(kernel)
+    x_max = tf.reduce_max(kernel)
+    kernel = (kernel - x_min) / (x_max - x_min)
+
+    # pad X and Y
+    x = tf.pad(kernel, tf.constant( [[pad,pad],[pad, pad],[0,0],[0,0]] ), mode = 'CONSTANT')
+
+    # X and Y dimensions, w.r.t. padding
+    Y = kernel.get_shape()[0] + 2 * pad
+    X = kernel.get_shape()[1] + 2 * pad
+
+    channels = kernel.get_shape()[2]
+
+    # put NumKernels to the 1st dimension
+    x = tf.transpose(x, (3, 0, 1, 2))
+    # organize grid on Y axis
+    x = tf.reshape(x, tf.stack([grid_X, Y * grid_Y, X, channels]))
+
+    # switch X and Y axes
+    x = tf.transpose(x, (0, 2, 1, 3))
+    # organize grid on X axis
+    x = tf.reshape(x, tf.stack([1, X * grid_X, Y * grid_Y, channels]))
+
+    # back to normal order (not combining with the next step for clarity)
+    x = tf.transpose(x, (2, 1, 3, 0))
+
+    # to tf.image_summary order [batch_size, height, width, channels],
+    #   where in this case batch_size == 1
+    x = tf.transpose(x, (3, 0, 1, 2))
+
+    # scaling to [0, 255] is not necessary for tensorboard
+    return x
+
+def change_nans_to_zeros(x):
     return tf.where(tf.is_nan(x), tf.zeros_like(x), x)
 
 def _activation_summary(x):
@@ -141,16 +203,20 @@ def _summarize_bias_n_weights(bias_name,weights_name=None):
 
 
     if not weights_name == None:
-        kernel = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, weights_name)
+        kernel = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, weights_name)[0]
+        kernel = change_nans_to_zeros(kernel)        
         tf.summary.histogram(weights_name,kernel)
     
-    bias = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, bias_name)
+    bias = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, bias_name)[0]
+    bias = change_nans_to_zeros(bias)
     tf.summary.histogram(bias_name,bias)
 
 def train_network(image_pair):
 
     # contracting part
     with tf.variable_scope('down_convs'):
+        print('zali,')
+        print(image_pair)
         conv1 = convrelu2(name='conv1', inputs=image_pair, filters=32, kernel_size=3, stride=2)
         # conv1 = change_nans_to_zeros(conv1)
 
@@ -163,6 +229,18 @@ def train_network(image_pair):
         conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=2, stride=2)
         # conv4 = change_nans_to_zeros(conv4)
         # conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=8, stride=2)
+
+
+        # grid1 = put_kernels_on_grid('down_convs/conv1x/kernel:0')
+        # grid2 = put_kernels_on_grid('down_convs/conv2x/kernel:0')
+        # grid3 = put_kernels_on_grid('down_convs/conv3x/kernel:0')
+        # grid4 = put_kernels_on_grid('down_convs/conv4x/kernel:0')
+
+
+        # tf.summary.image('down_convs/conv1x/kernel/filters:0', grid1, max_outputs=1)
+        # tf.summary.image('down_convs/conv2x/kernel/filters:0', grid2, max_outputs=1)
+        # tf.summary.image('down_convs/conv3x/kernel/filters:0', grid3, max_outputs=1)
+        # tf.summary.image('down_convs/conv4x/kernel/filters:0', grid4, max_outputs=1)
 
         _summarize_bias_n_weights('down_convs/conv1x/bias:0','down_convs/conv1x/kernel:0')
         _summarize_bias_n_weights('down_convs/conv2x/bias:0','down_convs/conv2x/kernel:0')
@@ -186,7 +264,7 @@ def train_network(image_pair):
 
 
     dense = tf.layers.dense(inputs=result, units=units, activation=tf.nn.sigmoid)
-    dense = change_nans_to_zeros(dense)
+    # dense = change_nans_to_zeros(dense)
 
     # reshaping back to convolution structure
     conv4_flow = tf.concat((conv4,tf.reshape(dense, conv4_shape)),axis=3)
@@ -203,7 +281,7 @@ def train_network(image_pair):
 
     with tf.variable_scope('upsample_flow4to3'):
         predict_flow4to3 = _upsample_prediction(predict_flow4, 3)
-        # predict_flow4to3 = change_nans_to_zeros(predict_flow4to3)
+        predict_flow4to3 = change_nans_to_zeros(predict_flow4to3)
 
         _summarize_bias_n_weights('upsample_flow4to3/upconv/bias:0','upsample_flow4to3/upconv/kernel:0')
 
@@ -267,4 +345,6 @@ def train_network(image_pair):
     #     v = change_nans_to_zeros(v)
     #     _summarize_bias_n_weights(v.name)
 
+    
+    predict_flow2 = change_nans_to_zeros(predict_flow2)
     return predict_flow4, predict_flow2 
