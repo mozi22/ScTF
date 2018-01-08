@@ -217,16 +217,16 @@ def train_network(image_pair):
     with tf.variable_scope('down_convs'):
         print('zali,')
         print(image_pair)
-        conv1 = convrelu2(name='conv1', inputs=image_pair, filters=32, kernel_size=3, stride=2)
+        conv1 = convrelu2(name='conv1', inputs=image_pair, filters=32, kernel_size=20, stride=2)
         # conv1 = change_nans_to_zeros(conv1)
 
-        conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=2, stride=2)
+        conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=10, stride=2)
         # conv2 = change_nans_to_zeros(conv2)
 
-        conv3 = convrelu2(name='conv3', inputs=conv2, filters=128, kernel_size=2, stride=2)
+        conv3 = convrelu2(name='conv3', inputs=conv2, filters=128, kernel_size=8, stride=2)
         # conv3 = change_nans_to_zeros(conv3)
 
-        conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=2, stride=2)
+        conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=8, stride=2)
         # conv4 = change_nans_to_zeros(conv4)
         # conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=8, stride=2)
 

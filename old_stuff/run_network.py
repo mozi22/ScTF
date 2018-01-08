@@ -3,12 +3,13 @@ import network
 import numpy as np
 from   PIL import Image
 import tensorflow as tf
+import helpers as hpl
 import tensorflow.contrib.slim as slim
 from tensorflow.python import debug as tf_debug
 class DatasetReader:
 
 
-    def decode_features(self,fullExample):    
+    def tf_record_input_pipeline(self,fullExample):
         # Decode the record read by the reader
         features = tf.parse_single_example(fullExample, {
             'width': tf.FixedLenFeature([], tf.int64),
@@ -41,8 +42,6 @@ class DatasetReader:
         cam_frame_R = tf.decode_raw(features['cam_frame_R'], tf.float32)
 
         self.input_pipeline_dimensions = [540, 960]
-
-
         image1 = tf.to_float(image1)
         image2 = tf.to_float(image2)
         # reshape data to its original form
@@ -53,29 +52,21 @@ class DatasetReader:
         disp1 = tf.reshape(disp1, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1]])
         disp2 = tf.reshape(disp2, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1]])
 
-        opt_flow = tf.reshape(opt_flow, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1],2])
+        label_pair = tf.reshape(opt_flow, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1],2])
         disp_chng = tf.reshape(disp_chng,[self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1]])
 
         depth1 = self.get_depth_from_disparity(disp1)
         depth2 = self.get_depth_from_disparity(disp2)
         depth_chng = self.get_depth_from_disparity(disp_chng)
 
-
-        # to check the largest values which are present as discrepencies
-        # return {
-        #     'depth1': depth1,
-        #     'depth2': depth2,
-        #     'image1': image1,
-        #     'image2': image2,
-        # }
-
-
-
-
-
         # normalize image RGB values b/w -0.5 to 0.5
         image1 = tf.divide(image1,[255]) -0.5
         image2 = tf.divide(image2,[255]) -0.5
+
+        # normalize depth values b/w -0.5 to 0.5
+        depth1 = tf.divide(depth1,[tf.reduce_max(depth1)]) -0.5
+        depth2 = tf.divide(depth1,[tf.reduce_max(depth2)]) -0.5
+
 
         image1 = self.combine_depth_values(image1,depth1,2)
         image2 = self.combine_depth_values(image2,depth2,2)
@@ -83,13 +74,13 @@ class DatasetReader:
         # depth should be added to both images before this line 
         img_pair = tf.concat([image1,image2],axis=-1)
 
-        label_pair = self.combine_depth_values(opt_flow,depth_chng,2)
 
-        result = self.sample_img_patch(img_pair)
+        label_pair = self.combine_depth_values(label_pair,depth_chng,2)
 
         inputt = self.divide_inputs_to_patches(img_pair,8)
-        label = self.divide_inputs_to_patches(label_pair,3)
 
+
+        label = self.divide_inputs_to_patches(label_pair,3)
 
         # padding_input = tf.constant([[0, 0],[5, 4],[0, 0]])
         padding_lbl = tf.constant([[0, 0],[5, 5],[0, 0],[0,0]])
@@ -100,19 +91,9 @@ class DatasetReader:
         label = tf.image.resize_images(label,[32,48],tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
         return {
-            'input': result,
+            'input': depth1,
             'label': label
         }
-
-
-
-    def sample_img_patch(self,image):
-
-        print('rantaka')
-        begin = [20,10,0]
-        size =  [256,256,8]
-
-        return  tf.slice(image,begin,size)
 
 
 
@@ -149,20 +130,10 @@ class DatasetReader:
         return disp_to_depth
 
 
-    def get_image_for_testing(self):
-        img1 = np.array(Image.open('./dataset/training/Grove2/frame10.png'))
-        img2 = np.array(Image.open('./dataset/training/Grove2/frame11.png'))
-
-        img_pair = np.concatenate((img1,img2),axis=-1)
-
-        return img_pair[np.newaxis,:]
-
-
-
     def iterate(self, filenames):
     
             self.batch_size = 1
-            self.epochs = 10
+            self.epochs = 20
 
             with tf.name_scope('input_pipeline'):
                 # Create a list of filenames and pass it to a queue
@@ -172,15 +143,17 @@ class DatasetReader:
 
                 key, fullExample = recordReader.read(filename_queue)
 
-                features = self.decode_features(fullExample)
+                features = self.tf_record_input_pipeline(fullExample)
+                # features = self.manuel_input_pipeline()
+
                 # shuffle the data and get them as batches
-            #     self.imageBatch, self.labelBatch = tf.train.shuffle_batch([ features['input'], 
-            #                                                                 features['label']],
-            #                                             batch_size=self.batch_size,
-            #                                             capacity=100,
-            #                                             num_threads=1,
-            #                                             min_after_dequeue=6,
-            #                                             enqueue_many=True)
+                # self.imageBatch, self.labelBatch = tf.train.shuffle_batch([ features['input'], 
+                #                                                             features['label']],
+                #                                         batch_size=self.batch_size,
+                #                                         capacity=100,
+                #                                         num_threads=1,
+                #                                         min_after_dequeue=6,
+                #                                         enqueue_many=True)
 
             # with tf.name_scope('create_graph'):
 
@@ -189,8 +162,6 @@ class DatasetReader:
 
             #     # build the network here
             #     predict_flow5, predict_flow2 = network.train_network(self.X)
-
-
 
             # #     # self.Y = network.change_nans_to_zeros(self.Y)
             # #     # measure of error of our model
@@ -250,39 +221,23 @@ class DatasetReader:
         # print(np.abs(a['label'].eval()).max())
         # print('absf')
 
-        print(a['input'].eval().shape)
-
+        print(a['input'].eval())
         # loss = 0
         # for i in range(0,self.epochs):
 
-
-
         #     batch_xs, batch_ys = sess.run([self.imageBatch, self.labelBatch])
-
-        #     # result = tf.is_nan(self.labelBatch, name=None)
-        #     # arr = result.eval(session=sess)
-
-        #     # print(arr.shape)
-        #     # print(np.isnan(arr).any())
-        #     # for i in range(arr.shape[0]):
-        #     #     for j in range(arr.shape[1]):
-        #     #         for k in range(arr.shape[2]):
-        #     #             if arr[i,j,k] == True:
-        #     #                 print('(i,j,k) = ','(', str(i),',',str(k),',',str(j),')')
-
-
-        #     # print(batch_xs)
-        #     # print('diff')
-        #     # print(batch_ys)
-        #     # break
 
         #     summary, opt,  epoch_loss = sess.run([merged_summary_op, self.optimizer, self.mse],feed_dict={self.X: batch_xs, self.Y: batch_ys})
 
-        #     # loss = loss + epoch_loss
-        #     # print(opt)
-
+        #     loss = loss + epoch_loss
         #     print(opt)
+
         #     print('Epoch: '+str(i)+'     Loss = ',str(epoch_loss))
+        #     print('x min val = ' + str(np.abs(batch_xs).min()))
+        #     print('x max val = ' + str(np.abs(batch_xs).max()))
+        #     print('y min val = ' + str(np.abs(batch_ys).min()))
+        #     print('y max val = ' + str(np.abs(batch_ys).max()))
+        #     print('')
 
         #     summary_writer.add_summary(summary, i)
 
