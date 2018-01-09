@@ -57,7 +57,7 @@ class DatasetReader:
 
         depth1 = self.get_depth_from_disparity(disp1)
         depth2 = self.get_depth_from_disparity(disp2)
-        depth_chng = self.get_depth_from_disparity(disp_chng)
+        depth_chng = self.get_depth_chng_from_disparity_chng(disp1,disp_chng)
 
         # normalize image RGB values b/w -0.5 to 0.5
         image1 = tf.divide(image1,[255]) -0.5
@@ -65,7 +65,11 @@ class DatasetReader:
 
         # normalize depth values b/w -0.5 to 0.5
         depth1 = tf.divide(depth1,[tf.reduce_max(depth1)]) -0.5
-        depth2 = tf.divide(depth1,[tf.reduce_max(depth2)]) -0.5
+        depth2 = tf.divide(depth2,[tf.reduce_max(depth2)]) -0.5
+
+        # inverse depth
+        # depth1 = tf.divide(1,depth1)
+        # depth2 = tf.divide(1,depth2)
 
 
         image1 = self.combine_depth_values(image1,depth1,2)
@@ -78,8 +82,6 @@ class DatasetReader:
         label_pair = self.combine_depth_values(label_pair,depth_chng,2)
 
         inputt = self.divide_inputs_to_patches(img_pair,8)
-
-
         label = self.divide_inputs_to_patches(label_pair,3)
 
         # padding_input = tf.constant([[0, 0],[5, 4],[0, 0]])
@@ -91,7 +93,7 @@ class DatasetReader:
         label = tf.image.resize_images(label,[32,48],tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
         return {
-            'input': depth1,
+            'input': inputt,
             'label': label
         }
 
@@ -116,6 +118,17 @@ class DatasetReader:
     def combine_depth_values(self,image,depth,rank):
         depth = tf.expand_dims(depth,rank)
         return tf.concat([image,depth],rank)
+
+
+    def get_depth_chng_from_disparity_chng(self,disparity,disparity_change):
+
+
+        disparity_change = tf.add(disparity,disparity_change)
+
+        depth1 = self.get_depth_from_disparity(disparity)
+        calcdepth = self.get_depth_from_disparity(disparity_change)
+
+        return tf.subtract(depth1,calcdepth)
 
 
     def get_depth_from_disparity(self,disparity):
@@ -147,30 +160,30 @@ class DatasetReader:
                 # features = self.manuel_input_pipeline()
 
                 # shuffle the data and get them as batches
-                # self.imageBatch, self.labelBatch = tf.train.shuffle_batch([ features['input'], 
-                #                                                             features['label']],
-                #                                         batch_size=self.batch_size,
-                #                                         capacity=100,
-                #                                         num_threads=1,
-                #                                         min_after_dequeue=6,
-                #                                         enqueue_many=True)
+                self.imageBatch, self.labelBatch = tf.train.shuffle_batch([ features['input'], 
+                                                                            features['label']],
+                                                        batch_size=self.batch_size,
+                                                        capacity=100,
+                                                        num_threads=1,
+                                                        min_after_dequeue=6,
+                                                        enqueue_many=True)
 
-            # with tf.name_scope('create_graph'):
+            with tf.name_scope('create_graph'):
 
-            #     self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 64, 96, 8))
-            #     self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 32, 48, 3))
+                self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 64, 96, 8))
+                self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 32, 48, 3))
 
-            #     # build the network here
-            #     predict_flow5, predict_flow2 = network.train_network(self.X)
+                # build the network here
+                predict_flow5, predict_flow2 = network.train_network(self.X)
 
-            # #     # self.Y = network.change_nans_to_zeros(self.Y)
-            # #     # measure of error of our model
-            # #     # this needs to be minimised by adjusting W and b
-            #     # self.mse = tf.reduce_mean(tf.squared_difference(predict_flow2, self.Y))
-            #     self.mse = tf.reduce_mean(network.change_nans_to_zeros(tf.sqrt(tf.reduce_sum((predict_flow2-self.Y)**2)+1e-3)))
-            #     tf.summary.scalar('MSE', self.mse)
-            # #     # # define training step which minimizes cross entropy
-            #     self.optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(self.mse)
+            #     # self.Y = network.change_nans_to_zeros(self.Y)
+            #     # measure of error of our model
+            #     # this needs to be minimised by adjusting W and b
+                # self.mse = tf.reduce_mean(tf.squared_difference(predict_flow2, self.Y))
+                self.mse = tf.reduce_mean(network.change_nans_to_zeros(tf.sqrt(tf.reduce_sum((predict_flow2-self.Y)**2)+1e-3)))
+                tf.summary.scalar('MSE', self.mse)
+            #     # # define training step which minimizes cross entropy
+                self.optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(self.mse)
 
             sess = tf.InteractiveSession()
             self.train_network(sess,features)
@@ -221,27 +234,27 @@ class DatasetReader:
         # print(np.abs(a['label'].eval()).max())
         # print('absf')
 
-        print(a['input'].eval())
-        # loss = 0
-        # for i in range(0,self.epochs):
+        # print(a['input'].eval())
+        loss = 0
+        for i in range(0,self.epochs):
 
-        #     batch_xs, batch_ys = sess.run([self.imageBatch, self.labelBatch])
+            batch_xs, batch_ys = sess.run([self.imageBatch, self.labelBatch])
 
-        #     summary, opt,  epoch_loss = sess.run([merged_summary_op, self.optimizer, self.mse],feed_dict={self.X: batch_xs, self.Y: batch_ys})
+            summary, opt,  epoch_loss = sess.run([merged_summary_op, self.optimizer, self.mse],feed_dict={self.X: batch_xs, self.Y: batch_ys})
 
-        #     loss = loss + epoch_loss
-        #     print(opt)
+            loss = loss + epoch_loss
+            print(opt)
 
-        #     print('Epoch: '+str(i)+'     Loss = ',str(epoch_loss))
-        #     print('x min val = ' + str(np.abs(batch_xs).min()))
-        #     print('x max val = ' + str(np.abs(batch_xs).max()))
-        #     print('y min val = ' + str(np.abs(batch_ys).min()))
-        #     print('y max val = ' + str(np.abs(batch_ys).max()))
-        #     print('')
+            print('Epoch: '+str(i)+'     Loss = ',str(epoch_loss))
+            print('x min val = ' + str(np.abs(batch_xs).min()))
+            print('x max val = ' + str(np.abs(batch_xs).max()))
+            print('y min val = ' + str(np.abs(batch_ys).min()))
+            print('y max val = ' + str(np.abs(batch_ys).max()))
+            print('')
 
-        #     summary_writer.add_summary(summary, i)
+            summary_writer.add_summary(summary, i)
 
-        # summary_writer.close()
+        summary_writer.close()
         # finalise
         coord.request_stop()
         coord.join(threads)
