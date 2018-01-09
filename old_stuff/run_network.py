@@ -29,8 +29,6 @@ class DatasetReader:
         # disp_width = tf.cast(features['width'], tf.int32)
         # disp_height = tf.cast(features['height'], tf.int32)
 
-
-
         direction = features['direction']
         disp1 = tf.decode_raw(features['disp1'], tf.float32)
         disp2 = tf.decode_raw(features['disp2'], tf.float32)
@@ -41,19 +39,18 @@ class DatasetReader:
         cam_frame_L = tf.decode_raw(features['cam_frame_L'], tf.float32)
         cam_frame_R = tf.decode_raw(features['cam_frame_R'], tf.float32)
 
-        self.input_pipeline_dimensions = [540, 960]
+        self.input_pipeline_dimensions = [160, 256]
         image1 = tf.to_float(image1)
         image2 = tf.to_float(image2)
         # reshape data to its original form
-        image1 = tf.reshape(image1, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1], 3])
-        image2 = tf.reshape(image2, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1], 3])
+        image1 = tf.reshape(image1, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1], 3],name="reshape_img1")
+        image2 = tf.reshape(image2, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1], 3],name="reshape_img2")
     
+        disp1 = tf.reshape(disp1, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1]],name="reshape_disp1")
+        disp2 = tf.reshape(disp2, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1]],name="reshape_disp2")
 
-        disp1 = tf.reshape(disp1, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1]])
-        disp2 = tf.reshape(disp2, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1]])
-
-        label_pair = tf.reshape(opt_flow, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1],2])
-        disp_chng = tf.reshape(disp_chng,[self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1]])
+        label_pair = tf.reshape(opt_flow, [self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1],2],name="reshape_img_pair")
+        disp_chng = tf.reshape(disp_chng,[self.input_pipeline_dimensions[0],self.input_pipeline_dimensions[1]],name="reshape_disp_change")
 
         depth1 = self.get_depth_from_disparity(disp1)
         depth2 = self.get_depth_from_disparity(disp2)
@@ -71,7 +68,6 @@ class DatasetReader:
         # depth1 = tf.divide(1,depth1)
         # depth2 = tf.divide(1,depth2)
 
-
         image1 = self.combine_depth_values(image1,depth1,2)
         image2 = self.combine_depth_values(image2,depth2,2)
 
@@ -81,19 +77,19 @@ class DatasetReader:
 
         label_pair = self.combine_depth_values(label_pair,depth_chng,2)
 
-        inputt = self.divide_inputs_to_patches(img_pair,8)
-        label = self.divide_inputs_to_patches(label_pair,3)
+        # inputt = self.divide_inputs_to_patches(img_pair,8)
+        # label = self.divide_inputs_to_patches(label_pair,3)
 
         # padding_input = tf.constant([[0, 0],[5, 4],[0, 0]])
-        padding_lbl = tf.constant([[0, 0],[5, 5],[0, 0],[0,0]])
+        # padding_lbl = tf.constant([[0, 0],[5, 5],[0, 0],[0,0]])
 
-        inputt = tf.pad(inputt,padding_lbl,'SYMMETRIC')
+        # inputt = tf.pad(inputt,padding_lbl,'SYMMETRIC')
         # label = tf.pad(label,padding_lbl,'SYMMETRIC')
 
-        label = tf.image.resize_images(label,[32,48],tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        label = tf.image.resize_images(label_pair,[80,128],tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
         return {
-            'input': inputt,
+            'input': img_pair,
             'label': label
         }
 
@@ -119,9 +115,7 @@ class DatasetReader:
         depth = tf.expand_dims(depth,rank)
         return tf.concat([image,depth],rank)
 
-
     def get_depth_chng_from_disparity_chng(self,disparity,disparity_change):
-
 
         disparity_change = tf.add(disparity,disparity_change)
 
@@ -157,7 +151,6 @@ class DatasetReader:
                 key, fullExample = recordReader.read(filename_queue)
 
                 features = self.tf_record_input_pipeline(fullExample)
-                # features = self.manuel_input_pipeline()
 
                 # shuffle the data and get them as batches
                 self.imageBatch, self.labelBatch = tf.train.shuffle_batch([ features['input'], 
@@ -165,24 +158,19 @@ class DatasetReader:
                                                         batch_size=self.batch_size,
                                                         capacity=100,
                                                         num_threads=1,
-                                                        min_after_dequeue=6,
-                                                        enqueue_many=True)
+                                                        min_after_dequeue=6)
 
             with tf.name_scope('create_graph'):
 
-                self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 64, 96, 8))
-                self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 32, 48, 3))
+                self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 160, 256, 8))
+                self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 80, 128, 3))
 
                 # build the network here
                 predict_flow5, predict_flow2 = network.train_network(self.X)
 
-            #     # self.Y = network.change_nans_to_zeros(self.Y)
-            #     # measure of error of our model
-            #     # this needs to be minimised by adjusting W and b
-                # self.mse = tf.reduce_mean(tf.squared_difference(predict_flow2, self.Y))
                 self.mse = tf.reduce_mean(network.change_nans_to_zeros(tf.sqrt(tf.reduce_sum((predict_flow2-self.Y)**2)+1e-3)))
                 tf.summary.scalar('MSE', self.mse)
-            #     # # define training step which minimizes cross entropy
+
                 self.optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(self.mse)
 
             sess = tf.InteractiveSession()
@@ -218,23 +206,11 @@ class DatasetReader:
         coord = tf.train.Coordinator()
         # start enqueing the data to be dequeued for batch training
         threads = tf.train.start_queue_runners(sess, coord=coord)
-        # start passing the data to the feed_dict here and running everything after initializing the variables
-        # Retrieve a single instance:
 
-        # sess = tf_debug.LocalCLIDebugWrapperSession(sess)
-        # sess.add_tensor_filter("has_inf_or_nan", tf_debug.has_inf_or_nan)
-
-        # img = a['input'].eval(session=sess)
-        # for i in range(0,img.shape[0]):
-        #     for j in range(0,img.shape[1]):
-        #         print(img[i,j])
-
-        # print('abs')
-        # print(np.abs(a['label'].eval()).min())
-        # print(np.abs(a['label'].eval()).max())
-        # print('absf')
 
         # print(a['input'].eval())
+        # print('zzzzz')
+        # print(a['label'].eval())
         loss = 0
         for i in range(0,self.epochs):
 

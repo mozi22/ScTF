@@ -215,8 +215,6 @@ def train_network(image_pair):
 
     # contracting part
     with tf.variable_scope('down_convs'):
-        print('zali,')
-        print(image_pair)
         conv1 = convrelu2(name='conv1', inputs=image_pair, filters=32, kernel_size=20, stride=2)
         # conv1 = change_nans_to_zeros(conv1)
 
@@ -253,27 +251,27 @@ def train_network(image_pair):
         _activation_summary(conv3)
         _activation_summary(conv4)
 
-    conv4_shape = conv4.get_shape().as_list()
+    # conv4_shape = conv4.get_shape().as_list()
 
-    sliced = tf.slice(conv4, [0,0,0,0], conv4_shape)
-    result = tf.contrib.layers.flatten(sliced)
+    # sliced = tf.slice(conv4, [0,0,0,0], conv4_shape)
+    # result = tf.contrib.layers.flatten(sliced)
 
-    units = 1
-    for i in range(1,len(conv4_shape)):
-        units *= conv4_shape[i]
+    # units = 1
+    # for i in range(1,len(conv4_shape)):
+    #     units *= conv4_shape[i]
 
 
-    dense = tf.layers.dense(inputs=result, units=units, activation=tf.nn.sigmoid)
-    # dense = change_nans_to_zeros(dense)
+    # dense = tf.layers.dense(inputs=result, units=units, activation=tf.nn.sigmoid)
+    # # dense = change_nans_to_zeros(dense)
 
-    # reshaping back to convolution structure
-    conv4_flow = tf.concat((conv4,tf.reshape(dense, conv4_shape)),axis=3)
+    # # reshaping back to convolution structure
+    # conv4_flow = tf.concat((conv4,tf.reshape(dense, conv4_shape)),axis=3)
 
     # predict flow
     with tf.variable_scope('predict_flow5'):
 
 
-        predict_flow4 = _predict_flow(conv4_flow)
+        predict_flow4 = _predict_flow(conv4)
         # predict_flow4 = change_nans_to_zeros(predict_flow4)
 
         _summarize_bias_n_weights('predict_flow5/conv2_pred_flowx/bias:0','predict_flow5/conv2_pred_flowx/kernel:0')
@@ -288,7 +286,7 @@ def train_network(image_pair):
 
     with tf.variable_scope('refine3'):
         concat3 = _refine(
-            inp=conv4_flow, 
+            inp=conv4, 
             num_outputs=128,
             upsampled_prediction=predict_flow4to3, 
             features_direct=conv3,
@@ -317,7 +315,7 @@ def train_network(image_pair):
 
     with tf.variable_scope('refine1'):
         concat1 = _refine(
-            inp=concat2, 
+            inp=concat2,
             num_outputs=32, 
             features_direct=conv1
         )
@@ -347,4 +345,4 @@ def train_network(image_pair):
 
     
     predict_flow2 = change_nans_to_zeros(predict_flow2)
-    return predict_flow4, predict_flow2 
+    return predict_flow4, predict_flow2
