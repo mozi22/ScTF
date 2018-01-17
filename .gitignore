@@ -5,7 +5,10 @@
 /old_stuff/muazzam/
 /old_stuff/optical_flow.tfrecords
 /old_stuff/tb/
+<<<<<<< HEAD
 /old_stuff/ckpt/
+=======
+>>>>>>> f64b29db6430e9633de0eedfa4fbf69299cc47d5
 /new_stuff/flower_dataset/
 /new_stuff/tffiles/
 /new_stuff/dataset/

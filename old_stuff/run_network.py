@@ -6,7 +6,10 @@ import tensorflow as tf
 import helpers as hpl
 import tensorflow.contrib.slim as slim
 from tensorflow.python import debug as tf_debug
+<<<<<<< HEAD
 
+=======
+>>>>>>> f64b29db6430e9633de0eedfa4fbf69299cc47d5
 class DatasetReader:
 
 
@@ -73,10 +76,6 @@ class DatasetReader:
 
         tf.summary.image('image1',image11)
         tf.summary.image('image2',image22)
-
-        image1 = self.combine_depth_values(image1,depth1,2)
-        image2 = self.combine_depth_values(image2,depth2,2)
-
         lblp = tf.expand_dims(label_pair,0)
 
 
@@ -225,13 +224,6 @@ class DatasetReader:
 
     def train_network(self,sess,a):
 
-        merged_summary_op = tf.summary.merge_all()
-        summary_writer = tf.summary.FileWriter('./tb',graph=tf.get_default_graph())
-
-        sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
-
-        # initialize the threads coordinator
-        coord = tf.train.Coordinator()
 
         # start enqueing the data to be dequeued for batch training
         threads = tf.train.start_queue_runners(sess, coord=coord)
