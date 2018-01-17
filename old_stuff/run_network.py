@@ -56,13 +56,15 @@ class DatasetReader:
         depth2 = self.get_depth_from_disparity(disp2)
         depth_chng = self.get_depth_chng_from_disparity_chng(disp1,disp_chng)
 
-        # normalize image RGB values b/w -0.5 to 0.5
-        image1 = tf.divide(image1,[255])
-        image2 = tf.divide(image2,[255])
+        mmm = self.warp(image2,label_pair)
 
-        # normalize depth values b/w -0.5 to 0.5
-        depth1 = tf.divide(depth1,[tf.reduce_max(depth1)])
-        depth2 = tf.divide(depth2,[tf.reduce_max(depth2)])
+        # # normalize image RGB values b/w 0 to 1
+        # image1 = tf.divide(image1,[255])
+        # image2 = tf.divide(image2,[255])
+
+        # # normalize depth values b/w 0 to 1
+        # depth1 = tf.divide(depth1,[tf.reduce_max(depth1)])
+        # depth2 = tf.divide(depth2,[tf.reduce_max(depth2)])
 
         # inverse depth
         # depth1 = tf.divide(1,depth1)
@@ -70,6 +72,8 @@ class DatasetReader:
         image11 = tf.expand_dims(image1,0)
         image22 = tf.expand_dims(image2,0)
 
+        tf.summary.image('opt_flow_u',tf.expand_dims(tf.expand_dims(label_pair[:,:,0],2),0))
+        tf.summary.image('opt_flow_v',tf.expand_dims(tf.expand_dims(label_pair[:,:,1],2),0))
         tf.summary.image('image1',image11)
         tf.summary.image('image2',image22)
 
@@ -78,16 +82,16 @@ class DatasetReader:
 
         lblp = tf.expand_dims(label_pair,0)
 
-
         # print('zalim')
         # print(image22)
         # print(lblp)
         # self.mmm = tf.contrib.resampler.resampler(image22,lblp)
 
-        # tf.summary.image('warped',self.mmm)
+        tf.summary.image('warped',mmm)
 
         # # depth should be added to both images before this line 
         img_pair = tf.concat([image1,image2],axis=-1)
+
 
 
         label_pair3 = self.combine_depth_values(label_pair,depth_chng,2)
@@ -96,6 +100,12 @@ class DatasetReader:
 
         # reduce flow values by a factor of 0.4 since we reduce the image size by same factor
         label_pair3 = tf.multiply(label_pair3,0.4)
+
+
+        # normalize data b/w 0 to 1
+        img_pair = tf.divide(img_pair,[tf.reduce_max(img_pair)])
+        label_pair3 = tf.divide(label_pair3,[tf.reduce_max(label_pair3)])
+        
 
         # tf.summary.image('flowWithDepth',label_pair)
 
@@ -115,6 +125,20 @@ class DatasetReader:
             'label': label_pair3
         }
 
+    def warp(self,img,flow):
+        x = list(range(0,self.input_pipeline_dimensions[1]))
+        y = list(range(0,self.input_pipeline_dimensions[0]))
+        X, Y = tf.meshgrid(x, y)
+
+        X = tf.cast(X,np.float32) + flow[:,:,0]
+        Y = tf.cast(Y,np.float32) + flow[:,:,1]
+
+        con = tf.stack([X,Y])
+        result = tf.transpose(con,[1,2,0])
+        result = tf.expand_dims(result,0)
+
+
+        return tf.contrib.resampler.resampler(img[np.newaxis,:,:,:],result)
 
 
     def divide_inputs_to_patches(self,image,last_dimension):
@@ -239,6 +263,7 @@ class DatasetReader:
         # print(a['label'].eval())        
         np.set_printoptions(threshold=np.nan)
         loss = 0
+
         for i in range(0,self.epochs):
 
             batch_xs, batch_ys = sess.run([self.imageBatch, self.labelBatch])
