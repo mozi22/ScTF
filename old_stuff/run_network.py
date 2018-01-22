@@ -89,14 +89,12 @@ class DatasetReader:
         image2 = self.combine_depth_values(image2,depth2,2)
 
 
-
         # # depth should be added to both images before this line 
         img_pair = tf.concat([image1,image2],axis=-1)
 
 
 
         label_pair3 = self.combine_depth_values(label_pair,depth_chng,2)
-
 
         # reduce flow values by a factor of 0.4 since we reduce the image size by same factor
         # label_pair3 = tf.multiply(label_pair,0.4)
@@ -216,7 +214,6 @@ class DatasetReader:
                 # build the network here
                 predict_flow5, predict_flow2 = network.train_network(self.X)
                 tf.summary.histogram('pflow',predict_flow2)
-
                 # self.mse = tf.reduce_mean(network.change_nans_to_zeros(tf.sqrt(tf.reduce_sum((predict_flow2-self.Y)**2)+1e-3)))
 
                 self.mse = tf.losses.mean_squared_error(self.Y,predict_flow2)

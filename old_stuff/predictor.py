@@ -1,8 +1,8 @@
 
 import flow_test as ft
 
-# folder = '/home/muazzam/mywork/python/thesis/server/dataset_synthetic_sm/driving/'
-folder = '/misc/lmbraid19/muazzama/dataset_synthetic_sm/driving/'
+folder = '/home/muazzam/mywork/python/thesis/server/dataset_synthetic_sm/driving/'
+# folder = '/misc/lmbraid19/muazzama/dataset_synthetic_sm/driving/'
 
 img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0001.webp'
 img2 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0002.webp'

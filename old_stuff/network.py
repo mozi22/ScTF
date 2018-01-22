@@ -4,6 +4,15 @@ import re
 
 def convrelu2(name,inputs, filters, kernel_size, stride, activation=None):
 
+    # tmp_y = tf.layers.conv2d(
+    #     inputs=inputs,
+    #     filters=filters,
+    #     kernel_size=[kernel_size,1],
+    #     strides=[stride,1],
+    #     padding='same',
+    #     name=name+'y',
+    #     activation=tf.nn.relu
+    # )
 
 
 

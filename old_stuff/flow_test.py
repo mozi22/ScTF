@@ -21,11 +21,14 @@ class FlowPredictor:
 
 
 		# read resized images to network standards
-		img1, img2 = self.read_image(img1,img2)
+		self.init_img1, self.init_img2 = self.read_image(img1,img2)
+
+		self.img1_arr = np.array(self.init_img1,dtype=np.float32)
+		self.img2_arr = np.array(self.init_img2,dtype=np.float32)
 
 		# normalize images
-		self.img1 = np.array(img1) / 255
-		self.img2 = np.array(img2) / 255
+		self.img1 = self.img1_arr / 255
+		self.img2 = self.img2_arr / 255
 
 		# read disparity values from matrices
 		disp1 = hpl.readPFM(disparity1)[0]
@@ -61,6 +64,43 @@ class FlowPredictor:
 		self.load_model_ckpt(self.sess,'ckpt/model_ckpt_999.ckpt')
 
 
+	def warp(self,img,flow):
+		x = list(range(0,self.input_size[0]))
+		y = list(range(0,self.input_size[1] + 8))
+		X, Y = tf.meshgrid(x, y)
+
+		X = tf.cast(X,np.float32) + flow[:,:,0]
+		Y = tf.cast(Y,np.float32) + flow[:,:,1]
+
+
+		con = tf.stack([X,Y])
+		result = tf.transpose(con,[1,2,0])
+		result = tf.expand_dims(result,0)
+		return tf.contrib.resampler.resampler(img[np.newaxis,:,:,:],result)
+
+	def denormalize_flow(self,flow):
+		u = flow[:,:,0] * self.input_size[0]
+		v = flow[:,:,1] * self.input_size[1]
+		w = flow[:,:,2] * self.driving_max_depth
+
+		return np.stack((u,v,w),axis=2)
+
+
+	def postprocess(self,flow):
+
+		flow = self.denormalize_flow(flow)
+
+		self.img2_arr = np.pad(self.img2_arr,((4,4),(0,0),(0,0)),'constant')
+
+		flow = self.warp(self.img2_arr,flow)
+		print(flow.eval().shape)
+		a = Image.fromarray(flow.eval()[0].astype(np.uint8))
+		a.save('./abc.png')
+		a.show()
+		self.init_img1.show()
+		self.init_img2.show()
+
+
 
 	def predict(self):
 		feed_dict = {
@@ -68,7 +108,7 @@ class FlowPredictor:
 		}
 
 		v = self.sess.run({'prediction': self.predict_flow2},feed_dict=feed_dict)
-		print(v['prediction'])
+		self.postprocess(v['prediction'][0])
 
 	def get_depth_from_disp(self,disparity):
 		focal_length = 35
