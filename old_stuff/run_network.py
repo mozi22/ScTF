@@ -14,14 +14,14 @@ class DatasetReader:
         features = tf.parse_single_example(fullExample, {
             'width': tf.FixedLenFeature([], tf.int64),
             'height': tf.FixedLenFeature([], tf.int64),
-            'depth1': tf.FixedLenFeature([], tf.string),
-            'depth2': tf.FixedLenFeature([], tf.string),
+            'disp1': tf.FixedLenFeature([], tf.string),
+            'disp2': tf.FixedLenFeature([], tf.string),
             'opt_flow': tf.FixedLenFeature([], tf.string),
             'cam_frame_L': tf.FixedLenFeature([], tf.string),
             'cam_frame_R': tf.FixedLenFeature([], tf.string),
             'image1': tf.FixedLenFeature([], tf.string),
             'image2': tf.FixedLenFeature([], tf.string),
-            'depth_chng': tf.FixedLenFeature([], tf.string),
+            'disp_chng': tf.FixedLenFeature([], tf.string),
             'direction': tf.FixedLenFeature([], tf.string)
         })
 
@@ -30,12 +30,12 @@ class DatasetReader:
         # disp_height = tf.cast(features['height'], tf.int32)
 
         direction = features['direction']
-        depth1 = tf.decode_raw(features['depth1'], tf.float32)
-        depth2 = tf.decode_raw(features['depth2'], tf.float32)
+        depth1 = tf.decode_raw(features['disp1'], tf.float32)
+        depth2 = tf.decode_raw(features['disp2'], tf.float32)
         image1 = tf.decode_raw(features['image1'], tf.uint8)
         image2 = tf.decode_raw(features['image2'], tf.uint8)
         opt_flow = tf.decode_raw(features['opt_flow'], tf.float32)
-        depth_chng = tf.decode_raw(features['depth_chng'], tf.float32)
+        depth_chng = tf.decode_raw(features['disp_chng'], tf.float32)
         cam_frame_L = tf.decode_raw(features['cam_frame_L'], tf.float32)
         cam_frame_R = tf.decode_raw(features['cam_frame_R'], tf.float32)
 
@@ -62,6 +62,10 @@ class DatasetReader:
         # # normalize image RGB values b/w 0 to 1
         image1 = tf.divide(image1,[255])
         image2 = tf.divide(image2,[255])
+
+        depth1 = tf.divide(depth1,[349.347])
+        depth2 = tf.divide(depth2,[349.347])
+        depth_chng = tf.divide(depth_chng,[236.467])
 
         # # normalize depth values b/w 0 to 1
         # depth1 = tf.divide(depth1,[tf.reduce_max(depth1)])
@@ -185,6 +189,7 @@ class DatasetReader:
     
             self.batch_size = 64
             self.epochs = 3000
+            self.module = 'driving'
 
             with tf.name_scope('input_pipeline'):
                 # Create a list of filenames and pass it to a queue
@@ -246,7 +251,7 @@ class DatasetReader:
     def train_network(self,sess,a):
 
         merged_summary_op = tf.summary.merge_all()
-        summary_writer = tf.summary.FileWriter('./tb',graph=tf.get_default_graph())
+        summary_writer = tf.summary.FileWriter('./tb/'+self.module+'/',graph=tf.get_default_graph())
 
         sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
 
@@ -261,7 +266,6 @@ class DatasetReader:
         # print(a['label_n'].eval())
         # loss = 0
 
-        # print(tf.reduce_max(tf.divide(a['label'],[tf.reduce_max(a['label'])])).eval())
 
         for i in range(0,self.epochs):
 
@@ -306,9 +310,9 @@ class DatasetReader:
  
     def save_model(self,sess,i):
         saver = tf.train.Saver()
-        saver.save(sess, 'ckpt/model_ckpt_'+str(i)+'.ckpt')
+        saver.save(sess, 'ckpt/'+self.module+'/model_ckpt_'+str(i)+'.ckpt')
 
 
     def load_model_ckpt(self,sess):
         saver = tf.train.Saver()
-        saver.restore(sess, 'ckpt/model_ckpt_'+str(i)+'.ckpt')
+        saver.restore(sess, 'ckpt/'+self.module+'/model_ckpt_'+str(i)+'.ckpt')

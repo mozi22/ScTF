@@ -61,7 +61,7 @@ class FlowPredictor:
 		self.initialize_network()
 
 		self.sess = tf.InteractiveSession()
-		self.load_model_ckpt(self.sess,'ckpt/model_ckpt_999.ckpt')
+		self.load_model_ckpt(self.sess,'ckpt/driving/model_ckpt_2999.ckpt')
 
 
 	def warp(self,img,flow):

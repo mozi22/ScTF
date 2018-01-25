@@ -14,8 +14,8 @@ prefix = '../../dataset_synthetic/'
 
 # with tf.name_scope("datareader"):
 filenames = [
-				# prefix+'driving_TRAIN.tfrecords'
-				prefix+'flyingthings3d_TRAIN.tfrecords'
+				prefix+'driving_TRAIN.tfrecords'
+				# prefix+'flyingthings3d_TRAIN.tfrecords'
 				# prefix+'monkaa_TRAIN.tfrecords'
 			]
 reader = run_network.DatasetReader()
