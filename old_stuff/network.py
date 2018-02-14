@@ -225,12 +225,6 @@ def train_network(image_pair):
         conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=7, stride=2,activation=tf.nn.leaky_relu)
         conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=7, stride=2,activation=tf.nn.leaky_relu)
 
-        print('mozitorola')
-        print(conv1)
-        print(conv2)
-        print(conv3)
-        print(conv4)
-        print(conv5)
         # grid1 = put_kernels_on_grid('down_convs/conv1x/kernel:0')
         # grid2 = put_kernels_on_grid('down_convs/conv2x/kernel:0')
         # grid3 = put_kernels_on_grid('down_convs/conv3x/kernel:0')
@@ -241,16 +235,16 @@ def train_network(image_pair):
         # tf.summary.image('down_convs/conv3x/kernel/filters:0', grid3, max_outputs=1)
         # tf.summary.image('down_convs/conv4x/kernel/filters:0', grid4, max_outputs=1)
 
-        _summarize_bias_n_weights('down_convs/conv1x/bias:0','down_convs/conv1x/kernel:0')
-        _summarize_bias_n_weights('down_convs/conv2x/bias:0','down_convs/conv2x/kernel:0')
-        _summarize_bias_n_weights('down_convs/conv3x/bias:0','down_convs/conv3x/kernel:0')
-        _summarize_bias_n_weights('down_convs/conv4x/bias:0','down_convs/conv4x/kernel:0')
+        # _summarize_bias_n_weights('down_convs/conv1x/bias:0','down_convs/conv1x/kernel:0')
+        # _summarize_bias_n_weights('down_convs/conv2x/bias:0','down_convs/conv2x/kernel:0')
+        # _summarize_bias_n_weights('down_convs/conv3x/bias:0','down_convs/conv3x/kernel:0')
+        # _summarize_bias_n_weights('down_convs/conv4x/bias:0','down_convs/conv4x/kernel:0')
 
 
-        _activation_summary(conv1)
-        _activation_summary(conv2)
-        _activation_summary(conv3)
-        _activation_summary(conv4)
+        # _activation_summary(conv1)
+        # _activation_summary(conv2)
+        # _activation_summary(conv3)
+        # _activation_summary(conv4)
 
     # conv4_shape = conv4.get_shape().as_list()
 
@@ -295,8 +289,6 @@ def train_network(image_pair):
 
     # _summarize_bias_n_weights('refine3/upconv/bias:0','refine3/upconv/kernel:0')
 
-    print('refine4')
-    print(concat4)
         # concat3 = change_nans_to_zeros(concat3)
 
 
@@ -308,8 +300,6 @@ def train_network(image_pair):
             features_direct=conv3
         )
 
-    print('refine3')
-    print(concat3)
     with tf.variable_scope('refine2'):
         concat2 = _refine(
             inp=concat3, 
@@ -318,8 +308,6 @@ def train_network(image_pair):
         )
         # concat2 = change_nans_to_zeros(concat2)
     # _summarize_bias_n_weights('refine2/upconv/bias:0','refine2/upconv/kernel:0')
-    print('refine2')
-    print(concat2)
 
     with tf.variable_scope('refine1'):
         concat1 = _refine(
@@ -339,12 +327,10 @@ def train_network(image_pair):
         # concat1 = change_nans_to_zeros(concat1)
     # _summarize_bias_n_weights('refine1/upconv/bias:0','refine1/upconv/kernel:0')
 
-    print('refine1')
-    print(concat1)
-    _activation_summary(predict_flow4to3)
-    _activation_summary(concat3)
-    _activation_summary(concat2)
-    _activation_summary(concat1)
+    # _activation_summary(predict_flow4to3)
+    # _activation_summary(concat3)
+    # _activation_summary(concat2)
+    # _activation_summary(concat1)
 
 
 
@@ -355,8 +341,8 @@ def train_network(image_pair):
         # predict_flow2 = change_nans_to_zeros(predict_flow2)
     # _summarize_bias_n_weights('predict_flow2/conv2_pred_flow/bias:0','predict_flow2/conv2_pred_flow/kernel:0')
 
-    _activation_summary(predict_flow2)
-    _activation_summary(predict_flow4)
+    # _activation_summary(predict_flow2)
+    # _activation_summary(predict_flow4)
 
     # for v in tf.trainable_variables():
     #     v = change_nans_to_zeros(v)

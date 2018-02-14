@@ -16,9 +16,8 @@ class FlowPredictor:
 
 		factor = 0.4
 		self.input_size = int(960 * factor), int(540 * factor)
-		self.driving_max_depth = 30.7278
-		self.ckpt = './ckpt/ckpt'
-
+		self.driving_disp_chng_max = 236.467
+		self.driving_disp_max = 349.347 
 
 		# read resized images to network standards
 		self.init_img1, self.init_img2 = self.read_image(img1,img2)
@@ -41,16 +40,21 @@ class FlowPredictor:
 		disp2 = disp2.resize(self.input_size,Image.NEAREST)
 
 		# resize depth values
-		depth1 = self.get_depth_from_disp(np.array(disp1))
-		depth2 = self.get_depth_from_disp(np.array(disp2))
+		# depth1 = self.get_depth_from_disp(np.array(disp1))
+		# depth2 = self.get_depth_from_disp(np.array(disp2))
+
+		disp1 = np.array(disp1)
+		disp2 = np.array(disp2)
 
 		# normalize depth values
-		self.depth1 = depth1 / self.driving_max_depth
-		self.depth2 = depth2 / self.driving_max_depth
+		self.disp1 = disp1 / self.driving_disp_max
+		self.disp2 = disp2 / self.driving_disp_max
+		self.disp1 = self.disp1 / self.driving_disp_max
+		self.disp2 = self.disp2 / self.driving_disp_max
 
 		# combine depth values with images
-		rgbd1 = self.combine_depth_values(self.img1,self.depth1)
-		rgbd2 = self.combine_depth_values(self.img2,self.depth2)
+		rgbd1 = self.combine_depth_values(self.img1,self.disp1)
+		rgbd2 = self.combine_depth_values(self.img2,self.disp2)
 
 		# combine images to 8 channel rgbd-rgbd
 		img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
@@ -61,7 +65,29 @@ class FlowPredictor:
 		self.initialize_network()
 
 		self.sess = tf.InteractiveSession()
-		self.load_model_ckpt(self.sess,'ckpt/driving/model_ckpt_2999.ckpt')
+		self.load_model_ckpt(self.sess,'ckpt/driving/0/train/model_ckpt_23000.ckpt')
+
+
+	def print_flow(self,opt_flow):
+		opt_flow = hpl.readPFM(opt_flow)[0]
+		opt_flow = Image.fromarray(opt_flow)
+		opt_flow.show()
+
+
+	def read_gt(self,opt_flow,disp_chng):
+		
+		opt_flow = hpl.readPFM(opt_flow)[0]
+		disp_chng = hpl.readPFM(disp_chng)[0]
+
+		disp_chng = Image.fromarray(disp_chng)
+		disp_chng = disp_chng.resize(self.input_size,Image.NEAREST)
+
+		opt_flow = self.downsample_opt_flow(opt_flow,self.input_size)
+
+		final_label = self.combine_depth_values(opt_flow,disp_chng)
+
+		return final_label
+
 
 
 	def warp(self,img,flow):
@@ -81,7 +107,10 @@ class FlowPredictor:
 	def denormalize_flow(self,flow):
 		u = flow[:,:,0] * self.input_size[0]
 		v = flow[:,:,1] * self.input_size[1]
-		w = flow[:,:,2] * self.driving_max_depth
+		w = flow[:,:,2] * self.driving_disp_chng_max
+		w = w * self.driving_disp_chng_max
+
+		w = self.get_depth_from_disp(w)
 
 		return np.stack((u,v,w),axis=2)
 
@@ -89,6 +118,7 @@ class FlowPredictor:
 	def postprocess(self,flow):
 
 		flow = self.denormalize_flow(flow)
+
 
 		self.img2_arr = np.pad(self.img2_arr,((4,4),(0,0),(0,0)),'constant')
 
@@ -126,6 +156,22 @@ class FlowPredictor:
 
 		return img1, img2
 
+	def downsample_opt_flow(self,data,size):
+		data = np.delete(data,2,axis=2)
+
+		u = data[:,:,0]
+		v = data[:,:,1]
+		
+		dt = Image.fromarray(u,mode='F')
+		dt = dt.resize(size, Image.NEAREST)
+
+		dt2 = Image.fromarray(v,mode='F')
+		dt2 = dt2.resize(size, Image.NEAREST)
+
+		u = np.array(dt)
+		v = np.array(dt2)
+
+		return np.stack((u,v),axis=2)
 
 	def combine_depth_values(self,img,depth):
 		depth = np.expand_dims(depth,2)
