@@ -49,8 +49,8 @@ class FlowPredictor:
 		# normalize depth values
 		self.disp1 = disp1 / self.driving_disp_max
 		self.disp2 = disp2 / self.driving_disp_max
-		self.disp1 = self.disp1 / self.driving_disp_max
-		self.disp2 = self.disp2 / self.driving_disp_max
+		# self.disp1 = self.disp1 / self.driving_disp_max
+		# self.disp2 = self.disp2 / self.driving_disp_max
 
 		# combine depth values with images
 		rgbd1 = self.combine_depth_values(self.img1,self.disp1)
@@ -65,13 +65,8 @@ class FlowPredictor:
 		self.initialize_network()
 
 		self.sess = tf.InteractiveSession()
-		self.load_model_ckpt(self.sess,'ckpt/driving/0/train/model_ckpt_23000.ckpt')
+		self.load_model_ckpt(self.sess,'ckpt/driving/3/train/model_ckpt_9999.ckpt')
 
-
-	def print_flow(self,opt_flow):
-		opt_flow = hpl.readPFM(opt_flow)[0]
-		opt_flow = Image.fromarray(opt_flow)
-		opt_flow.show()
 
 
 	def read_gt(self,opt_flow,disp_chng):
@@ -83,6 +78,12 @@ class FlowPredictor:
 		disp_chng = disp_chng.resize(self.input_size,Image.NEAREST)
 
 		opt_flow = self.downsample_opt_flow(opt_flow,self.input_size)
+
+		z = np.zeros((opt_flow.shape[0],opt_flow.shape[1]))
+
+		opt_flow = self.combine_depth_values(opt_flow,z)
+		print(opt_flow.shape)
+		Image.fromarray(opt_flow,'RGB').show()
 
 		final_label = self.combine_depth_values(opt_flow,disp_chng)
 
@@ -108,7 +109,7 @@ class FlowPredictor:
 		u = flow[:,:,0] * self.input_size[0]
 		v = flow[:,:,1] * self.input_size[1]
 		w = flow[:,:,2] * self.driving_disp_chng_max
-		w = w * self.driving_disp_chng_max
+		# w = w * self.driving_disp_chng_max
 
 		w = self.get_depth_from_disp(w)
 

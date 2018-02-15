@@ -14,7 +14,7 @@ depth2 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0002.pfm
 
 predictor = ft.FlowPredictor()
 predictor.preprocess(img1,img2,depth1,depth2)
-# predictor.predict()
+predictor.predict()
 
 
 
@@ -23,7 +23,7 @@ predictor.preprocess(img1,img2,depth1,depth2)
 opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0001_L.pfm'
 disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0002.pfm'
 
-predictor.print_flow(opt_flow)
+# predictor.read_gt(opt_flow,disp_change)
 # lbl = predictor.read_gt(opt_flow,disp_change)
 # opt_flow = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
 # predictor.postprocess(opt_flow)

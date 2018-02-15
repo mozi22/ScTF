@@ -21,15 +21,15 @@ class DatasetReader:
 
 
     def main(self, features_train, features_test):
-    
+            self.global_step = tf.train.get_or_create_global_step()
             self.batch_size = 64
-            self.total_iterations = 100000
+            self.total_iterations = 2000
             self.module = 'driving'
-            self.ckpt_number = 23000
-            self.train_start_iteration = self.ckpt_number + 1
+            self.ckpt_number = 9999
+            self.train_start_iteration = self.ckpt_number + 2
             # 0 means only driving dataset.
-            self.train_type = ['02/train','02/test']
-            self.ckpt_load_path = '0/train'
+            self.train_type = ['3c/train','3c/test']
+            self.ckpt_load_path = '3/train'
 
             # 50 iterations = 1 epoch ( i.e total_items=3136/batch_size=64 )
             self.test_iterations = 2
@@ -61,7 +61,10 @@ class DatasetReader:
                 tf.summary.histogram('X',self.X)
                 tf.summary.histogram('Y',self.Y)
 
-                # build the network here
+
+
+
+                # build the network her
                 predict_flow5, predict_flow2 = network.train_network(self.X)
                 tf.summary.histogram('pflow',predict_flow2)
                 # self.mse = tf.reduce_mean(network.change_nans_to_zeros(tf.sqrt(tf.reduce_sum((predict_flow2-self.Y)**2)+1e-3)))
@@ -72,7 +75,23 @@ class DatasetReader:
             self.saver = tf.train.Saver()
 
             tf.summary.scalar('MSE', self.mse)
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=5e-7).minimize(self.mse)
+            tf.summary.scalar('Global_Step', self.global_step)
+
+
+
+            # learning rate decay
+            decay_steps = self.total_iterations
+            starter_learning_rate = 0.00009
+            end_learning_rate = 0.00001
+            power = 4
+
+            learning_rate = tf.train.polynomial_decay(starter_learning_rate, self.global_step,
+                                                      decay_steps, end_learning_rate,
+                                                      power=power)
+
+
+            tf.summary.scalar('learning_rate_decay', learning_rate)
+            self.optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.mse,global_step=self.global_step)
             sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             # tf.train.latest_checkpoint('./ckpt/'+self.module+'/'+self.train_type+'/')
             self.load_model_ckpt(sess,self.ckpt_number)
@@ -124,7 +143,7 @@ class DatasetReader:
 
 
     def train_model(self,sess):
-        for i in range(self.train_start_iteration,self.total_iterations):
+        for i in range(self.train_start_iteration,self.total_iterations + self.train_start_iteration):
 
             train_batch_xs, train_batch_ys = sess.run([self.train_imageBatch, self.train_labelBatch])
 
