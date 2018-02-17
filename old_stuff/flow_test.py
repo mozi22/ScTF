@@ -39,18 +39,14 @@ class FlowPredictor:
 		disp1 = disp1.resize(self.input_size,Image.NEAREST)
 		disp2 = disp2.resize(self.input_size,Image.NEAREST)
 
-		# resize depth values
-		# depth1 = self.get_depth_from_disp(np.array(disp1))
-		# depth2 = self.get_depth_from_disp(np.array(disp2))
+		# resize disp values
 
 		disp1 = np.array(disp1)
 		disp2 = np.array(disp2)
 
-		# normalize depth values
+		# normalize disp values
 		self.disp1 = disp1 / self.driving_disp_max
 		self.disp2 = disp2 / self.driving_disp_max
-		# self.disp1 = self.disp1 / self.driving_disp_max
-		# self.disp2 = self.disp2 / self.driving_disp_max
 
 		# combine depth values with images
 		rgbd1 = self.combine_depth_values(self.img1,self.disp1)
@@ -59,8 +55,10 @@ class FlowPredictor:
 		# combine images to 8 channel rgbd-rgbd
 		img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
 
+		# add padding to axis=0 to make the input image (224,384,8)
 		img_pair = np.pad(img_pair,((4,4),(0,0),(0,0)),'constant')
 
+		# change dimension from (224,384,8) to (1,224,384,8)
 		self.img_pair = np.expand_dims(img_pair,0)
 		self.initialize_network()
 
@@ -105,31 +103,50 @@ class FlowPredictor:
 		result = tf.expand_dims(result,0)
 		return tf.contrib.resampler.resampler(img[np.newaxis,:,:,:],result)
 
-	def denormalize_flow(self,flow):
+
+	def show_image(self,array,img_title):
+		a = Image.fromarray(array)
+		a.show(title=img_title)
+
+
+
+	def denormalize_flow(self,flow,show_flow):
 		u = flow[:,:,0] * self.input_size[0]
 		v = flow[:,:,1] * self.input_size[1]
 		w = flow[:,:,2] * self.driving_disp_chng_max
-		# w = w * self.driving_disp_chng_max
 
 		w = self.get_depth_from_disp(w)
 
-		return np.stack((u,v,w),axis=2)
+		if show_flow:
+			self.show_image(u,'Flow_u')
+			self.show_image(v,'Flow_v')
+			self.show_image(w,'Flow_w')
+
+		flow = np.stack((u,v),axis=2)
+		
+		# not being used currently.
+		flow_with_depth = np.stack((u,v,w),axis=2)
 
 
-	def postprocess(self,flow):
+		return flow
 
-		flow = self.denormalize_flow(flow)
 
+	def postprocess(self,flow,show_flow=True,gt=False):
+
+		if gt==True:
+			self.show_image(flow[:,:,0],'Flow_u')
+			self.show_image(flow[:,:,1],'Flow_v')
+			self.show_image(flow[:,:,2],'Flow_w')
+		else:
+			flow = self.denormalize_flow(flow,show_flow)
 
 		self.img2_arr = np.pad(self.img2_arr,((4,4),(0,0),(0,0)),'constant')
 
 		flow = self.warp(self.img2_arr,flow)
-		print(flow.eval().shape)
-		a = Image.fromarray(flow.eval()[0].astype(np.uint8))
-		a.save('./abc.png')
-		a.show()
-		self.init_img1.show()
-		self.init_img2.show()
+
+		self.show_image(flow.eval()[0].astype(np.uint8),'warped_img')
+		self.init_img1.show(title='img1')
+		self.init_img2.show(title='img2')
 
 
 

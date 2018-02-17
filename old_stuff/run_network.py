@@ -6,7 +6,7 @@ import tensorflow as tf
 import helpers as hpl
 import tensorflow.contrib.slim as slim
 from tensorflow.python import debug as tf_debug
-
+from tensorflow.python.client import device_lib
 
 # things to check before running the script
 '''
@@ -22,14 +22,14 @@ class DatasetReader:
 
     def main(self, features_train, features_test):
             self.global_step = tf.train.get_or_create_global_step()
-            self.batch_size = 64
-            self.total_iterations = 2000
+            self.batch_size = 16
+            self.total_iterations = 15000
             self.module = 'driving'
-            self.ckpt_number = 9999
-            self.train_start_iteration = self.ckpt_number + 2
+            self.ckpt_number = 0
+            self.train_start_iteration = self.ckpt_number + 1
             # 0 means only driving dataset.
-            self.train_type = ['3c/train','3c/test']
-            self.ckpt_load_path = '3/train'
+            self.train_type = ['sb_3/train','sb_3/test']
+            self.ckpt_load_path = 'sb_3/train'
 
             # 50 iterations = 1 epoch ( i.e total_items=3136/batch_size=64 )
             self.test_iterations = 2
@@ -37,6 +37,9 @@ class DatasetReader:
             # self.iterations = 1
             # self.module = 'driving'
             # self.ckpt_number = 3999
+
+
+
 
             self.train_imageBatch, self.train_labelBatch = tf.train.shuffle_batch(
                                                     [ features_train['input_n'], 
@@ -69,7 +72,7 @@ class DatasetReader:
                 tf.summary.histogram('pflow',predict_flow2)
                 # self.mse = tf.reduce_mean(network.change_nans_to_zeros(tf.sqrt(tf.reduce_sum((predict_flow2-self.Y)**2)+1e-3)))
 
-                self.mse = tf.losses.mean_squared_error(self.Y,predict_flow2)
+                # self.mse = tf.losses.mean_squared_error(self.Y,predict_flow2)
 
             sess = tf.InteractiveSession()
             self.saver = tf.train.Saver()
@@ -81,11 +84,11 @@ class DatasetReader:
 
             # learning rate decay
             decay_steps = self.total_iterations
-            starter_learning_rate = 0.00009
-            end_learning_rate = 0.00001
-            power = 4
+            start_learning_rate = 0.0001
+            end_learning_rate = 0.000001
+            power = 3
 
-            learning_rate = tf.train.polynomial_decay(starter_learning_rate, self.global_step,
+            learning_rate = tf.train.polynomial_decay(start_learning_rate, self.global_step,
                                                       decay_steps, end_learning_rate,
                                                       power=power)
 
