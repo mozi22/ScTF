@@ -63,6 +63,7 @@ class FlowPredictor:
 		self.initialize_network()
 
 		self.sess = tf.InteractiveSession()
+		# self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
 		self.load_model_ckpt(self.sess,'ckpt/driving/3/train/model_ckpt_9999.ckpt')
 
 
@@ -87,6 +88,14 @@ class FlowPredictor:
 
 		return final_label
 
+
+	def get_depth_chng_from_disp_chng(self,disparity,disparity_change):
+		disp2 = disparity + disparity_change
+
+		depth1 = self.get_depth_from_disp(disparity)
+		depth2 = self.get_depth_from_disp(disp2)
+
+		return depth1 - depth2
 
 
 	def warp(self,img,flow):

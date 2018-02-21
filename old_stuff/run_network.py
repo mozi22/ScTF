@@ -22,14 +22,14 @@ class DatasetReader:
 
     def main(self, features_train, features_test):
             self.global_step = tf.train.get_or_create_global_step()
-            self.batch_size = 16
+            self.batch_size = 64
             self.total_iterations = 15000
             self.module = 'driving'
             self.ckpt_number = 0
             self.train_start_iteration = self.ckpt_number + 1
             # 0 means only driving dataset.
-            self.train_type = ['sb_3/train','sb_3/test']
-            self.ckpt_load_path = 'sb_3/train'
+            self.train_type = ['depth/train','depth/test']
+            self.ckpt_load_path = 'depth/train'
 
             # 50 iterations = 1 epoch ( i.e total_items=3136/batch_size=64 )
             self.test_iterations = 2
@@ -72,7 +72,7 @@ class DatasetReader:
                 tf.summary.histogram('pflow',predict_flow2)
                 # self.mse = tf.reduce_mean(network.change_nans_to_zeros(tf.sqrt(tf.reduce_sum((predict_flow2-self.Y)**2)+1e-3)))
 
-                # self.mse = tf.losses.mean_squared_error(self.Y,predict_flow2)
+                self.mse = tf.losses.mean_squared_error(self.Y,predict_flow2)
 
             sess = tf.InteractiveSession()
             self.saver = tf.train.Saver()
@@ -97,7 +97,7 @@ class DatasetReader:
             self.optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.mse,global_step=self.global_step)
             sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             # tf.train.latest_checkpoint('./ckpt/'+self.module+'/'+self.train_type+'/')
-            self.load_model_ckpt(sess,self.ckpt_number)
+            # self.load_model_ckpt(sess,self.ckpt_number)
             self.run_network(sess)
 
     def start_coordinators(self,sess):

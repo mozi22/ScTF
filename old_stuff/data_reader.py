@@ -16,8 +16,8 @@ def tf_record_input_pipeline(filenames,version='1'):
     features = tf.parse_single_example(fullExample, {
         'width': tf.FixedLenFeature([], tf.int64),
         'height': tf.FixedLenFeature([], tf.int64),
-        'disp1': tf.FixedLenFeature([], tf.string),
-        'disp2': tf.FixedLenFeature([], tf.string),
+        'depth1': tf.FixedLenFeature([], tf.string),
+        'depth2': tf.FixedLenFeature([], tf.string),
         'opt_flow': tf.FixedLenFeature([], tf.string),
         'cam_frame_L': tf.FixedLenFeature([], tf.string),
         'cam_frame_R': tf.FixedLenFeature([], tf.string),
@@ -33,8 +33,8 @@ def tf_record_input_pipeline(filenames,version='1'):
     # disp_height = tf.cast(features['height'], tf.int32)
 
     direction = features['direction']
-    disparity1 = tf.decode_raw(features['disp1'], tf.float32)
-    disparity2 = tf.decode_raw(features['disp2'], tf.float32)
+    disparity1 = tf.decode_raw(features['depth1'], tf.float32)
+    disparity2 = tf.decode_raw(features['depth2'], tf.float32)
     image1 = tf.decode_raw(features['image1'], tf.uint8)
     image2 = tf.decode_raw(features['image2'], tf.uint8)
     opt_flow = tf.decode_raw(features['opt_flow'], tf.float32)
