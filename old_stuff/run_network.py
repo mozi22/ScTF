@@ -23,13 +23,13 @@ class DatasetReader:
     def main(self, features_train, features_test):
             self.global_step = tf.train.get_or_create_global_step()
             self.batch_size = 64
-            self.total_iterations = 15000
+            self.total_iterations = 5000
             self.module = 'driving'
-            self.ckpt_number = 0
+            self.ckpt_number = 9520
             self.train_start_iteration = self.ckpt_number + 1
             # 0 means only driving dataset.
-            self.train_type = ['depth/train','depth/test']
-            self.ckpt_load_path = 'depth/train'
+            self.train_type = ['kernel_changed/train','kernel_changed/test']
+            self.ckpt_load_path = 'kernel_changed/train'
 
             # 50 iterations = 1 epoch ( i.e total_items=3136/batch_size=64 )
             self.test_iterations = 2
@@ -59,8 +59,8 @@ class DatasetReader:
 
             with tf.name_scope('create_graph'):
 
-                self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 8))
-                self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 3))
+                self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 6))
+                self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 2))
                 tf.summary.histogram('X',self.X)
                 tf.summary.histogram('Y',self.Y)
 
@@ -84,7 +84,7 @@ class DatasetReader:
 
             # learning rate decay
             decay_steps = self.total_iterations
-            start_learning_rate = 0.0001
+            start_learning_rate = 0.00001
             end_learning_rate = 0.000001
             power = 3
 
@@ -97,7 +97,7 @@ class DatasetReader:
             self.optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.mse,global_step=self.global_step)
             sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             # tf.train.latest_checkpoint('./ckpt/'+self.module+'/'+self.train_type+'/')
-            # self.load_model_ckpt(sess,self.ckpt_number)
+            self.load_model_ckpt(sess,self.ckpt_number)
             self.run_network(sess)
 
     def start_coordinators(self,sess):

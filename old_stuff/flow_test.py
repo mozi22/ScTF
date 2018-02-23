@@ -3,6 +3,7 @@ import tensorflow as tf
 from   PIL import Image
 import helpers as hpl
 import network
+import matplotlib.pyplot as plt
 
 
 class FlowPredictor:
@@ -53,7 +54,8 @@ class FlowPredictor:
 		rgbd2 = self.combine_depth_values(self.img2,self.disp2)
 
 		# combine images to 8 channel rgbd-rgbd
-		img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
+		# img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
+		img_pair = np.concatenate((self.img1,self.img2),axis=2)
 
 		# add padding to axis=0 to make the input image (224,384,8)
 		img_pair = np.pad(img_pair,((4,4),(0,0),(0,0)),'constant')
@@ -63,8 +65,8 @@ class FlowPredictor:
 		self.initialize_network()
 
 		self.sess = tf.InteractiveSession()
-		# self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
-		self.load_model_ckpt(self.sess,'ckpt/driving/3/train/model_ckpt_9999.ckpt')
+		# # self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
+		self.load_model_ckpt(self.sess,'ckpt/driving/kernel_changed/train/model_ckpt_9520.ckpt')
 
 
 
@@ -78,15 +80,13 @@ class FlowPredictor:
 
 		opt_flow = self.downsample_opt_flow(opt_flow,self.input_size)
 
-		z = np.zeros((opt_flow.shape[0],opt_flow.shape[1]))
+		# z = np.zeros((opt_flow.shape[0],opt_flow.shape[1]))
 
-		opt_flow = self.combine_depth_values(opt_flow,z)
-		print(opt_flow.shape)
-		Image.fromarray(opt_flow,'RGB').show()
+		# opt_flow = self.combine_depth_values(opt_flow,z)
+		# Image.fromarray(opt_flow,'RGB').show()
 
-		final_label = self.combine_depth_values(opt_flow,disp_chng)
-
-		return final_label
+		# final_label = self.combine_depth_values(opt_flow,disp_chng)
+		return opt_flow * 0.4
 
 
 	def get_depth_chng_from_disp_chng(self,disparity,disparity_change):
@@ -107,6 +107,7 @@ class FlowPredictor:
 		Y = tf.cast(Y,np.float32) + flow[:,:,1]
 
 
+
 		con = tf.stack([X,Y])
 		result = tf.transpose(con,[1,2,0])
 		result = tf.expand_dims(result,0)
@@ -120,21 +121,33 @@ class FlowPredictor:
 
 
 	def denormalize_flow(self,flow,show_flow):
+
+		opt_u = flow[:,:,0]
+		opt_v = flow[:,:,1]
+		spacing = np.linspace(0, 1, num=100)
+
+		# plt.hist(opt_u.flatten(),bins=spacing)  # arguments are passed to np.histogram
+		# plt.hist(opt_v.flatten(),bins=spacing)  # arguments are passed to np.histogram
+		# plt.title("Flow predict")
+		# plt.show()
+
+
 		u = flow[:,:,0] * self.input_size[0]
 		v = flow[:,:,1] * self.input_size[1]
-		w = flow[:,:,2] * self.driving_disp_chng_max
+		# w = flow[:,:,2] * self.driving_disp_chng_max
 
-		w = self.get_depth_from_disp(w)
+		# w = self.get_depth_from_disp(w)
 
-		if show_flow:
-			self.show_image(u,'Flow_u')
-			self.show_image(v,'Flow_v')
-			self.show_image(w,'Flow_w')
-
+		# if show_flow:
+		# 	self.show_image(u,'Flow_u')
+		# 	self.show_image(v,'Flow_v')
+			# self.show_image(w,'Flow_w')
+		
 		flow = np.stack((u,v),axis=2)
 		
 		# not being used currently.
-		flow_with_depth = np.stack((u,v,w),axis=2)
+		# flow_with_depth = np.stack((u,v,w),axis=2)
+		
 
 
 		return flow
@@ -144,18 +157,22 @@ class FlowPredictor:
 
 		if gt==True:
 			self.show_image(flow[:,:,0],'Flow_u')
-			self.show_image(flow[:,:,1],'Flow_v')
-			self.show_image(flow[:,:,2],'Flow_w')
+			# self.show_image(flow[:,:,1],'Flow_v')
+			# self.show_image(flow[:,:,2],'Flow_w')
 		else:
 			flow = self.denormalize_flow(flow,show_flow)
 
 		self.img2_arr = np.pad(self.img2_arr,((4,4),(0,0),(0,0)),'constant')
-
 		flow = self.warp(self.img2_arr,flow)
 
-		self.show_image(flow.eval()[0].astype(np.uint8),'warped_img')
-		self.init_img1.show(title='img1')
-		self.init_img2.show(title='img2')
+		result = flow.eval()[0].astype(np.uint8)
+		self.show_image(result,'warped_img')
+
+		# plt.hist(result, bins='auto')  # arguments are passed to np.histogram
+		# plt.title("Histogram with 'auto' bins")
+		# plt.show()
+		# self.init_img1.show(title='img1')
+		# self.init_img2.show(title='img2')
 
 
 
@@ -208,8 +225,8 @@ class FlowPredictor:
 
 		self.batch_size = 1
 
-		self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 8))
-		self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 3))
+		self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 6))
+		self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 2))
 		self.predict_flow5, self.predict_flow2 = network.train_network(self.X)
 
 	def load_model_ckpt(self,sess,filename):
