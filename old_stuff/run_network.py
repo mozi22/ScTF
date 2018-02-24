@@ -21,15 +21,14 @@ class DatasetReader:
 
 
     def main(self, features_train, features_test):
-            self.global_step = tf.train.get_or_create_global_step()
-            self.batch_size = 64
-            self.total_iterations = 5000
+            self.batch_size = 1
+            self.total_iterations = 1
             self.module = 'driving'
-            self.ckpt_number = 9520
+            self.ckpt_number = 0
             self.train_start_iteration = self.ckpt_number + 1
             # 0 means only driving dataset.
-            self.train_type = ['kernel_changed/train','kernel_changed/test']
-            self.ckpt_load_path = 'kernel_changed/train'
+            self.train_type = ['one_iteration/train','one_iteration/test']
+            self.ckpt_load_path = 'one_iteration/train'
 
             # 50 iterations = 1 epoch ( i.e total_items=3136/batch_size=64 )
             self.test_iterations = 2
@@ -78,32 +77,31 @@ class DatasetReader:
             self.saver = tf.train.Saver()
 
             tf.summary.scalar('MSE', self.mse)
-            tf.summary.scalar('Global_Step', self.global_step)
 
 
 
             # learning rate decay
             decay_steps = self.total_iterations
-            start_learning_rate = 0.00001
+            start_learning_rate = 0.0001
             end_learning_rate = 0.000001
-            power = 3
+            power = 4
 
-            learning_rate = tf.train.polynomial_decay(start_learning_rate, self.global_step,
+            learning_rate = tf.train.polynomial_decay(start_learning_rate, tf.train.get_or_create_global_step(),
                                                       decay_steps, end_learning_rate,
                                                       power=power)
 
 
             tf.summary.scalar('learning_rate_decay', learning_rate)
-            self.optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.mse,global_step=self.global_step)
+            self.optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.mse)
+            self.merged_summary_op = tf.summary.merge_all()
+            self.summary_writer_train = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[0]+'/',graph=tf.get_default_graph())
+            self.summary_writer_test = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[1]+'/',graph=tf.get_default_graph())
             sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             # tf.train.latest_checkpoint('./ckpt/'+self.module+'/'+self.train_type+'/')
-            self.load_model_ckpt(sess,self.ckpt_number)
+            # self.load_model_ckpt(sess,self.ckpt_number)
             self.run_network(sess)
 
     def start_coordinators(self,sess):
-        self.merged_summary_op = tf.summary.merge_all()
-        self.summary_writer_train = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[0]+'/',graph=tf.get_default_graph())
-        self.summary_writer_test = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[1]+'/',graph=tf.get_default_graph())
 
 
         # initialize the threads coordinator
@@ -112,18 +110,19 @@ class DatasetReader:
         # start enqueing the data to be dequeued for batch training
         threads = tf.train.start_queue_runners(sess, coord=self.coord)
 
-        # print(a['label'].eval())        
+        # print(a['label'].eval())
         # np.set_printoptions(threshold=np.nan)
 
         return threads
 
-    def stop_coordinators(self,summary_writer,threads):
+    def stop_coordinators(self,threads):
         self.summary_writer_train.close()
         self.summary_writer_test.close()
 
         # finalise
         self.coord.request_stop()
         self.coord.join(threads)
+
 
 
     def run_network(self,sess,data=None):
@@ -144,12 +143,20 @@ class DatasetReader:
     
         self.stop_coordinators(threads)
 
+    def show_images(self,train_batch): 
+        r1, r2 = np.split(train_batch,2,axis=3)
+
+        imgg1 = np.squeeze(r1[:,:,:,0:3])
+        imgg2 = np.squeeze(r2[:,:,:,0:3]).astype(np.uint8)
+
+        Image.fromarray(imgg1).astype(np.uint8).save('a.thumbnail','JPEG')
+        Image.fromarray(imgg2).astype(np.uint8).save('b.thumbnail','JPEG')
 
     def train_model(self,sess):
         for i in range(self.train_start_iteration,self.total_iterations + self.train_start_iteration):
 
             train_batch_xs, train_batch_ys = sess.run([self.train_imageBatch, self.train_labelBatch])
-
+            self.show_images(train_batch_xs)
             # batch_xs = batch_xs / np.abs(batch_xs).max()
 
             # batch_ys = batch_ys * 0.4
@@ -165,11 +172,11 @@ class DatasetReader:
             # loss = loss + epoch_loss
 
             print('Iteration: '+str(i)+'     Loss = ',str(epoch_loss))
-            print('x min val = ' + str(np.abs(train_batch_xs).min()))
-            print('x max val = ' + str(np.abs(train_batch_xs).max()))
-            print('y min val = ' + str(np.abs(train_batch_ys).min()))
-            print('y max val = ' + str(np.abs(train_batch_ys).max()))
-            print('')
+            # print('x min val = ' + str(np.abs(train_batch_xs).min()))
+            # print('x max val = ' + str(np.abs(train_batch_xs).max()))
+            # print('y min val = ' + str(np.abs(train_batch_ys).min()))
+            # print('y max val = ' + str(np.abs(train_batch_ys).max()))
+            # print('')
 
             if i%40==0:
                 # perform testing after each 10 epochs. 1 epoch = 133 iterations
@@ -180,8 +187,8 @@ class DatasetReader:
             if i%10==0:
                 print('wrote summary '+str(i))
                 self.summary_writer_train.add_summary(summary, i)
-            if i%100==0 or i==self.total_iterations - 1:
-                self.save_model(sess,i)
+            # if i%100==0 or i==self.total_iterations - 1:
+            self.save_model(sess,i)
 
 
     def perform_test_loss(self,sess,i):
