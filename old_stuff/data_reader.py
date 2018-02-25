@@ -52,7 +52,7 @@ def tf_record_input_pipeline(filenames,version='1'):
     disparity1 = tf.reshape(disparity1, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp1")
     disparity2 = tf.reshape(disparity2, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp2")
 
-    label_pair = tf.reshape(opt_flow, [input_pipeline_dimensions[0],input_pipeline_dimensions[1],2],name="reshape_img_pair")
+    label_pair = tf.reshape(opt_flow, [input_pipeline_dimensions[0],input_pipeline_dimensions[1],2],name="reshape_opt_flow")
     disparity_chng = tf.reshape(disparity_chng,[input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp_change")
 
     # depth1 = get_depth_from_disparity(disp1)
@@ -76,9 +76,13 @@ def tf_record_input_pipeline(filenames,version='1'):
     # image22 = tf.expand_dims(image2,0)
     # disparity11 = tf.expand_dims(disparity1,0)
     # disparity22 = tf.expand_dims(disparity2,0)
+    factor = 0.4
+    input_size = int(960 * factor), int(540 * factor)
+    u = tf.multiply(label_pair[:,:,0],input_size[0])
+    v = tf.multiply(label_pair[:,:,1],input_size[1])
 
-    # tf.summary.image('opt_flow_u',tf.expand_dims(tf.expand_dims(label_pair[:,:,0],2),0))
-    # tf.summary.image('opt_flow_v',tf.expand_dims(tf.expand_dims(label_pair[:,:,1],2),0))
+    tf.summary.image('opt_flow_u',tf.expand_dims(tf.expand_dims(u,2),0))
+    tf.summary.image('opt_flow_v',tf.expand_dims(tf.expand_dims(v,2),0))
     # tf.summary.image('image1',image11)
     # tf.summary.image('image2',image22)
     # tf.summary.image('disparity1',disparity11)
@@ -164,7 +168,7 @@ def tf_record_input_pipelinev2(filenames,version='1'):
         'height': tf.FixedLenFeature([], tf.int64),
         'depth1': tf.FixedLenFeature([], tf.string),
         'depth2': tf.FixedLenFeature([], tf.string),
-        'opt_flow': tf.FixedLenFeature([], tf.string),
+        'opt_flow': tf.FixedLenFeature([], tf.float32),
         'image1': tf.FixedLenFeature([], tf.string),
         'image2': tf.FixedLenFeature([], tf.string),
         'disp_chng': tf.FixedLenFeature([], tf.string),

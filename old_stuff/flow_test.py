@@ -66,7 +66,7 @@ class FlowPredictor:
 
 		self.sess = tf.InteractiveSession()
 		# # self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
-		self.load_model_ckpt(self.sess,'ckpt/driving/kernel_changed/train/model_ckpt_9520.ckpt')
+		self.load_model_ckpt(self.sess,'ckpt/driving/conv10/train/model_ckpt_2207.ckpt')
 
 
 

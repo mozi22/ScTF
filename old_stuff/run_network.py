@@ -21,14 +21,14 @@ class DatasetReader:
 
 
     def main(self, features_train, features_test):
-            self.batch_size = 1
-            self.total_iterations = 1
+            self.batch_size = 32
+            self.total_iterations = 15000
             self.module = 'driving'
-            self.ckpt_number = 0
+            self.ckpt_number = 2207
             self.train_start_iteration = self.ckpt_number + 1
             # 0 means only driving dataset.
-            self.train_type = ['one_iteration/train','one_iteration/test']
-            self.ckpt_load_path = 'one_iteration/train'
+            self.train_type = ['conv10/train','conv10/test']
+            self.ckpt_load_path = 'conv10/train'
 
             # 50 iterations = 1 epoch ( i.e total_items=3136/batch_size=64 )
             self.test_iterations = 2
@@ -47,6 +47,12 @@ class DatasetReader:
                                                     capacity=100,
                                                     num_threads=10,
                                                     min_after_dequeue=6)
+            # self.train_imageBatch, self.train_labelBatch = tf.train.batch(
+            #                                         [ features_train['input_n'], 
+            #                                         features_train['label_n']],
+            #                                         batch_size=self.batch_size,
+            #                                         capacity=100,
+            #                                         num_threads=10)
 
             self.test_imageBatch, self.test_labelBatch = tf.train.shuffle_batch(
                                                     [ features_test['input_n'], 
@@ -82,7 +88,7 @@ class DatasetReader:
 
             # learning rate decay
             decay_steps = self.total_iterations
-            start_learning_rate = 0.0001
+            start_learning_rate = 0.00006
             end_learning_rate = 0.000001
             power = 4
 
@@ -98,7 +104,7 @@ class DatasetReader:
             self.summary_writer_test = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[1]+'/',graph=tf.get_default_graph())
             sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             # tf.train.latest_checkpoint('./ckpt/'+self.module+'/'+self.train_type+'/')
-            # self.load_model_ckpt(sess,self.ckpt_number)
+            self.load_model_ckpt(sess,self.ckpt_number)
             self.run_network(sess)
 
     def start_coordinators(self,sess):
@@ -143,20 +149,39 @@ class DatasetReader:
     
         self.stop_coordinators(threads)
 
-    def show_images(self,train_batch): 
+    def show_images(self,train_batch,i): 
         r1, r2 = np.split(train_batch,2,axis=3)
 
-        imgg1 = np.squeeze(r1[:,:,:,0:3])
-        imgg2 = np.squeeze(r2[:,:,:,0:3]).astype(np.uint8)
+        imgg1 = np.squeeze(r1[:,:,:,0:3]) * 255
+        imgg2 = np.squeeze(r2[:,:,:,0:3]) * 255
 
-        Image.fromarray(imgg1).astype(np.uint8).save('a.thumbnail','JPEG')
-        Image.fromarray(imgg2).astype(np.uint8).save('b.thumbnail','JPEG')
+        imgg1 = imgg1.astype(np.uint8)
+        imgg2 = imgg2.astype(np.uint8)
+        im1 = Image.fromarray(imgg1,'RGB')
+        im2 = Image.fromarray(imgg2,'RGB')
+        im1.save('./img/abc'+str(i)+'.png')
+        im2.save('./img/abc'+str(i)+'.png')
+    def show_optical_flow(self,label_batch,i): 
+
+        factor = 0.4
+        input_size = int(960 * factor), int(540 * factor)
+
+        opt_u = np.squeeze(label_batch[:,:,:,0]) * input_size[0]
+        opt_v = np.squeeze(label_batch[:,:,:,1]) * input_size[1]
+
+        opt_u = Image.fromarray(opt_u)
+        opt_v = Image.fromarray(opt_v)
+
+        opt_u.save('./img/flow_u_'+str(i)+'.tiff')
+        opt_v.save('./img/flow_v'+str(i)+'.tiff')
+
 
     def train_model(self,sess):
         for i in range(self.train_start_iteration,self.total_iterations + self.train_start_iteration):
 
             train_batch_xs, train_batch_ys = sess.run([self.train_imageBatch, self.train_labelBatch])
-            self.show_images(train_batch_xs)
+            # self.show_images(train_batch_xs,i)
+            # self.show_optical_flow(train_batch_ys,i)
             # batch_xs = batch_xs / np.abs(batch_xs).max()
 
             # batch_ys = batch_ys * 0.4
@@ -187,8 +212,8 @@ class DatasetReader:
             if i%10==0:
                 print('wrote summary '+str(i))
                 self.summary_writer_train.add_summary(summary, i)
-            # if i%100==0 or i==self.total_iterations - 1:
-            self.save_model(sess,i)
+            if i%100==0 or i==self.total_iterations - 1:
+                self.save_model(sess,i)
 
 
     def perform_test_loss(self,sess,i):

@@ -291,10 +291,10 @@ class SyntheticTFRecordsWriter:
 		u = data[:,:,0]
 		v = data[:,:,1]
 		
-		dt = Image.fromarray(u,mode='F')
+		dt = Image.fromarray(u)
 		dt = dt.resize(size, Image.NEAREST)
 
-		dt2 = Image.fromarray(v,mode='F')
+		dt2 = Image.fromarray(v)
 		dt2 = dt2.resize(size, Image.NEAREST)
 
 		u = np.array(dt)
@@ -352,16 +352,29 @@ class SyntheticTFRecordsWriter:
 		flow[:,:,1][flow[:,:,1] > input_size[1] ] = 0
 
 		# separate the u and v values 
-		flow_u = flow[:,:,[0]]
-		flow_v = flow[:,:,[1]]
+		flow_u = flow[:,:,0]
+		flow_v = flow[:,:,1]
+
+		# Image.fromarray(flow[:,:,0]).show()
+		# Image.fromarray(flow[:,:,1]).show()
+
+		# opt_u = np.squeeze(flow_u).astype(np.uint8)
+		# opt_v = np.squeeze(flow_v).astype(np.uint8)
+
+		# result = np.dstack((flow_u,flow_v))
+		# opt_u = Image.fromarray(result[:,:,0]).show() 
+		# opt_v = Image.fromarray(result[:,:,1]).show()
+
 
 
 		# normalize the values by the image dimensions
 		flow_u = flow_u / input_size[0]
 		flow_v = flow_v / input_size[1]
 
+
+
 		# combine them back and return
-		return np.concatenate((flow_u,flow_v),axis=2)
+		return np.dstack((flow_u,flow_v))
 
 
 

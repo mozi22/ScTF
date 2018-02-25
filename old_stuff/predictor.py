@@ -7,15 +7,17 @@ import matplotlib.pyplot as plt
 import synthetic_tf_converter as converter
 import tensorflow as tf
 import data_reader as dr
+
+
 folder = '/home/muazzam/mywork/python/thesis/server/dataset_synthetic/driving/'
 # folder = '/misc/lmbraid19/muazzama/dataset_synthetic/driving/'
 
-img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0001.webp'
-img2 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0002.webp'
-disparity1 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0001.pfm'
-disparity2 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0002.pfm'
-opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0001_L.pfm'
-disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0001.pfm'
+img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0101.webp'
+img2 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0102.webp'
+disparity1 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0101.pfm'
+disparity2 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0102.pfm'
+opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0101_L.pfm'
+disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0101.pfm'
 
 ''' ********************************************* this is the reading part ********************************************* '''
 ''' ********************************************* this is the reading part ********************************************* '''
@@ -23,6 +25,24 @@ disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/i
 ''' ********************************************* this is the reading part ********************************************* '''
 ''' ********************************************* this is the reading part ********************************************* '''
 ''' ********************************************* this is the reading part ********************************************* '''
+# def show_optical_flow(label_batch): 
+
+# 	factor = 0.4
+# 	input_size = int(960 * factor), int(540 * factor)
+
+# 	opt_u = np.squeeze(label_batch[:,:,:,0]) * input_size[0]
+# 	opt_v = np.squeeze(label_batch[:,:,:,1]) * input_size[1]
+
+# 	opt_u = opt_u.astype(np.uint8)
+# 	opt_v = opt_v.astype(np.uint8)
+
+# 	opt_u = Image.fromarray(opt_u) 
+# 	opt_v = Image.fromarray(opt_v)
+
+
+# 	opt_u.show()
+# 	opt_v.show()
+
 
 # features_train = dr.tf_record_input_pipelinev2(['one_record.tfrecords'])
 # train_imageBatch, train_labelBatch = tf.train.shuffle_batch(
@@ -42,7 +62,9 @@ disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/i
 # threads = tf.train.start_queue_runners(sess, coord=coord)
 
 # train_batch_xs, train_batch_ys = sess.run([train_imageBatch,train_labelBatch])
+# show_optical_flow(train_batch_ys)
 # r1, r2 = np.split(train_batch_xs,2,axis=3)
+
 
 # imgg1 = np.squeeze(r1[:,:,:,0:3])
 # imgg2 = np.squeeze(r2[:,:,:,0:3]).astype(np.uint8)
@@ -54,7 +76,6 @@ disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/i
 # flow = predictor.warp(imgg1,flow)
 
 # predictor.show_image(flow.eval()[0].astype(np.uint8),'warped_img')
-# summary_writer_train.close()
 # coord.request_stop()
 # coord.join(threads)
 
@@ -106,25 +127,9 @@ disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/i
 
 # from here
 
-# opt_flow = hpl.readPFM(opt_flow)[0]
-# Image.fromarray(opt_flow[:,:,0]).show()
-# Image.fromarray(opt_flow[:,:,1]).show()
-
-
-# # plt.hist(opt_flow[:,:,0], bins='auto')  # arguments are passed to np.histogram
-# # plt.title("Flow u")
-# # plt.show()
-# factor = 0.4
-# input_size = int(960 * factor), int(540 * factor)
-
-# opt_u = opt_flow[:,:,0]/ input_size[0]
-# opt_v = opt_flow[:,:,1]/ input_size[1]
-# spacing = np.linspace(0, 1, num=100)
-
-# plt.hist(opt_u.flatten(),bins=spacing)  # arguments are passed to np.histogram
-# plt.hist(opt_v.flatten(),bins=spacing)  # arguments are passed to np.histogram
-# plt.title("Flow gt")
-# plt.show()
+# opt_flow2 = hpl.readPFM(opt_flow)[0]
+# Image.fromarray(opt_flow2[:,:,0]).show()
+# Image.fromarray(opt_flow2[:,:,1]).show()
 
 predictor = ft.FlowPredictor()
 predictor.preprocess(img1,img2,disparity1,disparity2)
@@ -145,6 +150,8 @@ predictor.predict()
 # 									  1)
 # train_writer = tf.python_io.TFRecordWriter('./one_record.tfrecords')
 # create_tf_example(converter,result,train_writer)
+
+
 
 # lbl = predictor.read_gt(opt_flow,disp_change)
 # opt_flow = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
