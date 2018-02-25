@@ -6,6 +6,7 @@
 /old_stuff/optical_flow.tfrecords
 /old_stuff/tb/
 /old_stuff/ckpt/
+/old_stuff/img/
 /new_stuff/flower_dataset/
 /new_stuff/tffiles/
 /new_stuff/dataset/
