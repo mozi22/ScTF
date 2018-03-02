@@ -7,6 +7,7 @@ import helpers as hpl
 import tensorflow.contrib.slim as slim
 from tensorflow.python import debug as tf_debug
 from tensorflow.python.client import device_lib
+# import ijremote
 
 # things to check before running the script
 '''
@@ -21,10 +22,10 @@ class DatasetReader:
 
 
     def main(self, features_train, features_test):
-            self.batch_size = 32
-            self.total_iterations = 15000
+            self.batch_size = 64
+            self.total_iterations = 50000
             self.module = 'driving'
-            self.ckpt_number = 2207
+            self.ckpt_number = 6520
             self.train_start_iteration = self.ckpt_number + 1
             # 0 means only driving dataset.
             self.train_type = ['conv10/train','conv10/test']
@@ -47,13 +48,6 @@ class DatasetReader:
                                                     capacity=100,
                                                     num_threads=10,
                                                     min_after_dequeue=6)
-            # self.train_imageBatch, self.train_labelBatch = tf.train.batch(
-            #                                         [ features_train['input_n'], 
-            #                                         features_train['label_n']],
-            #                                         batch_size=self.batch_size,
-            #                                         capacity=100,
-            #                                         num_threads=10)
-
             self.test_imageBatch, self.test_labelBatch = tf.train.shuffle_batch(
                                                     [ features_test['input_n'], 
                                                     features_test['label_n']],
@@ -64,8 +58,10 @@ class DatasetReader:
 
             with tf.name_scope('create_graph'):
 
-                self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 6))
-                self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 2))
+                # self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 6))
+                # self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 2))
+                self.X = self.train_imageBatch
+                self.Y = self.train_labelBatch
                 tf.summary.histogram('X',self.X)
                 tf.summary.histogram('Y',self.Y)
 
@@ -77,35 +73,36 @@ class DatasetReader:
                 tf.summary.histogram('pflow',predict_flow2)
                 # self.mse = tf.reduce_mean(network.change_nans_to_zeros(tf.sqrt(tf.reduce_sum((predict_flow2-self.Y)**2)+1e-3)))
 
-                self.mse = tf.losses.mean_squared_error(self.Y,predict_flow2)
 
-            sess = tf.InteractiveSession()
-            self.saver = tf.train.Saver()
+                losses = hpl.loss(self.Y,predict_flow2)
 
-            tf.summary.scalar('MSE', self.mse)
+            # sess = tf.InteractiveSession()
+            # self.saver = tf.train.Saver()
 
-
-
-            # learning rate decay
-            decay_steps = self.total_iterations
-            start_learning_rate = 0.00006
-            end_learning_rate = 0.000001
-            power = 4
-
-            learning_rate = tf.train.polynomial_decay(start_learning_rate, tf.train.get_or_create_global_step(),
-                                                      decay_steps, end_learning_rate,
-                                                      power=power)
+            # tf.summary.scalar('MSE', self.mse)
 
 
-            tf.summary.scalar('learning_rate_decay', learning_rate)
-            self.optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.mse)
-            self.merged_summary_op = tf.summary.merge_all()
-            self.summary_writer_train = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[0]+'/',graph=tf.get_default_graph())
-            self.summary_writer_test = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[1]+'/',graph=tf.get_default_graph())
-            sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
-            # tf.train.latest_checkpoint('./ckpt/'+self.module+'/'+self.train_type+'/')
-            self.load_model_ckpt(sess,self.ckpt_number)
-            self.run_network(sess)
+
+            # # learning rate decay
+            # decay_steps = self.total_iterations
+            # start_learning_rate = 0.000009
+            # end_learning_rate = 0.000001
+            # power = 4
+
+            # learning_rate = tf.train.polynomial_decay(start_learning_rate, tf.train.get_or_create_global_step(),
+            #                                           decay_steps, end_learning_rate,
+            #                                           power=power)
+
+
+            # tf.summary.scalar('learning_rate_decay', learning_rate)
+            # self.optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.mse)
+            # self.merged_summary_op = tf.summary.merge_all()
+            # self.summary_writer_train = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[0]+'/',graph=tf.get_default_graph())
+            # self.summary_writer_test = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[1]+'/',graph=tf.get_default_graph())
+            # sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
+            # # tf.train.latest_checkpoint('./ckpt/'+self.module+'/'+self.train_type+'/')
+            # self.load_model_ckpt(sess,self.ckpt_number)
+            # self.run_network(sess)
 
     def start_coordinators(self,sess):
 
@@ -169,12 +166,16 @@ class DatasetReader:
         opt_u = np.squeeze(label_batch[:,:,:,0]) * input_size[0]
         opt_v = np.squeeze(label_batch[:,:,:,1]) * input_size[1]
 
+        # ijremote.setImage('InputU',opt_u)
+        # ijremote.setImage('InputV',opt_v)
+
         opt_u = Image.fromarray(opt_u)
         opt_v = Image.fromarray(opt_v)
 
-        opt_u.save('./img/flow_u_'+str(i)+'.tiff')
+        opt_u.save('./img/flow_u'+str(i)+'.tiff')
         opt_v.save('./img/flow_v'+str(i)+'.tiff')
-
+        opt_u.show()
+        opt_v.show()
 
     def train_model(self,sess):
         for i in range(self.train_start_iteration,self.total_iterations + self.train_start_iteration):
@@ -208,7 +209,7 @@ class DatasetReader:
                 self.perform_test_loss(sess,i)
                 print('wrote summary test '+str(i))
                 self.summary_writer_test.add_summary(summary, i)
-                self.save_model(sess,i)
+                # self.save_model(sess,i)
             if i%10==0:
                 print('wrote summary '+str(i))
                 self.summary_writer_train.add_summary(summary, i)

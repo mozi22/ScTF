@@ -48,3 +48,13 @@ def find_mean_difference(result1,result2):
 	answer = result2 - result1
 	return tf.reduce_mean(tf.sqrt(tf.square(answer)))
 
+
+
+def loss(label,prediction):
+  # Calculate the average cross entropy loss across the batch.
+  mse = tf.losses.mean_squared_error(label,prediction)
+  tf.add_to_collection('losses', mse)
+
+  print('rachacha')
+  print(tf.get_collection('losses'))
+  return tf.add_n(tf.get_collection('losses'), name='total_loss')

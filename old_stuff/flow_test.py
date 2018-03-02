@@ -4,7 +4,7 @@ from   PIL import Image
 import helpers as hpl
 import network
 import matplotlib.pyplot as plt
-
+import ijremote as ij
 
 class FlowPredictor:
 
@@ -66,7 +66,7 @@ class FlowPredictor:
 
 		self.sess = tf.InteractiveSession()
 		# # self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
-		self.load_model_ckpt(self.sess,'ckpt/driving/conv10/train/model_ckpt_2207.ckpt')
+		self.load_model_ckpt(self.sess,'ckpt/driving/conv10/train/model_ckpt_6500.ckpt')
 
 
 
@@ -124,7 +124,7 @@ class FlowPredictor:
 
 		opt_u = flow[:,:,0]
 		opt_v = flow[:,:,1]
-		spacing = np.linspace(0, 1, num=100)
+		# spacing = np.linspace(0, 1, num=100)
 
 		# plt.hist(opt_u.flatten(),bins=spacing)  # arguments are passed to np.histogram
 		# plt.hist(opt_v.flatten(),bins=spacing)  # arguments are passed to np.histogram
@@ -142,8 +142,13 @@ class FlowPredictor:
 		# 	self.show_image(u,'Flow_u')
 		# 	self.show_image(v,'Flow_v')
 			# self.show_image(w,'Flow_w')
+
+		Image.fromarray(u).save('predictflow_u.tiff')
+		Image.fromarray(v).save('predictflow_v.tiff')
 		
 		flow = np.stack((u,v),axis=2)
+		print('JAZZY MA')
+		print(flow.shape)
 		
 		# not being used currently.
 		# flow_with_depth = np.stack((u,v,w),axis=2)
@@ -156,12 +161,17 @@ class FlowPredictor:
 	def postprocess(self,flow,show_flow=True,gt=False):
 
 		if gt==True:
-			self.show_image(flow[:,:,0],'Flow_u')
+			print('working')
+			# self.show_image(flow[:,:,0],'Flow_u')
 			# self.show_image(flow[:,:,1],'Flow_v')
+			# Image.fromarray(flow[:,:,0]).save('originalflow_u.tiff')
+			# Image.fromarray(flow[:,:,1]).save('originalflow_v.tiff')
 			# self.show_image(flow[:,:,2],'Flow_w')
 		else:
 			flow = self.denormalize_flow(flow,show_flow)
 
+		ij.setImage('PredictedFlow_u',flow[:,:,0])
+		ij.setImage('PredictedFlow_v',flow[:,:,1])
 		self.img2_arr = np.pad(self.img2_arr,((4,4),(0,0),(0,0)),'constant')
 		flow = self.warp(self.img2_arr,flow)
 

@@ -150,7 +150,6 @@ def tf_record_input_pipeline(filenames,version='1'):
         # 'label': label_pair3
     }
 
-
 def tf_record_input_pipelinev2(filenames,version='1'):
 
     # Create a list of filenames and pass it to a queue
@@ -168,7 +167,7 @@ def tf_record_input_pipelinev2(filenames,version='1'):
         'height': tf.FixedLenFeature([], tf.int64),
         'depth1': tf.FixedLenFeature([], tf.string),
         'depth2': tf.FixedLenFeature([], tf.string),
-        'opt_flow': tf.FixedLenFeature([], tf.float32),
+        'opt_flow': tf.FixedLenFeature([], tf.string),
         'image1': tf.FixedLenFeature([], tf.string),
         'image2': tf.FixedLenFeature([], tf.string),
         'disp_chng': tf.FixedLenFeature([], tf.string),
@@ -196,15 +195,15 @@ def tf_record_input_pipelinev2(filenames,version='1'):
     disparity1 = tf.reshape(disparity1, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp1")
     disparity2 = tf.reshape(disparity2, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp2")
 
-    label_pair = tf.reshape(opt_flow, [input_pipeline_dimensions[0],input_pipeline_dimensions[1],2],name="reshape_img_pair")
+    label_pair = tf.reshape(opt_flow, [input_pipeline_dimensions[0],input_pipeline_dimensions[1],2],name="reshape_opt_flow")
     disparity_chng = tf.reshape(disparity_chng,[input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp_change")
 
     # depth1 = get_depth_from_disparity(disp1)
     # depth2 = get_depth_from_disparity(disp2)
     # depth_chng = get_depth_chng_from_disparity_chng(disp1,disp_chng)
 
-    mmm = warp(image1,label_pair,input_pipeline_dimensions)
-    tf.summary.image('warped',mmm)
+    # mmm = warp(image2,label_pair)
+    # tf.summary.image('warped',mmm)
 
     # # normalize image RGB values b/w 0 to 1
 
@@ -216,15 +215,19 @@ def tf_record_input_pipelinev2(filenames,version='1'):
     # depth1 = tf.divide(1,depth1)
     # depth2 = tf.divide(1,depth2)
 
-    image11 = tf.expand_dims(image1,0)
-    image22 = tf.expand_dims(image2,0)
+    # image11 = tf.expand_dims(image1,0)
+    # image22 = tf.expand_dims(image2,0)
     # disparity11 = tf.expand_dims(disparity1,0)
     # disparity22 = tf.expand_dims(disparity2,0)
+    # factor = 0.4
+    # input_size = int(960 * factor), int(540 * factor)
+    # u = tf.multiply(label_pair[:,:,0],input_size[0])
+    # v = tf.multiply(label_pair[:,:,1],input_size[1])
 
-    # tf.summary.image('opt_flow_u',tf.expand_dims(tf.expand_dims(label_pair[:,:,0],2),0))
-    # tf.summary.image('opt_flow_v',tf.expand_dims(tf.expand_dims(label_pair[:,:,1],2),0))
-    tf.summary.image('image1',image11)
-    tf.summary.image('image2',image22)
+    # tf.summary.image('opt_flow_u',tf.expand_dims(tf.expand_dims(u,2),0))
+    # tf.summary.image('opt_flow_v',tf.expand_dims(tf.expand_dims(v,2),0))
+    # tf.summary.image('image1',image11)
+    # tf.summary.image('image2',image22)
     # tf.summary.image('disparity1',disparity11)
     # tf.summary.image('disparity2',disparity22)
 
@@ -245,8 +248,8 @@ def tf_record_input_pipelinev2(filenames,version='1'):
     # flying_disp_max = 136.686
 
 
-    # image1 = tf.divide(image1,[255])
-    # image2 = tf.divide(image2,[255])
+    image1 = tf.divide(image1,[255])
+    image2 = tf.divide(image2,[255])
 
     # disparity1 = tf.divide(disparity1,[driving_disp_max])
     # disparity2 = tf.divide(disparity2,[driving_disp_max])

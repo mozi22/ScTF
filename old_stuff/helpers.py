@@ -108,3 +108,5 @@ def warp(self,img,flow):
 
 def nan_to_zero(val):
     return tf.where(tf.is_nan(val), tf.zeros_like(val), val)
+
+
