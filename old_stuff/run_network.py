@@ -4,9 +4,12 @@ import numpy as np
 from   PIL import Image
 import tensorflow as tf
 import helpers as hpl
+import losses_helper
 import tensorflow.contrib.slim as slim
 from tensorflow.python import debug as tf_debug
 from tensorflow.python.client import device_lib
+import time
+from datetime import datetime
 # import ijremote
 
 # things to check before running the script
@@ -22,8 +25,9 @@ class DatasetReader:
 
 
     def main(self, features_train, features_test):
-            self.batch_size = 64
-            self.total_iterations = 50000
+            self.global_step = tf.train.get_or_create_global_step()
+            self.batch_size = 16
+            self.total_iterations = 100000
             self.module = 'driving'
             self.ckpt_number = 6520
             self.train_start_iteration = self.ckpt_number + 1
@@ -74,35 +78,97 @@ class DatasetReader:
                 # self.mse = tf.reduce_mean(network.change_nans_to_zeros(tf.sqrt(tf.reduce_sum((predict_flow2-self.Y)**2)+1e-3)))
 
 
-                losses = hpl.loss(self.Y,predict_flow2)
+                self.mse = losses_helper.mse_loss(self.Y,predict_flow2)
+                
+                MOVING_AVERAGE_DECAY = 0.9999
+                variable_averages = tf.train.ExponentialMovingAverage(MOVING_AVERAGE_DECAY, self.global_step)
+                variables_averages_op = variable_averages.apply(tf.trainable_variables())
 
-            # sess = tf.InteractiveSession()
-            # self.saver = tf.train.Saver()
+            sess = tf.InteractiveSession()
+            self.saver = tf.train.Saver()
 
-            # tf.summary.scalar('MSE', self.mse)
-
-
-
-            # # learning rate decay
-            # decay_steps = self.total_iterations
-            # start_learning_rate = 0.000009
-            # end_learning_rate = 0.000001
-            # power = 4
-
-            # learning_rate = tf.train.polynomial_decay(start_learning_rate, tf.train.get_or_create_global_step(),
-            #                                           decay_steps, end_learning_rate,
-            #                                           power=power)
+            tf.summary.scalar('MSE', self.mse)
 
 
-            # tf.summary.scalar('learning_rate_decay', learning_rate)
-            # self.optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.mse)
-            # self.merged_summary_op = tf.summary.merge_all()
-            # self.summary_writer_train = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[0]+'/',graph=tf.get_default_graph())
-            # self.summary_writer_test = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[1]+'/',graph=tf.get_default_graph())
-            # sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
-            # # tf.train.latest_checkpoint('./ckpt/'+self.module+'/'+self.train_type+'/')
+
+            # learning rate decay
+            decay_steps = self.total_iterations
+            start_learning_rate = 0.0001
+            end_learning_rate = 0.000001
+            power = 6
+
+            learning_rate = tf.train.polynomial_decay(start_learning_rate, self.global_step,
+                                                      decay_steps, end_learning_rate,
+                                                      power=power)
+
+
+            tf.summary.scalar('learning_rate_decay', learning_rate)
+            self.optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.mse)
+
+
+            self.merged_summary_op = tf.summary.merge_all()
+            self.summary_writer_train = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[0]+'/',graph=tf.get_default_graph())
+            self.summary_writer_test = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[1]+'/',graph=tf.get_default_graph())
+            sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
+            # tf.train.latest_checkpoint('./ckpt/'+self.module+'/'+self.train_type+'/')
             # self.load_model_ckpt(sess,self.ckpt_number)
+
+
+            with tf.control_dependencies([self.optimizer, variables_averages_op]):
+                train_op = tf.no_op(name='train')
+
+
+            self.perform_learning(train_op)
+
+
+
             # self.run_network(sess)
+
+
+    def perform_learning(self,train_op):
+        class _LoggerHook(tf.train.SessionRunHook):
+          """Logs loss and runtime."""
+
+          def __init__(self,mse,batch_size):
+            self.mse = mse
+            self.batch_size = batch_size
+
+          def begin(self):
+            self._step = -11
+            self._start_time = time.time()
+
+          def before_run(self, run_context):
+            self._step += 1
+            return tf.train.SessionRunArgs(self.mse)  # Asks for loss value.
+
+          def after_run(self, run_context, run_values):
+            if self._step % 10 == 0:
+              current_time = time.time()
+              duration = current_time - self._start_time
+              self._start_time = current_time
+
+              loss_value = run_values.results
+              examples_per_sec = 10 * self.batch_size / duration
+              sec_per_batch = float(duration / 10)
+
+              format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
+                            'sec/batch)')
+              print (format_str % (datetime.now(), self._step, np.log10(loss_value),
+                                   examples_per_sec, sec_per_batch))
+
+
+
+        ckpt_directory = './ckpt/'+self.module+'/'+self.train_type[0]+'/'
+        with tf.train.MonitoredTrainingSession(
+            checkpoint_dir='./ckpt/driving/conv10_cont/train/',
+            hooks=[tf.train.StopAtStepHook(last_step=self.total_iterations),
+                   tf.train.NanTensorHook(self.mse),
+                   _LoggerHook(self.mse,self.batch_size)],
+            config=tf.ConfigProto(
+                log_device_placement=False)) as mon_sess:
+          while not mon_sess.should_stop():
+            mon_sess.run(train_op)
+
 
     def start_coordinators(self,sess):
 
