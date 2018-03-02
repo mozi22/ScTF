@@ -52,13 +52,13 @@ class DatasetReader:
                                                     capacity=100,
                                                     num_threads=10,
                                                     min_after_dequeue=6)
-            self.test_imageBatch, self.test_labelBatch = tf.train.shuffle_batch(
-                                                    [ features_test['input_n'], 
-                                                    features_test['label_n']],
-                                                    batch_size=self.batch_size,
-                                                    capacity=100,
-                                                    num_threads=10,
-                                                    min_after_dequeue=6)
+            # self.test_imageBatch, self.test_labelBatch = tf.train.shuffle_batch(
+            #                                         [ features_test['input_n'], 
+            #                                         features_test['label_n']],
+            #                                         batch_size=self.batch_size,
+            #                                         capacity=100,
+            #                                         num_threads=10,
+            #                                         min_after_dequeue=6)
 
             with tf.name_scope('create_graph'):
 
@@ -84,10 +84,10 @@ class DatasetReader:
                 variable_averages = tf.train.ExponentialMovingAverage(MOVING_AVERAGE_DECAY, self.global_step)
                 variables_averages_op = variable_averages.apply(tf.trainable_variables())
 
-            sess = tf.InteractiveSession()
-            self.saver = tf.train.Saver()
+            # sess = tf.InteractiveSession()
 
             tf.summary.scalar('MSE', self.mse)
+            tf.summary.scalar('global_step', self.global_step)
 
 
 
@@ -103,13 +103,13 @@ class DatasetReader:
 
 
             tf.summary.scalar('learning_rate_decay', learning_rate)
-            self.optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.mse)
+            self.optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.mse,global_step=self.global_step)
 
 
             self.merged_summary_op = tf.summary.merge_all()
-            self.summary_writer_train = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[0]+'/',graph=tf.get_default_graph())
-            self.summary_writer_test = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[1]+'/',graph=tf.get_default_graph())
-            sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
+            # self.summary_writer_train = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[0]+'/',graph=tf.get_default_graph())
+            # self.summary_writer_test = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[1]+'/',graph=tf.get_default_graph())
+            # sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             # tf.train.latest_checkpoint('./ckpt/'+self.module+'/'+self.train_type+'/')
             # self.load_model_ckpt(sess,self.ckpt_number)
 
@@ -134,7 +134,7 @@ class DatasetReader:
             self.batch_size = batch_size
 
           def begin(self):
-            self._step = -11
+            self._step = -1
             self._start_time = time.time()
 
           def before_run(self, run_context):
@@ -153,19 +153,21 @@ class DatasetReader:
 
               format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
                             'sec/batch)')
-              print (format_str % (datetime.now(), self._step, np.log10(loss_value),
+              print (format_str % (datetime.now(), self._step, loss_value,
                                    examples_per_sec, sec_per_batch))
 
 
-
+    
         ckpt_directory = './ckpt/'+self.module+'/'+self.train_type[0]+'/'
         with tf.train.MonitoredTrainingSession(
             checkpoint_dir='./ckpt/driving/conv10_cont/train/',
             hooks=[tf.train.StopAtStepHook(last_step=self.total_iterations),
                    tf.train.NanTensorHook(self.mse),
-                   _LoggerHook(self.mse,self.batch_size)],
+                   _LoggerHook(self.mse,self.batch_size)
+                   ],
             config=tf.ConfigProto(
-                log_device_placement=False)) as mon_sess:
+                log_device_placement=False),
+            save_checkpoint_secs=60) as mon_sess:
           while not mon_sess.should_stop():
             mon_sess.run(train_op)
 

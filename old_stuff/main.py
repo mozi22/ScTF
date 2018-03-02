@@ -21,18 +21,18 @@ train_filenames = [
 				# prefix+'monkaa_TRAIN.tfrecords'
 			]
 
-test_filenames = [
-				prefix+'driving_TEST.tfrecords'
-				# prefix+'flyingthings3d_TEST.tfrecords',
-				# prefix+'monkaa_TEST.tfrecords'
-]
+# test_filenames = [
+# 				prefix+'driving_TEST.tfrecords'
+# 				# prefix+'flyingthings3d_TEST.tfrecords',
+# 				# prefix+'monkaa_TEST.tfrecords'
+# ]
 
 train_features = data_reader.tf_record_input_pipeline(train_filenames,version='1')
-test_features = data_reader.tf_record_input_pipeline(test_filenames,version='2')
+# test_features = data_reader.tf_record_input_pipeline(test_filenames,version='2')
 
 
 
 
 reader = run_network.DatasetReader()
-reader.main(train_features,test_features)
+reader.main(train_features,'test_features')
 # print(helpers.readPFM('0006.pfm'))
