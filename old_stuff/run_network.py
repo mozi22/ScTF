@@ -47,12 +47,6 @@ class DatasetReader:
                                                     capacity=100,
                                                     num_threads=10,
                                                     min_after_dequeue=6)
-            # self.train_imageBatch, self.train_labelBatch = tf.train.batch(
-            #                                         [ features_train['input_n'], 
-            #                                         features_train['label_n']],
-            #                                         batch_size=self.batch_size,
-            #                                         capacity=100,
-            #                                         num_threads=10)
 
             self.test_imageBatch, self.test_labelBatch = tf.train.shuffle_batch(
                                                     [ features_test['input_n'], 
