@@ -12,27 +12,28 @@ import data_reader
 # input_data = prepare_input_data(img1,img2,data_format)
 
 # print(get_available_gpus())
-prefix = '../../dataset_synthetic/'
+# prefix = '../../dataset_synthetic/'
 
-# with tf.name_scope("datareader"):
-train_filenames = [
-				prefix+'driving_TRAIN.tfrecords'
-				# prefix+'flyingthings3d_TRAIN.tfrecords',
-				# prefix+'monkaa_TRAIN.tfrecords'
-			]
+# # with tf.name_scope("datareader"):
+# train_filenames = [
+# 				prefix+'driving_TRAIN.tfrecords'
+# 				# prefix+'flyingthings3d_TRAIN.tfrecords',
+# 				# prefix+'monkaa_TRAIN.tfrecords'
+# 			]
 
-test_filenames = [
-				prefix+'driving_TEST.tfrecords'
-				# prefix+'flyingthings3d_TEST.tfrecords',
-				# prefix+'monkaa_TEST.tfrecords'
-]
+# test_filenames = [
+# 				prefix+'driving_TEST.tfrecords'
+# 				# prefix+'flyingthings3d_TEST.tfrecords',
+# 				# prefix+'monkaa_TEST.tfrecords'
+# ]
 
-train_features = data_reader.tf_record_input_pipeline(train_filenames,version='1')
-test_features = data_reader.tf_record_input_pipeline(test_filenames,version='2')
+# train_features = data_reader.tf_record_input_pipeline(train_filenames,version='1')
+# test_features = data_reader.tf_record_input_pipeline(test_filenames,version='2')
 
 
 
 
 reader = run_network.DatasetReader()
-reader.main(train_features,test_features)
+reader.testing_flat()
+# reader.main(train_features,test_features)
 # print(helpers.readPFM('0006.pfm'))
