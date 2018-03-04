@@ -173,22 +173,21 @@ class DatasetReader:
                 log_device_placement=False),
             save_checkpoint_secs=60) as mon_sess:
     
-            i = 0
-            threads = self.start_coordinators(mon_sess)
-            # while not mon_sess.should_stop():
-            for i in range(self.train_start_iteration,self.total_iterations + self.train_start_iteration):
-
-
-                if i%200 == 0:
-                    print('performing test')
-                    print('')
-                    self.perform_test_loss(mon_sess,i)
-                    continue
-
+            # i = 0
+            # threads = self.start_coordinators(mon_sess)
+            while not mon_sess.should_stop():
                 mon_sess.run(train_op)
-                i = i + 1
+            # for i in range(self.train_start_iteration,self.total_iterations + self.train_start_iteration):
 
-            self.stop_coordinators(threads)
+            #     if i%200 == 0:
+            #         print('performing test')
+            #         print('')
+            #         self.perform_test_loss(mon_sess,i)
+            #         continue
+
+            #     i = i + 1
+
+            # self.stop_coordinators(threads)
 
     def start_coordinators(self,sess):
 
