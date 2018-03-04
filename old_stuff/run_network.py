@@ -32,7 +32,7 @@ tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/multi_gpu/',
 tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_integer('MAX_STEPS', 10000,
+tf.app.flags.DEFINE_integer('MAX_STEPS', 3000,
                             """Number of batches to run.""")
 
 
@@ -71,11 +71,11 @@ tf.app.flags.DEFINE_float('MOVING_AVERAGE_DECAY', 0.9999,
 
 # Polynomial Learning Rate
 
-tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.001,
+tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.00001,
                             """Where to start the learning.""")
-tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.000001,
+tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.0000005,
                             """Where to end the learning.""")
-tf.app.flags.DEFINE_float('POWER', 4,
+tf.app.flags.DEFINE_float('POWER', 6,
                             """How fast the learning rate should go down.""")
 
 
@@ -83,14 +83,14 @@ tf.app.flags.DEFINE_float('POWER', 4,
 
 class DatasetReader:
 
-    def train(self,features_train):
+    def train(self,features_train,load_from_ckpt=False,ckpt_folder=None):
         global_step = tf.get_variable(
             'global_step', [],
             initializer=tf.constant_initializer(0), trainable=False)
 
-        num_batches_per_epoch = (FLAGS.EXAMPLES_PER_EPOCH_TRAIN / FLAGS.BATCH_SIZE)
-        decay_steps = int(num_batches_per_epoch * FLAGS.NUM_EPOCHS_PER_DECAY)
-
+        # num_batches_per_epoch = (FLAGS.EXAMPLES_PER_EPOCH_TRAIN / FLAGS.BATCH_SIZE)
+        # decay_steps = int(num_batches_per_epoch * FLAGS.NUM_EPOCHS_PER_DECAY)
+        decay_steps = FLAGS.MAX_STEPS
         start_learning_rate = FLAGS.START_LEARNING_RATE
         end_learning_rate = FLAGS.END_LEARNING_RATE
         power = FLAGS.POWER
@@ -188,6 +188,10 @@ class DatasetReader:
             log_device_placement=FLAGS.LOG_DEVICE_PLACEMENT))
         sess.run(init)
 
+        if load_from_ckpt == True:
+            saver = tf.train.Saver()
+            saver.restore(sess,tf.train.latest_checkpoint('./ckpt/driving/'+ckpt_folder+'/'))
+
 
         # Start the queue runners.
         tf.train.start_queue_runners(sess=sess)
@@ -237,6 +241,7 @@ class DatasetReader:
 
         # Build inference Graph.
         predict_flow5, predict_flow2 = network.train_network(images)
+
 
         # Build the portion of the Graph calculating the losses. Note that we will
         # assemble the total_loss using a custom function below.
