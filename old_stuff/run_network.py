@@ -9,6 +9,7 @@ import tensorflow.contrib.slim as slim
 from tensorflow.python import debug as tf_debug
 from tensorflow.python.client import device_lib
 import time
+import math
 from datetime import datetime
 # import ijremote
 
@@ -25,18 +26,21 @@ class DatasetReader:
 
 
     def main(self, features_train, features_test):
+            # self.sess = tf.InteractiveSession()
             self.global_step = tf.train.get_or_create_global_step()
             self.batch_size = 16
-            self.total_iterations = 100000
+            self.total_iterations = 200000
             self.module = 'driving'
-            self.ckpt_number = 6520
+            self.ckpt_number = 0
             self.train_start_iteration = self.ckpt_number + 1
             # 0 means only driving dataset.
-            self.train_type = ['conv10/train','conv10/test']
-            self.ckpt_load_path = 'conv10/train'
+            self.train_type = ['conv10_cont/train','conv10_cont/test']
+            self.ckpt_load_path = 'conv10_cont/train'
+
+            self.train_location = './ckpt/driving/cifar_wid_test/train/'
 
             # 50 iterations = 1 epoch ( i.e total_items=3136/batch_size=64 )
-            self.test_iterations = 2
+            self.test_iterations = math.ceil(100 / 16)
             # self.batch_size = 1
             # self.iterations = 1
             # self.module = 'driving'
@@ -52,13 +56,13 @@ class DatasetReader:
                                                     capacity=100,
                                                     num_threads=10,
                                                     min_after_dequeue=6)
-            # self.test_imageBatch, self.test_labelBatch = tf.train.shuffle_batch(
-            #                                         [ features_test['input_n'], 
-            #                                         features_test['label_n']],
-            #                                         batch_size=self.batch_size,
-            #                                         capacity=100,
-            #                                         num_threads=10,
-            #                                         min_after_dequeue=6)
+            self.test_imageBatch, self.test_labelBatch = tf.train.shuffle_batch(
+                                                    [ features_test['input_n'], 
+                                                    features_test['label_n']],
+                                                    batch_size=self.batch_size,
+                                                    capacity=100,
+                                                    num_threads=10,
+                                                    min_after_dequeue=6)
 
             with tf.name_scope('create_graph'):
 
@@ -80,11 +84,11 @@ class DatasetReader:
 
                 self.mse = losses_helper.mse_loss(self.Y,predict_flow2)
                 
+                # calculate the moving average of trainable variables in the network.
                 MOVING_AVERAGE_DECAY = 0.9999
                 variable_averages = tf.train.ExponentialMovingAverage(MOVING_AVERAGE_DECAY, self.global_step)
                 variables_averages_op = variable_averages.apply(tf.trainable_variables())
 
-            # sess = tf.InteractiveSession()
 
             tf.summary.scalar('MSE', self.mse)
             tf.summary.scalar('global_step', self.global_step)
@@ -93,9 +97,9 @@ class DatasetReader:
 
             # learning rate decay
             decay_steps = self.total_iterations
-            start_learning_rate = 0.0001
+            start_learning_rate = 0.0005
             end_learning_rate = 0.000001
-            power = 6
+            power = 4
 
             learning_rate = tf.train.polynomial_decay(start_learning_rate, self.global_step,
                                                       decay_steps, end_learning_rate,
@@ -106,9 +110,9 @@ class DatasetReader:
             self.optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.mse,global_step=self.global_step)
 
 
-            self.merged_summary_op = tf.summary.merge_all()
+            # self.merged_summary_op = tf.summary.merge_all()
             # self.summary_writer_train = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[0]+'/',graph=tf.get_default_graph())
-            # self.summary_writer_test = tf.summary.FileWriter('./tb/'+self.module+'/'+self.train_type[1]+'/',graph=tf.get_default_graph())
+            # self.summary_writer_test = tf.summary.FileWriter(self.train_location,graph=tf.get_default_graph())
             # sess.run([tf.global_variables_initializer(),tf.local_variables_initializer()])
             # tf.train.latest_checkpoint('./ckpt/'+self.module+'/'+self.train_type+'/')
             # self.load_model_ckpt(sess,self.ckpt_number)
@@ -158,19 +162,33 @@ class DatasetReader:
 
 
     
-        ckpt_directory = './ckpt/'+self.module+'/'+self.train_type[0]+'/'
         with tf.train.MonitoredTrainingSession(
-            checkpoint_dir='./ckpt/driving/conv10_cont/train/',
-            hooks=[tf.train.StopAtStepHook(last_step=self.total_iterations),
-                   tf.train.NanTensorHook(self.mse),
+            checkpoint_dir=self.train_location,
+            hooks=[
+                    #tf.train.StopAtStepHook(last_step=self.total_iterations),
+                    tf.train.NanTensorHook(self.mse),
                    _LoggerHook(self.mse,self.batch_size)
                    ],
             config=tf.ConfigProto(
                 log_device_placement=False),
             save_checkpoint_secs=60) as mon_sess:
-          while not mon_sess.should_stop():
-            mon_sess.run(train_op)
+    
+            i = 0
+            threads = self.start_coordinators(mon_sess)
+            # while not mon_sess.should_stop():
+            for i in range(self.train_start_iteration,self.total_iterations + self.train_start_iteration):
 
+
+                if i%200 == 0:
+                    print('performing test')
+                    print('')
+                    self.perform_test_loss(mon_sess,i)
+                    continue
+
+                mon_sess.run(train_op)
+                i = i + 1
+
+            self.stop_coordinators(threads)
 
     def start_coordinators(self,sess):
 
@@ -187,6 +205,7 @@ class DatasetReader:
         return threads
 
     def stop_coordinators(self,threads):
+        print('stop krdia')
         self.summary_writer_train.close()
         self.summary_writer_test.close()
 

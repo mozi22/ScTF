@@ -66,8 +66,8 @@ class FlowPredictor:
 
 		self.sess = tf.InteractiveSession()
 		# # self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
-		self.load_model_ckpt(self.sess,'ckpt/driving/conv10/train/model_ckpt_24300.ckpt')
-
+		# self.load_model_ckpt(self.sess,'ckpt/driving/conv10/train/model_ckpt_24300.ckpt')
+		self.load_model_ckpt(self.sess,'ckpt/driving/conv10_cont/train/')
 
 
 	def read_gt(self,opt_flow,disp_chng):
@@ -170,8 +170,8 @@ class FlowPredictor:
 		else:
 			flow = self.denormalize_flow(flow,show_flow)
 
-		ij.setImage('PredictedFlow_u',flow[:,:,0])
-		ij.setImage('PredictedFlow_v',flow[:,:,1])
+		# ij.setImage('PredictedFlow_u',flow[:,:,0])
+		# ij.setImage('PredictedFlow_v',flow[:,:,1])
 		self.img2_arr = np.pad(self.img2_arr,((4,4),(0,0),(0,0)),'constant')
 		flow = self.warp(self.img2_arr,flow)
 
@@ -241,5 +241,5 @@ class FlowPredictor:
 
 	def load_model_ckpt(self,sess,filename):
 		saver = tf.train.Saver()
-		saver.restore(sess, filename)
+		saver.restore(sess, tf.train.latest_checkpoint(filename))
 
