@@ -71,6 +71,7 @@ class FlowPredictor:
 
 
 	def read_gt(self,opt_flow,disp_chng):
+		opt_flow = hpl.readPFM(opt_flow)[0]
 		disp_chng = hpl.readPFM(disp_chng)[0]
 
 		disp_chng = Image.fromarray(disp_chng)
