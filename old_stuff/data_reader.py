@@ -143,6 +143,8 @@ def tf_record_input_pipeline(filenames,version='1'):
     img_pair_n = tf.pad(img_pair,padding_lbl,'CONSTANT')
     label_pair_n = tf.pad(label_pair,padding_lbl,'CONSTANT')
 
+
+
     return {
         'input_n': img_pair_n,
         'label_n': label_pair_n
