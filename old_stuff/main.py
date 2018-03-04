@@ -30,6 +30,6 @@ train_features = data_reader.tf_record_input_pipeline(train_filenames,version='1
 
 
 reader = run_network.DatasetReader()
-reader.train(train_features)
+reader.train(train_features,load_from_ckpt=True,ckpt_folder='multi_gpu')
 # # reader.main(train_features,test_features)
 # # print(helpers.readPFM('0006.pfm'))

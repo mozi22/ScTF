@@ -75,7 +75,7 @@ tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.00001,
                             """Where to start the learning.""")
 tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.0000005,
                             """Where to end the learning.""")
-tf.app.flags.DEFINE_float('POWER', 6,
+tf.app.flags.DEFINE_float('POWER', 3,
                             """How fast the learning rate should go down.""")
 
 
@@ -189,7 +189,6 @@ class DatasetReader:
         sess.run(init)
 
         if load_from_ckpt == True:
-            saver = tf.train.Saver()
             saver.restore(sess,tf.train.latest_checkpoint('./ckpt/driving/'+ckpt_folder+'/'))
 
 
@@ -200,9 +199,15 @@ class DatasetReader:
         summary_writer = tf.summary.FileWriter(FLAGS.TRAIN_DIR, sess.graph)
 
 
+        # just to make sure we start from where we left, if load_from_ckpt = True
+        loop_start = tf.train.global_step(sess, global_step)
+        loop_stop = loop_start + FLAGS.MAX_STEPS
 
-        # main loop
-        for step in xrange(FLAGS.MAX_STEPS):
+
+        first_iteration = True
+
+        # # main loop
+        for step in range(loop_start,loop_stop):
             start_time = time.time()
             _, loss_value = sess.run([train_op, loss])
             duration = time.time() - start_time
@@ -210,10 +215,12 @@ class DatasetReader:
 
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
-            if step % 10 == 0:
+            if step % 10 == 0 or first_iteration==True:
                 num_examples_per_step = FLAGS.BATCH_SIZE * FLAGS.NUM_GPUS
                 examples_per_sec = num_examples_per_step / duration
                 sec_per_batch = duration / FLAGS.NUM_GPUS
+                first_iteration = False
+
 
             format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
                           'sec/batch)')

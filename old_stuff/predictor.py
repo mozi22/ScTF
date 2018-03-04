@@ -182,10 +182,9 @@ def show_optical_flow(label_batch):
 # Image.fromarray(opt_flow2[:,:,0]).show()
 # Image.fromarray(opt_flow2[:,:,1]).show()
 
-predictor = ft.FlowPredictor()
-predictor.preprocess(img1,img2,disparity1,disparity2)
-predictor.predict()
-
+# predictor = ft.FlowPredictor()
+# predictor.preprocess(img1,img2,disparity1,disparity2)
+# predictor.predict()
 
 
 # for testing with ground truth
