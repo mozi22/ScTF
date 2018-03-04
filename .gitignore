@@ -14,3 +14,4 @@
 /old_stuff/*.tiff
 /old_stuff/*.tfrecords
 /old_stuff/*.flo
+/old_stuff/__pycache__/
