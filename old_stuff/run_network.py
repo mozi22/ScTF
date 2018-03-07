@@ -29,10 +29,13 @@ tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/multi_gpu/',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 
+tf.app.flags.DEFINE_boolean('LOAD_FROM_CKPT', True,
+                            """Whether to log device placement.""")
+
 tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_integer('MAX_STEPS', 3000,
+tf.app.flags.DEFINE_integer('MAX_STEPS', 5000,
                             """Number of batches to run.""")
 
 
@@ -71,11 +74,11 @@ tf.app.flags.DEFINE_float('MOVING_AVERAGE_DECAY', 0.9999,
 
 # Polynomial Learning Rate
 
-tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.00001,
+tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.0005,
                             """Where to start the learning.""")
-tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.0000005,
+tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.000001,
                             """Where to end the learning.""")
-tf.app.flags.DEFINE_float('POWER', 3,
+tf.app.flags.DEFINE_float('POWER', 4,
                             """How fast the learning rate should go down.""")
 
 
@@ -83,7 +86,7 @@ tf.app.flags.DEFINE_float('POWER', 3,
 
 class DatasetReader:
 
-    def train(self,features_train,load_from_ckpt=False,ckpt_folder=None):
+    def train(self,features_train):
         global_step = tf.get_variable(
             'global_step', [],
             initializer=tf.constant_initializer(0), trainable=False)
@@ -122,6 +125,7 @@ class DatasetReader:
           for i in xrange(FLAGS.NUM_GPUS):
             with tf.device('/gpu:%d' % i):
               with tf.name_scope('%s_%d' % ('tower', i)) as scope:
+
                 # Dequeues one batch for the GPU
                 image_batch, label_batch = batch_queue.dequeue()
                 # Calculate the loss for one tower of the CIFAR model. This function
@@ -188,8 +192,8 @@ class DatasetReader:
             log_device_placement=FLAGS.LOG_DEVICE_PLACEMENT))
         sess.run(init)
 
-        if load_from_ckpt == True:
-            saver.restore(sess,tf.train.latest_checkpoint('./ckpt/driving/'+ckpt_folder+'/'))
+        if FLAGS.LOAD_FROM_CKPT == True:
+            saver.restore(sess,tf.train.latest_checkpoint(FLAGS.TRAIN_DIR))
 
 
         # Start the queue runners.
@@ -205,11 +209,15 @@ class DatasetReader:
 
 
         first_iteration = True
-
-        # # main loop
+        # # # main loop
         for step in range(loop_start,loop_stop):
             start_time = time.time()
+
+
+
             _, loss_value = sess.run([train_op, loss])
+
+
             duration = time.time() - start_time
 
 
