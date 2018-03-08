@@ -2,15 +2,8 @@
 import tensorflow as tf
 import numpy as np
 
-# # gt = ground truth flow matrix
-# # flow = predicted flow matrix
-
-# # apply forward flow and than backward flow. The pixel should end up at the same place
-# # need to train the data in both direction for this to work
 
 
-# # def forward_backward_loss(gt,flow)
-# 	# function definiton
 # warp the flow values to the image.
 def flow_warp(img,flow):
 
@@ -82,13 +75,3 @@ def endpoint_loss(gt_flow,predicted_flow,weight=0.8):
   tf.losses.compute_weighted_loss(epe_loss,weights=weight)
   
   return epe_loss
-
-
-def mse_loss(label,prediction):
-  # Calculate the average cross entropy loss across the batch.
-  mse = tf.losses.mean_squared_error(label,prediction)
-  return mse
-
-
-def nan_to_zero(val):
-  return tf.where(tf.is_nan(val), tf.add(tf.zeros_like(val),0.000003), val)
