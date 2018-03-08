@@ -67,7 +67,7 @@ class FlowPredictor:
 		self.sess = tf.InteractiveSession()
 		# # self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
 		# self.load_model_ckpt(self.sess,'ckpt/driving/conv10/train/model_ckpt_24300.ckpt')
-		self.load_model_ckpt(self.sess,'ckpt/driving/conv10_cont/train/')
+		self.load_model_ckpt(self.sess,'ckpt/driving/multi_gpu_epe_loss/')
 
 
 	def read_gt(self,opt_flow,disp_chng):

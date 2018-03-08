@@ -13,11 +13,11 @@ import ijremote as ij
 folder = '/home/muazzam/mywork/python/thesis/server/dataset_synthetic/driving/'
 # folder = '/misc/lmbraid19/muazzama/dataset_synthetic/driving/'
 
-img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0101.webp'
-img2 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0102.webp'
+img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0001.webp'
+img2 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0002.webp'
 disparity1 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0102.pfm'
 disparity2 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0103.pfm'
-opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0101_L.pfm'
+opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0001_L.pfm'
 disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0102.pfm'
 
 ''' ********************************************* this is the reading part ********************************************* '''
@@ -184,19 +184,25 @@ def show_optical_flow(label_batch):
 
 predictor = ft.FlowPredictor()
 predictor.preprocess(img1,img2,disparity1,disparity2)
-predictor.predict()
+# predictor.predict()
 
 
 # for testing with ground truth
 
+opt = hpl.readPFM(opt_flow)[0]
+lbl = predictor.read_gt(opt_flow,disp_change)
+opt_flow = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
+predictor.postprocess(flow=opt_flow,show_flow=True,gt=True)
 
 
 
 
-# opt = hpl.readPFM(opt_flow)[0]
-# lbl = predictor.read_gt(opt_flow,disp_change)
-# opt_flow = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
-# predictor.postprocess(flow=opt_flow,show_flow=True,gt=True)
+
+
+
+
+
+
 
 # for testing
 

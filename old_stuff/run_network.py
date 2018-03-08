@@ -25,17 +25,17 @@ def get_available_gpus():
 # these variables can be tuned to help training
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/multi_gpu/',
+tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/multi_gpu_epe_loss/',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 
-tf.app.flags.DEFINE_boolean('LOAD_FROM_CKPT', True,
+tf.app.flags.DEFINE_boolean('LOAD_FROM_CKPT', False,
                             """Whether to log device placement.""")
 
 tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_integer('MAX_STEPS', 5000,
+tf.app.flags.DEFINE_integer('MAX_STEPS', 100000,
                             """Number of batches to run.""")
 
 
@@ -74,11 +74,11 @@ tf.app.flags.DEFINE_float('MOVING_AVERAGE_DECAY', 0.9999,
 
 # Polynomial Learning Rate
 
-tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.0005,
+tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.001,
                             """Where to start the learning.""")
 tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.000001,
                             """Where to end the learning.""")
-tf.app.flags.DEFINE_float('POWER', 4,
+tf.app.flags.DEFINE_float('POWER', 3,
                             """How fast the learning rate should go down.""")
 
 
@@ -220,7 +220,6 @@ class DatasetReader:
 
             duration = time.time() - start_time
 
-
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
             if step % 10 == 0 or first_iteration==True:
@@ -232,7 +231,7 @@ class DatasetReader:
 
             format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
                           'sec/batch)')
-            print (format_str % (datetime.now(), step, loss_value,
+            print (format_str % (datetime.now(), step, np.log10(loss_value),
                                  examples_per_sec, sec_per_batch))
 
             if step % 100 == 0:
@@ -260,7 +259,9 @@ class DatasetReader:
 
         # Build the portion of the Graph calculating the losses. Note that we will
         # assemble the total_loss using a custom function below.
-        _ = losses_helper.mse_loss(labels,predict_flow2)
+        # _ = losses_helper.mse_loss(labels,predict_flow2)
+        _ = losses_helper.endpoint_loss(labels,predict_flow2)
+        # _ = losses_helper.photoconsistency_loss(labels,predict_flow2)
 
         # Assemble all of the losses for the current tower only.
         losses = tf.get_collection('losses', scope)
