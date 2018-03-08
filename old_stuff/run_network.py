@@ -261,7 +261,7 @@ class DatasetReader:
         # assemble the total_loss using a custom function below.
         # _ = losses_helper.mse_loss(labels,predict_flow2)
         _ = losses_helper.endpoint_loss(labels,predict_flow2)
-        # _ = losses_helper.photoconsistency_loss(labels,predict_flow2)
+        _ = losses_helper.photoconsistency_loss(images,labels,predict_flow2)
 
         # Assemble all of the losses for the current tower only.
         losses = tf.get_collection('losses', scope)
