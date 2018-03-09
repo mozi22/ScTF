@@ -67,7 +67,7 @@ class FlowPredictor:
 		self.sess = tf.InteractiveSession()
 		# # self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
 		# self.load_model_ckpt(self.sess,'ckpt/driving/conv10/train/model_ckpt_24300.ckpt')
-		self.load_model_ckpt(self.sess,'ckpt/driving/multi_gpu_epe_loss/')
+		self.load_model_ckpt(self.sess,'ckpt/driving/multi_gpu_epe_loss_only/')
 
 
 	def read_gt(self,opt_flow,disp_chng):
@@ -146,8 +146,6 @@ class FlowPredictor:
 		Image.fromarray(v).save('predictflow_v.tiff')
 		
 		flow = np.stack((u,v),axis=2)
-		print('JAZZY MA')
-		print(flow.shape)
 		
 		# not being used currently.
 		# flow_with_depth = np.stack((u,v,w),axis=2)

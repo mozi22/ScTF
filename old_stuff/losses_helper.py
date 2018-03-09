@@ -35,7 +35,7 @@ def flow_warp(img,flow):
 
   return tf.contrib.resampler.resampler(img,result)
 
-def photoconsistency_loss(img,gt_flow,predicted_flow, weight=0.2):
+def photoconsistency_loss(img,predicted_flow, weight=0.2):
 
   with tf.variable_scope('photoconsistency_loss'):
     # warping using predicted flow
