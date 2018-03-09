@@ -73,7 +73,7 @@ def _predict_flow(inp):
     
     output = convrelu2(
         inputs=tmp,
-        filters=2,
+        filters=3,
         kernel_size=3,
         stride=1,
         name="conv2_pred_flow"

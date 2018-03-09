@@ -35,7 +35,7 @@ tf.app.flags.DEFINE_boolean('LOAD_FROM_CKPT', False,
 tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_integer('MAX_STEPS', 100000,
+tf.app.flags.DEFINE_integer('MAX_STEPS', 50000,
                             """Number of batches to run.""")
 
 
@@ -78,7 +78,7 @@ tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.001,
                             """Where to start the learning.""")
 tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.000001,
                             """Where to end the learning.""")
-tf.app.flags.DEFINE_float('POWER', 3,
+tf.app.flags.DEFINE_float('POWER', 5,
                             """How fast the learning rate should go down.""")
 
 
@@ -212,8 +212,6 @@ class DatasetReader:
         # # # main loop
         for step in range(loop_start,loop_stop):
             start_time = time.time()
-
-
 
             _, loss_value = sess.run([train_op, loss])
 

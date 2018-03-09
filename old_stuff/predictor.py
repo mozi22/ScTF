@@ -13,12 +13,12 @@ import ijremote as ij
 folder = '/home/muazzam/mywork/python/thesis/server/dataset_synthetic/driving/'
 # folder = '/misc/lmbraid19/muazzama/dataset_synthetic/driving/'
 
-img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0001.webp'
-img2 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0002.webp'
-disparity1 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0102.pfm'
-disparity2 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0103.pfm'
-opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0001_L.pfm'
-disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0102.pfm'
+img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0101.webp'
+img2 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0102.webp'
+disparity1 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0101.pfm'
+disparity2 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0102.pfm'
+opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0101_L.pfm'
+disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0101.pfm'
 
 ''' ********************************************* this is the reading part ********************************************* '''
 ''' ********************************************* this is the reading part ********************************************* '''

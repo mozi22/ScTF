@@ -17,8 +17,8 @@ class FlowPredictor:
 
 		factor = 0.4
 		self.input_size = int(960 * factor), int(540 * factor)
-		self.driving_disp_chng_max = 236.467
-		self.driving_disp_max = 349.347 
+		self.driving_disp_chng_max = 7.5552e+08
+		self.driving_disp_max = 30.7278
 
 		# read resized images to network standards
 		self.init_img1, self.init_img2 = self.read_image(img1,img2)
@@ -54,8 +54,8 @@ class FlowPredictor:
 		rgbd2 = self.combine_depth_values(self.img2,self.disp2)
 
 		# combine images to 8 channel rgbd-rgbd
-		# img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
-		img_pair = np.concatenate((self.img1,self.img2),axis=2)
+		img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
+		# img_pair = np.concatenate((self.img1,self.img2),axis=2)
 
 		# add padding to axis=0 to make the input image (224,384,8)
 		img_pair = np.pad(img_pair,((4,4),(0,0),(0,0)),'constant')
@@ -121,29 +121,18 @@ class FlowPredictor:
 
 	def denormalize_flow(self,flow,show_flow):
 
-		opt_u = flow[:,:,0]
-		opt_v = flow[:,:,1]
-		# spacing = np.linspace(0, 1, num=100)
-
-		# plt.hist(opt_u.flatten(),bins=spacing)  # arguments are passed to np.histogram
-		# plt.hist(opt_v.flatten(),bins=spacing)  # arguments are passed to np.histogram
-		# plt.title("Flow predict")
-		# plt.show()
-
-
 		u = flow[:,:,0] * self.input_size[0]
 		v = flow[:,:,1] * self.input_size[1]
-		# w = flow[:,:,2] * self.driving_disp_chng_max
+		w = flow[:,:,2] * self.driving_disp_chng_max
 
-		# w = self.get_depth_from_disp(w)
-
-		# if show_flow:
+		if show_flow:
 		# 	self.show_image(u,'Flow_u')
 		# 	self.show_image(v,'Flow_v')
-			# self.show_image(w,'Flow_w')
+		  # self.show_image(w,'Flow_w')
+			ij.setImage('PredictedFlow_w',w)
 
-		Image.fromarray(u).save('predictflow_u.tiff')
-		Image.fromarray(v).save('predictflow_v.tiff')
+		# Image.fromarray(u).save('predictflow_u.tiff')
+		# Image.fromarray(v).save('predictflow_v.tiff')
 		
 		flow = np.stack((u,v),axis=2)
 		
@@ -156,14 +145,10 @@ class FlowPredictor:
 
 
 	def postprocess(self,flow,show_flow=True,gt=False):
-
 		if gt==True:
-			print('working')
-			# self.show_image(flow[:,:,0],'Flow_u')
-			# self.show_image(flow[:,:,1],'Flow_v')
-			# Image.fromarray(flow[:,:,0]).save('originalflow_u.tiff')
-			# Image.fromarray(flow[:,:,1]).save('originalflow_v.tiff')
-			# self.show_image(flow[:,:,2],'Flow_w')
+			self.show_image(flow[:,:,0],'Flow_u')
+			self.show_image(flow[:,:,1],'Flow_v')
+			self.show_image(flow[:,:,2],'Flow_w')
 		else:
 			flow = self.denormalize_flow(flow,show_flow)
 
@@ -232,8 +217,8 @@ class FlowPredictor:
 
 		self.batch_size = 1
 
-		self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 6))
-		self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 2))
+		self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 8))
+		self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 3))
 		self.predict_flow5, self.predict_flow2 = network.train_network(self.X)
 
 	def load_model_ckpt(self,sess,filename):
