@@ -37,41 +37,31 @@ def flow_warp(img,flow):
 
 def photoconsistency_loss(img,gt_flow,predicted_flow, weight=0.2):
 
-  """Calculate the photo consistency loss by warping with gt_flow 
-     and predicted_flow and finding their mean difference."""
+  with tf.variable_scope('photoconsistency_loss'):
+    # warping using predicted flow
+    warped_img = flow_warp(img,predicted_flow)
 
-  # Args:
-  #   img:  		The image to warp with. The outer list
-  #   flow: 		Predicted flow
-  #   gt_flow: 	Ground truth flow
+    pc_loss = tf.subtract(img,warped_img)
 
-
-  # warping using gt flow
-  gt_warp = flow_warp(img,gt_flow)
-
-  # warping using predicted flow
-  warp = flow_warp(img,gt_flow)
-
-  pc_loss = gt_warp - warp
-
-  tf.losses.compute_weighted_loss(pc_loss,weights=weight)
+    tf.losses.compute_weighted_loss(pc_loss,weights=weight)
 
   return pc_loss
 
 
 def endpoint_loss(gt_flow,predicted_flow,weight=0.8):
 
-  # get u & v value for gt
-  gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
-  gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
-  # gt_w = tf.slice(gt_flow,[0,0,2],[-1,-1,1])
+  with tf.variable_scope('epe_loss'):
+    # get u & v value for gt
+    gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
+    gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
+    # gt_w = tf.slice(gt_flow,[0,0,2],[-1,-1,1])
 
-  # get u & v value for predicted_flow
-  pred_u = tf.slice(predicted_flow,[0,0,0,0],[-1,-1,-1,1])
-  pred_v = tf.slice(predicted_flow,[0,0,0,1],[-1,-1,-1,1])
-  # pred_w = tf.slice(predicted_flow,[0,0,2],[-1,-1,1])
+    # get u & v value for predicted_flow
+    pred_u = tf.slice(predicted_flow,[0,0,0,0],[-1,-1,-1,1])
+    pred_v = tf.slice(predicted_flow,[0,0,0,1],[-1,-1,-1,1])
+    # pred_w = tf.slice(predicted_flow,[0,0,2],[-1,-1,1])
 
-  epe_loss = tf.sqrt(tf.square(tf.subtract(gt_u,pred_u)) + tf.square(tf.subtract(gt_v,pred_v)))
-  tf.losses.compute_weighted_loss(epe_loss,weights=weight)
+    epe_loss = tf.sqrt(tf.square(tf.subtract(gt_u,pred_u)) + tf.square(tf.subtract(gt_v,pred_v)))
+    tf.losses.compute_weighted_loss(epe_loss,weights=weight)
   
   return epe_loss

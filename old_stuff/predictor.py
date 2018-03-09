@@ -184,15 +184,15 @@ def show_optical_flow(label_batch):
 
 predictor = ft.FlowPredictor()
 predictor.preprocess(img1,img2,disparity1,disparity2)
-# predictor.predict()
+predictor.predict()
 
 
 # for testing with ground truth
 
-opt = hpl.readPFM(opt_flow)[0]
-lbl = predictor.read_gt(opt_flow,disp_change)
-opt_flow = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
-predictor.postprocess(flow=opt_flow,show_flow=True,gt=True)
+# opt = hpl.readPFM(opt_flow)[0]
+# lbl = predictor.read_gt(opt_flow,disp_change)
+# opt_flow = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
+# predictor.postprocess(flow=opt_flow,show_flow=True,gt=True)
 
 
 

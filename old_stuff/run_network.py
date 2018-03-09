@@ -25,7 +25,7 @@ def get_available_gpus():
 # these variables can be tuned to help training
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/multi_gpu_epe_loss/',
+tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/multi_gpu_epe_loss_only/',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 
@@ -210,38 +210,38 @@ class DatasetReader:
 
         first_iteration = True
         # # # main loop
-        for step in range(loop_start,loop_stop):
-            start_time = time.time()
+        # for step in range(loop_start,loop_stop):
+        #     start_time = time.time()
 
 
 
-            _, loss_value = sess.run([train_op, loss])
+        #     _, loss_value = sess.run([train_op, loss])
 
 
-            duration = time.time() - start_time
+        #     duration = time.time() - start_time
 
-            assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
+        #     assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
-            if step % 10 == 0 or first_iteration==True:
-                num_examples_per_step = FLAGS.BATCH_SIZE * FLAGS.NUM_GPUS
-                examples_per_sec = num_examples_per_step / duration
-                sec_per_batch = duration / FLAGS.NUM_GPUS
-                first_iteration = False
+        #     if step % 10 == 0 or first_iteration==True:
+        #         num_examples_per_step = FLAGS.BATCH_SIZE * FLAGS.NUM_GPUS
+        #         examples_per_sec = num_examples_per_step / duration
+        #         sec_per_batch = duration / FLAGS.NUM_GPUS
+        #         first_iteration = False
 
 
-            format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
-                          'sec/batch)')
-            print (format_str % (datetime.now(), step, np.log10(loss_value),
-                                 examples_per_sec, sec_per_batch))
+        #     format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
+        #                   'sec/batch)')
+        #     print (format_str % (datetime.now(), step, np.log10(loss_value),
+        #                          examples_per_sec, sec_per_batch))
 
-            if step % 100 == 0:
-                summary_str = sess.run(summary_op)
-                summary_writer.add_summary(summary_str, step)
+        #     if step % 100 == 0:
+        #         summary_str = sess.run(summary_op)
+        #         summary_writer.add_summary(summary_str, step)
 
-            # Save the model checkpoint periodically.
-            if step % 1000 == 0 or (step + 1) == FLAGS.MAX_STEPS:
-                checkpoint_path = os.path.join(FLAGS.TRAIN_DIR, 'model.ckpt')
-                saver.save(sess, checkpoint_path, global_step=step)
+        #     # Save the model checkpoint periodically.
+        #     if step % 1000 == 0 or (step + 1) == FLAGS.MAX_STEPS:
+        #         checkpoint_path = os.path.join(FLAGS.TRAIN_DIR, 'model.ckpt')
+        #         saver.save(sess, checkpoint_path, global_step=step)
 
     def tower_loss(self,scope, images, labels):
         """Calculate the total loss on a single tower running the CIFAR model.
@@ -271,7 +271,9 @@ class DatasetReader:
 
         # Attach a scalar summary to all individual losses and the total loss; do the
         # same for the averaged version of the losses.
+        print('losses ye hai')
         for l in losses + [total_loss]:
+            print(l)
             # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
             # session. This helps the clarity of presentation on tensorboard.
             loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)

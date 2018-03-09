@@ -1,6 +1,7 @@
 import tensorflow as tf
 from math import sqrt
 import re
+import losses_helper
 
 def convrelu2(name,inputs, filters, kernel_size, stride, activation=None):
 
@@ -133,9 +134,9 @@ def train_network(image_pair):
     with tf.variable_scope('down_convs'):
 
 
-        conv0 = convrelu2(name='conv0', inputs=image_pair, filters=16, kernel_size=7, stride=1,activation=tf.nn.leaky_relu)
-        conv1 = convrelu2(name='conv1', inputs=conv0, filters=32, kernel_size=7, stride=2,activation=tf.nn.leaky_relu)
-        conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=5, stride=2,activation=tf.nn.leaky_relu)
+        conv0 = convrelu2(name='conv0', inputs=image_pair, filters=16, kernel_size=5, stride=1,activation=tf.nn.leaky_relu)
+        conv1 = convrelu2(name='conv1', inputs=conv0, filters=32, kernel_size=5, stride=2,activation=tf.nn.leaky_relu)
+        conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=3, stride=2,activation=tf.nn.leaky_relu)
         conv3 = convrelu2(name='conv3', inputs=conv2, filters=128, kernel_size=3, stride=2,activation=tf.nn.leaky_relu)
         conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=3, stride=2,activation=tf.nn.leaky_relu)
         conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=3, stride=2,activation=tf.nn.leaky_relu)
@@ -143,20 +144,17 @@ def train_network(image_pair):
 
     # predict flow
     with tf.variable_scope('predict_flow5'):
-
-
         predict_flow4 = _predict_flow(conv5)
-
 
     with tf.variable_scope('upsample_flow4to3'):
         predict_flow4to3 = _upsample_prediction(predict_flow4, 3)
-        predict_flow4to3 = change_nans_to_zeros(predict_flow4to3)
+        # predict_flow4to3 = change_nans_to_zeros(predict_flow4to3)
 
 
 
     with tf.variable_scope('refine4'):
         concat4 = _refine(
-            inp=conv5, 
+            inp=conv5,
             num_outputs=512,
             upsampled_prediction=predict_flow4to3, 
             features_direct=conv4,
