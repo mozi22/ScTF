@@ -54,29 +54,14 @@ def endpoint_loss(gt_flow,predicted_flow,weight=100):
     # get u & v value for gt
     gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
     gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
-    # gt_w = tf.slice(gt_flow,[0,0,2],[-1,-1,1])
+    gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
 
     # get u & v value for predicted_flow
     pred_u = tf.slice(predicted_flow,[0,0,0,0],[-1,-1,-1,1])
     pred_v = tf.slice(predicted_flow,[0,0,0,1],[-1,-1,-1,1])
-    # pred_w = tf.slice(predicted_flow,[0,0,2],[-1,-1,1])
+    pred_w = tf.slice(predicted_flow,[0,0,0,2],[-1,-1,-1,1])
 
-    epe_loss = tf.sqrt(tf.square(tf.subtract(gt_u,pred_u)) + tf.square(tf.subtract(gt_v,pred_v)))
+    epe_loss = tf.sqrt(tf.square(tf.subtract(gt_u,pred_u)) + tf.square(tf.subtract(gt_v,pred_v)) + tf.square(tf.subtract(gt_w,pred_w)))
     tf.losses.compute_weighted_loss(epe_loss,weights=weight)
   
   return epe_loss
-
-
-def depth_loss(gt_flow,predicted_flow,weight=100,scope=None):
-
-  # take out depth(W) from flow values(U-V-W)
-
-  gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
-  pred_w = tf.slice(predicted_flow,[0,0,0,2],[-1,-1,-1,1])
-
-  depth_loss = tf.subtract(gt_w,pred_w)
-
-  
-  tf.losses.compute_weighted_loss(depth_loss,weights=weight)
-
-  return depth_loss
