@@ -17,8 +17,10 @@ class FlowPredictor:
 
 		factor = 0.4
 		self.input_size = int(960 * factor), int(540 * factor)
-		self.driving_disp_chng_max = 7.5552e+08
-		self.driving_disp_max = 30.7278
+		# self.driving_disp_chng_max = 7.5552e+08
+		# self.driving_disp_max = 30.7278
+		self.driving_disp_max = 9.98134
+		self.driving_disp_chng_max = 6.75619
 
 		# read resized images to network standards
 		self.init_img1, self.init_img2 = self.read_image(img1,img2)
@@ -124,6 +126,7 @@ class FlowPredictor:
 		u = flow[:,:,0] * self.input_size[0]
 		v = flow[:,:,1] * self.input_size[1]
 		w = flow[:,:,2] * self.driving_disp_chng_max
+		w = 1 / w
 
 		if show_flow:
 		# 	self.show_image(u,'Flow_u')

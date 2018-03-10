@@ -11,6 +11,7 @@ from tensorflow.python.client import device_lib
 import time
 import math
 from datetime import datetime
+from tensorflow.python import debug as tf_debug
 import re
 # import ijremote
 from six.moves import xrange
@@ -32,10 +33,13 @@ tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/multi_gpu_epe_loss_only/
 tf.app.flags.DEFINE_boolean('LOAD_FROM_CKPT', False,
                             """Whether to log device placement.""")
 
+tf.app.flags.DEFINE_boolean('DEBUG_MODE', False,
+                            """Run training in Debug Mode.""")
+
 tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_integer('MAX_STEPS', 50000,
+tf.app.flags.DEFINE_integer('MAX_STEPS', 100000,
                             """Number of batches to run.""")
 
 
@@ -104,10 +108,7 @@ class DatasetReader:
 
 
         opt = tf.train.AdamOptimizer(learning_rate)
-#                               .minimize(self.mse,global_step=self.global_step)
-
-
-    
+   
 
         images, labels = tf.train.shuffle_batch(
                             [ features_train['input_n'], 
@@ -131,6 +132,7 @@ class DatasetReader:
                 # Calculate the loss for one tower of the CIFAR model. This function
                 # constructs the entire CIFAR model but shares the variables across
                 # all towers.
+
                 loss = self.tower_loss(scope, image_batch, label_batch)
 
                 # Reuse variables for the next tower.
@@ -192,6 +194,8 @@ class DatasetReader:
             log_device_placement=FLAGS.LOG_DEVICE_PLACEMENT))
         sess.run(init)
 
+
+
         if FLAGS.LOAD_FROM_CKPT == True:
             saver.restore(sess,tf.train.latest_checkpoint(FLAGS.TRAIN_DIR))
 
@@ -199,6 +203,7 @@ class DatasetReader:
         # Start the queue runners.
         tf.train.start_queue_runners(sess=sess)
 
+        # for debugging
 
         summary_writer = tf.summary.FileWriter(FLAGS.TRAIN_DIR, sess.graph)
 
@@ -207,9 +212,11 @@ class DatasetReader:
         loop_start = tf.train.global_step(sess, global_step)
         loop_stop = loop_start + FLAGS.MAX_STEPS
 
+        if FLAGS.DEBUG_MODE:
+            sess = tf_debug.LocalCLIDebugWrapperSession(sess)
 
         first_iteration = True
-        # # # main loop
+        # main loop
         for step in range(loop_start,loop_stop):
             start_time = time.time()
 
@@ -240,6 +247,7 @@ class DatasetReader:
             if step % 1000 == 0 or (step + 1) == FLAGS.MAX_STEPS:
                 checkpoint_path = os.path.join(FLAGS.TRAIN_DIR, 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=step)
+        summary_writer.close()
 
     def tower_loss(self,scope, images, labels):
         """Calculate the total loss on a single tower running the CIFAR model.
@@ -260,6 +268,7 @@ class DatasetReader:
         # _ = losses_helper.mse_loss(labels,predict_flow2)
         _ = losses_helper.endpoint_loss(labels,predict_flow2)
         # _ = losses_helper.photoconsistency_loss(images,predict_flow2)
+        _ = losses_helper.depth_loss(labels,predict_flow2)
 
         # Assemble all of the losses for the current tower only.
         losses = tf.get_collection('losses', scope)
@@ -272,6 +281,7 @@ class DatasetReader:
         for l in losses + [total_loss]:
             # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
             # session. This helps the clarity of presentation on tensorboard.
+
             loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)
             tf.summary.scalar(loss_name, l)
 

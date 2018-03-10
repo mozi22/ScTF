@@ -2,7 +2,7 @@
 import tensorflow as tf
 import numpy as np
 
-
+# import lmbspecialops
 
 # warp the flow values to the image.
 def flow_warp(img,flow):
@@ -35,7 +35,7 @@ def flow_warp(img,flow):
 
   return tf.contrib.resampler.resampler(img,result)
 
-def photoconsistency_loss(img,predicted_flow, weight=0.2):
+def photoconsistency_loss(img,predicted_flow, weight=10):
 
   with tf.variable_scope('photoconsistency_loss'):
     # warping using predicted flow
@@ -48,7 +48,7 @@ def photoconsistency_loss(img,predicted_flow, weight=0.2):
   return pc_loss
 
 
-def endpoint_loss(gt_flow,predicted_flow,weight=0.8):
+def endpoint_loss(gt_flow,predicted_flow,weight=100):
 
   with tf.variable_scope('epe_loss'):
     # get u & v value for gt
@@ -65,3 +65,18 @@ def endpoint_loss(gt_flow,predicted_flow,weight=0.8):
     tf.losses.compute_weighted_loss(epe_loss,weights=weight)
   
   return epe_loss
+
+
+def depth_loss(gt_flow,predicted_flow,weight=100,scope=None):
+
+  # take out depth(W) from flow values(U-V-W)
+
+  gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
+  pred_w = tf.slice(predicted_flow,[0,0,0,2],[-1,-1,-1,1])
+
+  depth_loss = tf.subtract(gt_w,pred_w)
+
+  
+  tf.losses.compute_weighted_loss(depth_loss,weights=weight)
+
+  return depth_loss

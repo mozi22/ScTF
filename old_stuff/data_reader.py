@@ -23,7 +23,7 @@ def tf_record_input_pipeline(filenames,version='1'):
         'cam_frame_R': tf.FixedLenFeature([], tf.string),
         'image1': tf.FixedLenFeature([], tf.string),
         'image2': tf.FixedLenFeature([], tf.string),
-        'disp_chng': tf.FixedLenFeature([], tf.string),
+        'depth_change': tf.FixedLenFeature([], tf.string),
         'direction': tf.FixedLenFeature([], tf.string)
     },
     name="ExampleParserV"+version)
@@ -31,12 +31,12 @@ def tf_record_input_pipeline(filenames,version='1'):
     # Convert the image data from binary back to arrays(Tensors)
 
     direction = features['direction']
-    disparity1 = tf.decode_raw(features['depth1'], tf.float32)
-    disparity2 = tf.decode_raw(features['depth2'], tf.float32)
+    depth1 = tf.decode_raw(features['depth1'], tf.float32)
+    depth2 = tf.decode_raw(features['depth2'], tf.float32)
     image1 = tf.decode_raw(features['image1'], tf.uint8)
     image2 = tf.decode_raw(features['image2'], tf.uint8)
     opt_flow = tf.decode_raw(features['opt_flow'], tf.float32)
-    disparity_chng = tf.decode_raw(features['disp_chng'], tf.float32)
+    depth_chng = tf.decode_raw(features['depth_change'], tf.float32)
     cam_frame_L = tf.decode_raw(features['cam_frame_L'], tf.float32)
     cam_frame_R = tf.decode_raw(features['cam_frame_R'], tf.float32)
 
@@ -48,26 +48,28 @@ def tf_record_input_pipeline(filenames,version='1'):
     image1 = tf.reshape(image1, [input_pipeline_dimensions[0],input_pipeline_dimensions[1], 3],name="reshape_img1")
     image2 = tf.reshape(image2, [input_pipeline_dimensions[0],input_pipeline_dimensions[1], 3],name="reshape_img2")
 
-    disparity1 = tf.reshape(disparity1, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp1")
-    disparity2 = tf.reshape(disparity2, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp2")
+    depth1 = tf.reshape(depth1, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp1")
+    depth2 = tf.reshape(depth2, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp2")
 
     label_pair = tf.reshape(opt_flow, [input_pipeline_dimensions[0],input_pipeline_dimensions[1],2],name="reshape_opt_flow")
-    disparity_chng = tf.reshape(disparity_chng,[input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp_change")
+    depth_chng = tf.reshape(depth_chng,[input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp_change")
 
 
     image1 = tf.divide(image1,[255])
     image2 = tf.divide(image2,[255])
 
-
-    image1 = combine_depth_values(image1,disparity1,2)
-    image2 = combine_depth_values(image2,disparity2,2)
+    image1 = combine_depth_values(image1,depth1,2)
+    image2 = combine_depth_values(image2,depth2,2)
 
 
     # # depth should be added to both images before this line 
     img_pair = tf.concat([image1,image2],axis=-1)
 
 
-    label_with_depth_chng = combine_depth_values(label_pair,disparity_chng,2)
+    # change depth to inverse depth
+    # depth_chng = tf.divide(1,depth_chng)
+
+    label_with_depth_chng = combine_depth_values(label_pair,depth_chng,2)
 
     # inputt = divide_inputs_to_patches(img_pair,8)
     # label = divide_inputs_to_patches(label_pair,3)
