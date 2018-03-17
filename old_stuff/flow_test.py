@@ -123,6 +123,7 @@ class FlowPredictor:
 
 	def denormalize_flow(self,flow,show_flow):
 
+
 		u = flow[:,:,0] * self.input_size[0]
 		v = flow[:,:,1] * self.input_size[1]
 		w = flow[:,:,2] * self.driving_disp_chng_max
@@ -141,9 +142,6 @@ class FlowPredictor:
 		
 		# not being used currently.
 		# flow_with_depth = np.stack((u,v,w),axis=2)
-		
-
-
 		return flow
 
 

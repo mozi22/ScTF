@@ -39,9 +39,8 @@ tf.app.flags.DEFINE_boolean('DEBUG_MODE', False,
 tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_integer('MAX_STEPS', 100000,
+tf.app.flags.DEFINE_integer('MAX_STEPS', 50000,
                             """Number of batches to run.""")
-
 
 tf.app.flags.DEFINE_boolean('LOG_DEVICE_PLACEMENT', False,
                             """Whether to log device placement.""")
@@ -73,9 +72,6 @@ tf.app.flags.DEFINE_integer('NUM_GPUS', len(get_available_gpus()),
 tf.app.flags.DEFINE_float('MOVING_AVERAGE_DECAY', 0.9999,
                             """How fast the learning rate should go down.""")
 
-
-
-
 # Polynomial Learning Rate
 
 tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.001,
@@ -84,9 +80,6 @@ tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.000001,
                             """Where to end the learning.""")
 tf.app.flags.DEFINE_float('POWER', 5,
                             """How fast the learning rate should go down.""")
-
-
-
 
 class DatasetReader:
 
@@ -122,6 +115,7 @@ class DatasetReader:
             [images, labels], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
     
         tower_grads = []
+        all_summaries = []
         with tf.variable_scope(tf.get_variable_scope()):
           for i in xrange(FLAGS.NUM_GPUS):
             with tf.device('/gpu:%d' % i):
@@ -140,6 +134,7 @@ class DatasetReader:
 
                 # Retain the summaries from the final tower.
                 summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+
 
                 # Calculate the gradients for the batch of data on this CIFAR tower.
                 grads = opt.compute_gradients(loss)
@@ -262,13 +257,13 @@ class DatasetReader:
         # Build inference Graph.
         predict_flow5, predict_flow2 = network.train_network(images)
 
-
         # Build the portion of the Graph calculating the losses. Note that we will
         # assemble the total_loss using a custom function below.
+
         # _ = losses_helper.mse_loss(labels,predict_flow2)
         _ = losses_helper.endpoint_loss(labels,predict_flow2)
         # _ = losses_helper.photoconsistency_loss(images,predict_flow2)
-        # _ = losses_helper.depth_loss(labels,predict_flow2)
+        _ = losses_helper.depth_loss(labels,predict_flow2)
 
         # Assemble all of the losses for the current tower only.
         losses = tf.get_collection('losses', scope)
@@ -286,9 +281,6 @@ class DatasetReader:
             tf.summary.scalar(loss_name, l)
 
         return total_loss
-
-
-
 
     def average_gradients(self,tower_grads):
         """Calculate the average gradient for each shared variable across all towers.

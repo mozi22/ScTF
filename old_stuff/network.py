@@ -111,16 +111,16 @@ def _refine(inp, num_outputs, upsampled_prediction=None, features_direct=None,na
 
 
 
-    print('inside')
-    print(inp)
-    print(features_direct)
-    print(upsampled_features)
+    # print('inside')
+    # print(inp)
+    # print(features_direct)
+    # print(upsampled_features)
 
     inputs = [upsampled_features, features_direct, upsampled_prediction]
     concat_inputs = [ x for x in inputs if not x is None ]
 
-    print('inside concat')
-    print(concat_inputs)
+    # print('inside concat')
+    # print(concat_inputs)
     return tf.concat(concat_inputs, axis=3)
 
 

@@ -48,20 +48,31 @@ def photoconsistency_loss(img,predicted_flow, weight=10):
   return pc_loss
 
 
-def endpoint_loss(gt_flow,predicted_flow,weight=100):
+def endpoint_loss(gt_flow,predicted_flow,weight=1000):
 
   with tf.variable_scope('epe_loss'):
     # get u & v value for gt
     gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
     gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
-    gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
 
     # get u & v value for predicted_flow
     pred_u = tf.slice(predicted_flow,[0,0,0,0],[-1,-1,-1,1])
     pred_v = tf.slice(predicted_flow,[0,0,0,1],[-1,-1,-1,1])
-    pred_w = tf.slice(predicted_flow,[0,0,0,2],[-1,-1,-1,1])
 
-    epe_loss = tf.sqrt(tf.square(tf.subtract(gt_u,pred_u)) + tf.square(tf.subtract(gt_v,pred_v)) + tf.square(tf.subtract(gt_w,pred_w)))
+    epe_loss = tf.sqrt(tf.square(tf.subtract(gt_u,pred_u)) + tf.square(tf.subtract(gt_v,pred_v)))
     tf.losses.compute_weighted_loss(epe_loss,weights=weight)
   
   return epe_loss
+
+
+def depth_loss(gt_flow,predicted_flow,weight=300):
+
+    # L1 loss on depth
+    gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
+    pred_w = tf.slice(predicted_flow,[0,0,0,2],[-1,-1,-1,1])
+
+    depth_loss = tf.reduce_sum(tf.abs(tf.subtract(gt_w,pred_w)))
+
+    tf.losses.compute_weighted_loss(depth_loss,weights=weight)
+
+    return depth_loss
