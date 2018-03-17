@@ -56,8 +56,8 @@ class FlowPredictor:
 		rgbd2 = self.combine_depth_values(self.img2,self.disp2)
 
 		# combine images to 8 channel rgbd-rgbd
-		img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
-		# img_pair = np.concatenate((self.img1,self.img2),axis=2)
+		# img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
+		img_pair = np.concatenate((self.img1,self.img2),axis=2)
 
 		# add padding to axis=0 to make the input image (224,384,8)
 		img_pair = np.pad(img_pair,((4,4),(0,0),(0,0)),'constant')
@@ -126,14 +126,14 @@ class FlowPredictor:
 
 		u = flow[:,:,0] * self.input_size[0]
 		v = flow[:,:,1] * self.input_size[1]
-		w = flow[:,:,2] * self.driving_disp_chng_max
-		w = 1 / w
+		# w = flow[:,:,2] * self.driving_disp_chng_max
+		# w = 1 / w
 
-		if show_flow:
-		# 	self.show_image(u,'Flow_u')
-		# 	self.show_image(v,'Flow_v')
-		  # self.show_image(w,'Flow_w')
-			ij.setImage('PredictedFlow_w',w)
+		# if show_flow:
+		# # 	self.show_image(u,'Flow_u')
+		# # 	self.show_image(v,'Flow_v')
+		#   # self.show_image(w,'Flow_w')
+		# 	ij.setImage('PredictedFlow_w',w)
 
 		# Image.fromarray(u).save('predictflow_u.tiff')
 		# Image.fromarray(v).save('predictflow_v.tiff')
@@ -218,8 +218,8 @@ class FlowPredictor:
 
 		self.batch_size = 1
 
-		self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 8))
-		self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 3))
+		self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 6))
+		self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 2))
 		self.predict_flow5, self.predict_flow2 = network.train_network(self.X)
 
 	def load_model_ckpt(self,sess,filename):

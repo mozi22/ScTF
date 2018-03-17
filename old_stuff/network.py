@@ -1,35 +1,40 @@
 import tensorflow as tf
-from math import sqrt
-import re
-import losses_helper
+
+
 
 def convrelu2(name,inputs, filters, kernel_size, stride, activation=None):
 
-    # tmp_y = tf.layers.conv2d(
-    #     inputs=inputs,
-    #     filters=filters,
-    #     kernel_size=[kernel_size,1],
-    #     strides=[stride,1],
-    #     padding='same',
-    #     name=name+'y',
-    #     activation=tf.nn.relu
-    # )
-
-
-
-    # if name == "conv4":
-    #     paddings = tf.constant([[0, 0],[2, 2], [4, 4],[0,0]])
-    #     inputs = tf.pad(inputs,paddings,"CONSTANT",name=name)
-
-    return tf.layers.conv2d(
+    tmp_y = tf.layers.conv2d(
         inputs=inputs,
         filters=filters,
-        kernel_size=kernel_size,
-        strides=stride,
+        kernel_size=[kernel_size,1],
+        strides=[stride,1],
+        padding='same',
+        name=name+'y',
+        activation=tf.nn.relu
+    )
+
+
+    tmp_x = tf.layers.conv2d(
+        inputs=tmp_y,
+        filters=filters,
+        kernel_size=[1,kernel_size],
+        strides=[1,stride],
         padding='same',
         activation=activation,
         name=name+'x'
     )
+
+    return tmp_x
+    # return tf.layers.conv2d(
+    #     inputs=inputs,
+    #     filters=filters,
+    #     kernel_size=kernel_size,
+    #     strides=stride,
+    #     padding='same',
+    #     activation=activation,
+    #     name=name+'x'
+    # )
 
 
 def _upsample_prediction(inp, num_outputs):
@@ -73,7 +78,7 @@ def _predict_flow(inp):
     
     output = convrelu2(
         inputs=tmp,
-        filters=3,
+        filters=2,
         kernel_size=3,
         stride=1,
         name="conv2_pred_flow"

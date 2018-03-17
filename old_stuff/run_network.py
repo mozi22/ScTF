@@ -39,7 +39,7 @@ tf.app.flags.DEFINE_boolean('DEBUG_MODE', False,
 tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_integer('MAX_STEPS', 50000,
+tf.app.flags.DEFINE_integer('MAX_STEPS', 5000,
                             """Number of batches to run.""")
 
 tf.app.flags.DEFINE_boolean('LOG_DEVICE_PLACEMENT', False,
@@ -78,7 +78,7 @@ tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.001,
                             """Where to start the learning.""")
 tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.000001,
                             """Where to end the learning.""")
-tf.app.flags.DEFINE_float('POWER', 5,
+tf.app.flags.DEFINE_float('POWER', 3,
                             """How fast the learning rate should go down.""")
 
 class DatasetReader:
@@ -263,7 +263,7 @@ class DatasetReader:
         # _ = losses_helper.mse_loss(labels,predict_flow2)
         _ = losses_helper.endpoint_loss(labels,predict_flow2)
         # _ = losses_helper.photoconsistency_loss(images,predict_flow2)
-        _ = losses_helper.depth_loss(labels,predict_flow2)
+        # _ = losses_helper.depth_loss(labels,predict_flow2)
 
         # Assemble all of the losses for the current tower only.
         losses = tf.get_collection('losses', scope)
