@@ -7,6 +7,11 @@
 /old_stuff/tb/
 /old_stuff/ckpt/
 /old_stuff/img/
+/old_stuff/img/
 /new_stuff/flower_dataset/
 /new_stuff/tffiles/
 /new_stuff/dataset/
+/old_stuff/*.tiff
+/old_stuff/*.tfrecords
+/old_stuff/*.flo
+/old_stuff/__pycache__/

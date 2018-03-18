@@ -34,6 +34,7 @@ import tensorflow as tf
 import os, os.path
 import math
 from multiprocessing import Process
+import ijremote as ij
 
 class SyntheticTFRecordsWriter:
 
@@ -107,7 +108,7 @@ class SyntheticTFRecordsWriter:
 		# in each folder.
 		self.flying_data_folder_train_limit = [0,self.flyingdata_TRAIN_FOLDERS_IDS]
 		self.flying_data_folder_test_limit = [0,self.flyingdata_TEST_FOLDERS_IDS]
-		self.flying_data_file_limit = self.flyingdata_FILES_IDS
+		self.flying_data_file_imit = self.flyingdata_FILES_IDS
 
 
 		self.directions = ['left']
@@ -365,7 +366,7 @@ class SyntheticTFRecordsWriter:
 		# opt_u = Image.fromarray(result[:,:,0]).show() 
 		# opt_v = Image.fromarray(result[:,:,1]).show()
 
-
+		Image.fromarray(flow[:,:,0]).save('opf_1.tiff')
 
 		# normalize the values by the image dimensions
 		flow_u = flow_u / input_size[0]
@@ -413,8 +414,14 @@ class SyntheticTFRecordsWriter:
 		# reduce the flow values by same factor as image sizes are reduced by
 		opt_flow = opt_flow * self.factor
 
+
 		# normalize flow values between 0 - 1
+
+		ij.setImage('before_u',opt_flow[:,:,0])
+		ij.setImage('before_v',opt_flow[:,:,1])
 		opt_flow = self.normalizeOptFlow(opt_flow,input_size)
+		Image.fromarray(opt_flow[:,:,0]).save('opf_1n.tiff')
+
 
 		web_p_file = Image.open(frames_finalpass_webp_path)
 		web_p_file2 = Image.open(frames_finalpass_webp_path2)
