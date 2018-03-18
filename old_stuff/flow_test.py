@@ -19,8 +19,8 @@ class FlowPredictor:
 		self.input_size = int(960 * factor), int(540 * factor)
 		# self.driving_disp_chng_max = 7.5552e+08
 		# self.driving_disp_max = 30.7278
-		self.driving_disp_max = 9.98134
-		self.driving_disp_chng_max = 6.75619
+		self.max_depth_driving = 9.98134
+		self.max_depth_driving_chng = 6.75619
 
 		# read resized images to network standards
 		self.init_img1, self.init_img2 = self.read_image(img1,img2)
@@ -47,23 +47,36 @@ class FlowPredictor:
 		disp1 = np.array(disp1)
 		disp2 = np.array(disp2)
 
+		self.depth1 = self.get_depth_from_disp(disp1)
+		self.depth2 = self.get_depth_from_disp(disp2)
+
+		self.depth1 = 1 / self.depth1
+		self.depth2 = 1 / self.depth2
+
 		# normalize disp values
-		self.disp1 = disp1 / self.driving_disp_max
-		self.disp2 = disp2 / self.driving_disp_max
+		self.depth1 = self.depth1 / self.max_depth_driving
+		self.depth2 = self.depth2 / self.max_depth_driving
 
 		# combine depth values with images
-		rgbd1 = self.combine_depth_values(self.img1,self.disp1)
-		rgbd2 = self.combine_depth_values(self.img2,self.disp2)
+		rgbd1 = self.combine_depth_values(self.img1,self.depth1)
+		rgbd2 = self.combine_depth_values(self.img2,self.depth2)
 
-		# combine images to 8 channel rgbd-rgbd
-		# img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
-		img_pair = np.concatenate((self.img1,self.img2),axis=2)
+		# ij.setImage('imag1',self.depth1)
+		# ij.setImage('imag2',self.depth2)
 
-		# add padding to axis=0 to make the input image (224,384,8)
-		img_pair = np.pad(img_pair,((4,4),(0,0),(0,0)),'constant')
 
-		# change dimension from (224,384,8) to (1,224,384,8)
-		self.img_pair = np.expand_dims(img_pair,0)
+		# d1 = np.expand_dims(self.depth1,axis=2)
+		# d2 = np.expand_dims(self.depth2,axis=2)
+		# img_pair = np.concatenate((d1,d2),axis=2)
+		# # combine images to 8 channel rgbd-rgbd
+		img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
+		# img_pair = np.concatenate((self.img1,self.img2),axis=2)
+
+		# # add padding to axis=0 to make the input image (224,384,8)
+		self.img_pair = np.pad(img_pair,((4,4),(0,0),(0,0)),'constant')
+
+		# # change dimension from (224,384,8) to (1,224,384,8)
+		self.img_pair = np.expand_dims(self.img_pair,0)
 		self.initialize_network()
 
 		self.sess = tf.InteractiveSession()
@@ -123,17 +136,16 @@ class FlowPredictor:
 
 	def denormalize_flow(self,flow,show_flow):
 
-
 		u = flow[:,:,0] * self.input_size[0]
 		v = flow[:,:,1] * self.input_size[1]
-		# w = flow[:,:,2] * self.driving_disp_chng_max
+		w = flow[:,:,2] * self.max_depth_driving_chng
 		# w = 1 / w
 
-		# if show_flow:
+		if show_flow:
 		# # 	self.show_image(u,'Flow_u')
 		# # 	self.show_image(v,'Flow_v')
 		#   # self.show_image(w,'Flow_w')
-		# 	ij.setImage('PredictedFlow_w',w)
+			ij.setImage('PredictedFlow_w',w)
 
 		# Image.fromarray(u).save('predictflow_u.tiff')
 		# Image.fromarray(v).save('predictflow_v.tiff')
@@ -146,6 +158,10 @@ class FlowPredictor:
 
 
 	def postprocess(self,flow,show_flow=True,gt=False):
+
+
+
+
 		if gt==True:
 			self.show_image(flow[:,:,0],'Flow_u')
 			self.show_image(flow[:,:,1],'Flow_v')
@@ -153,7 +169,7 @@ class FlowPredictor:
 		else:
 			flow = self.denormalize_flow(flow,show_flow)
 
-		# ij.setImage('PredictedFlow_u',flow[:,:,0])
+		# ij.setImage('PredictedFlow_u',flow)
 		# ij.setImage('PredictedFlow_v',flow[:,:,1])
 		self.img2_arr = np.pad(self.img2_arr,((4,4),(0,0),(0,0)),'constant')
 		flow = self.warp(self.img2_arr,flow)
@@ -218,8 +234,8 @@ class FlowPredictor:
 
 		self.batch_size = 1
 
-		self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 6))
-		self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 2))
+		self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 8))
+		self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 3))
 		self.predict_flow5, self.predict_flow2 = network.train_network(self.X)
 
 	def load_model_ckpt(self,sess,filename):

@@ -58,9 +58,15 @@ def tf_record_input_pipeline(filenames,version='1'):
     image1 = tf.divide(image1,[255])
     image2 = tf.divide(image2,[255])
 
-    # image1 = combine_depth_values(image1,depth1,2)
-    # image2 = combine_depth_values(image2,depth2,2)
+    image1 = combine_depth_values(image1,depth1,2)
+    image2 = combine_depth_values(image2,depth2,2)
 
+    # extra
+
+    # d1 = tf.expand_dims(depth1,axis=2)
+    # d2 = tf.expand_dims(depth2,axis=2)
+
+    # d_final = tf.concat([d1,d2],axis=2)
 
     # # depth should be added to both images before this line 
     img_pair = tf.concat([image1,image2],axis=-1)
@@ -69,16 +75,18 @@ def tf_record_input_pipeline(filenames,version='1'):
     # change depth to inverse depth
     # depth_chng = tf.divide(1,depth_chng)
 
-    # label_with_depth_chng = combine_depth_values(label_pair,depth_chng,2)
+    label_with_depth_chng = combine_depth_values(label_pair,depth_chng,2)
 
     # inputt = divide_inputs_to_patches(img_pair,8)
     # label = divide_inputs_to_patches(label_pair,3)
 
     # padding_input = tf.constant([[0, 0],[5, 4],[0, 0]])
-    padding = tf.constant([[4, 4],[0, 0],[0,0]])
+    padding1 = tf.constant([[4, 4],[0, 0],[0,0]])
+    # padding2 = tf.constant([[4, 4],[0,0]])
 
-    img_pair_n = tf.pad(img_pair,padding,'CONSTANT')
-    label_pair_n = tf.pad(label_pair,padding,'CONSTANT')
+
+    img_pair_n = tf.pad(img_pair,padding1,'CONSTANT')
+    label_pair_n = tf.pad(label_with_depth_chng,padding1,'CONSTANT')
 
     return {
         'input_n': img_pair_n,

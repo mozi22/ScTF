@@ -178,12 +178,17 @@ def show_optical_flow(label_batch):
 
 # from here
 
-# opt_flow = hpl.readPFM(opt_flow)[0]
+# disp_change = hpl.readPFM(disp_change)[0]
+# disp1 = hpl.readPFM(disparity1)[0]
+# disp2 = hpl.readPFM(disparity2)[0]
 # Image.fromarray(opt_flow2[:,:,0]).show()
 # Image.fromarray(opt_flow2[:,:,1]).show()
 
 predictor = ft.FlowPredictor()
 predictor.preprocess(img1,img2,disparity1,disparity2)
+# ij.setImage('depth_change',disp_change)
+# ij.setImage('depth1',disp1)
+# ij.setImage('depth2',disp2)
 predictor.predict()
 
 

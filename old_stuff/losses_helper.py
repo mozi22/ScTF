@@ -71,8 +71,10 @@ def depth_loss(gt_flow,predicted_flow,weight=300):
     gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
     pred_w = tf.slice(predicted_flow,[0,0,0,2],[-1,-1,-1,1])
 
-    depth_loss = tf.reduce_sum(tf.abs(tf.subtract(gt_w,pred_w)))
-
-    tf.losses.compute_weighted_loss(depth_loss,weights=weight)
+    # depth_loss = tf.reduce_sum(tf.abs(tf.subtract(gt_w,pred_w)))
+    depth_loss = tf.losses.absolute_difference(gt_w,pred_w,weights=weight)
+    # tf.losses.compute_weighted_loss(depth_loss,weights=weight)
 
     return depth_loss
+
+
