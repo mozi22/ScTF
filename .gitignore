@@ -15,3 +15,5 @@
 /old_stuff/*.tfrecords
 /old_stuff/*.flo
 /old_stuff/__pycache__/
+*.pyc
+*.pyo
