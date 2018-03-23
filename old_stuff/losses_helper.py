@@ -1,6 +1,7 @@
 
 import tensorflow as tf
 import numpy as np
+import lmbspecialops as sops
 
 
 # warp the flow values to the image.
@@ -47,9 +48,16 @@ def photoconsistency_loss(img,predicted_flow, weight=10):
   return pc_loss
 
 
+# defined here :: https://arxiv.org/pdf/1702.02295.pdf
 def endpoint_loss(gt_flow,predicted_flow,weight=1000):
 
   with tf.variable_scope('epe_loss'):
+
+    gt_flow = tf.stop_gradient(gt_flow)
+
+    # width * height
+    total_num_of_pixels = gt_flow.get_shape().as_list()[1] * gt_flow.get_shape().as_list()[2]
+
     # get u & v value for gt
     gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
     gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
@@ -58,13 +66,23 @@ def endpoint_loss(gt_flow,predicted_flow,weight=1000):
     pred_u = tf.slice(predicted_flow,[0,0,0,0],[-1,-1,-1,1])
     pred_v = tf.slice(predicted_flow,[0,0,0,1],[-1,-1,-1,1])
 
-    epe_loss = tf.sqrt(tf.square(tf.subtract(gt_u,pred_u)) + tf.square(tf.subtract(gt_v,pred_v)))
+
+    diff_u = sops.replace_nonfinite(gt_u - pred_u)
+    diff_v = sops.replace_nonfinite(gt_v - pred_v)
+
+    epe_loss = tf.sqrt((diff_u**2) + (diff_v**2))
+    epe_loss = epe_loss / total_num_of_pixels 
+
     tf.losses.compute_weighted_loss(epe_loss,weights=weight)
   
   return epe_loss
 
 
 def depth_loss(gt_flow,predicted_flow,weight=300):
+
+  with tf.variable_scope('depth_loss'):
+
+    gt_flow = tf.stop_gradient(gt_flow)
 
     # L1 loss on depth
     gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
@@ -73,5 +91,3 @@ def depth_loss(gt_flow,predicted_flow,weight=300):
     depth_loss = tf.losses.absolute_difference(gt_w,pred_w,weights=weight)
 
     return depth_loss
-
-

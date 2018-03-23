@@ -1,7 +1,6 @@
 import re
 import numpy as np
-import sys
- 
+import tensorflow as tf 
 
 def readPFM(file):
     file = open(file, 'rb')
@@ -42,7 +41,7 @@ def readPFM(file):
 
 
 # warp the flow values to the image.
-def warp(self,img,flow):
+def warp(img,flow):
     x = list(range(0,self.input_size[0]))
     y = list(range(0,self.input_size[1] + 8))
     X, Y = tf.meshgrid(x, y)
@@ -50,10 +49,35 @@ def warp(self,img,flow):
     X = tf.cast(X,np.float32) + flow[:,:,0]
     Y = tf.cast(Y,np.float32) + flow[:,:,1]
 
-
     con = tf.stack([X,Y])
     result = tf.transpose(con,[1,2,0])
     result = tf.expand_dims(result,0)
     return tf.contrib.resampler.resampler(img[np.newaxis,:,:,:],result)
 
+# resize the gt_flow to the size of predict_flow4 for minimizing loss also after encoder ( before decoder )
+def downsample_label(gt_flow):
 
+  gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
+  gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
+  gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
+
+  gt_u = tf.image.resize_images(gt_u,[7,12],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_v = tf.image.resize_images(gt_u,[7,12],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_w = tf.image.resize_images(gt_u,[7,12],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+
+  return tf.concat([gt_u,gt_v,gt_w],axis=-1)
+
+
+def swap_images_for_back_flow(images):
+
+    '''
+        Assuming batch_size = 32
+
+        take half the batch_size and swap the images such that from image 1 to 16 
+        batch contains I1,I2 and image 16 to 32 it contains I2,I1.
+    '''
+
+    first_rgbd = images[:,:,:,0:4]
+    second_rgbd = images[:,:,:,4:8]
+
+    return tf.concat([second_rgbd,first_rgbd],axis=3)

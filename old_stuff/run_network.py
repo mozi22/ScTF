@@ -84,6 +84,7 @@ tf.app.flags.DEFINE_float('POWER', 7,
 class DatasetReader:
 
     def train(self,features_train):
+
         global_step = tf.get_variable(
             'global_step', [],
             initializer=tf.constant_initializer(0), trainable=False)
@@ -254,16 +255,24 @@ class DatasetReader:
          Tensor of shape [] containing the total loss for a batch of data
         """
 
-        # Build inference Graph.
+        backward_flow_images = hpl.get_back_flow_input(images)
+
+        # Build inference Graph. - forward flow
         predict_flow5, predict_flow2 = network.train_network(images)
+        # Build inference Graph. - backward flow
 
         # Build the portion of the Graph calculating the losses. Note that we will
         # assemble the total_loss using a custom function below.
 
         # _ = losses_helper.mse_loss(labels,predict_flow2)
         _ = losses_helper.endpoint_loss(labels,predict_flow2)
-        # _ = losses_helper.photoconsistency_loss(images,predict_flow2)
         _ = losses_helper.depth_loss(labels,predict_flow2)
+        # _ = losses_helper.photoconsistency_loss(images,predict_flow2)
+
+        predict_flow5_label = hpl.downsample_label(labels)
+        _ = losses_helper.endpoint_loss(predict_flow5_label,predict_flow5)
+        _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
+
 
 
         tf.summary.histogram('prediction',predict_flow2)
