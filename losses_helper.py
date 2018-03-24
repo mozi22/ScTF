@@ -52,7 +52,7 @@ def photoconsistency_loss(img,predicted_flow, weight=10):
   return pc_loss
 
 
-def forward_backward_loss(img,predicted_flow,weight=10)
+def forward_backward_loss(img,predicted_flow,weight=10):
 
   with tf.variable_scope('fb_loss'):
 

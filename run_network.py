@@ -270,7 +270,7 @@ class DatasetReader:
         # _ = losses_helper.mse_loss(labels,predict_flow2)
         _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2)
         # _ = losses_helper.depth_loss(labels,predict_flow2)
-        _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2)
+        # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2)
 
         predict_flow5_label = hpl.downsample_label(network_input_labels)
         _ = losses_helper.endpoint_loss(predict_flow5_label,predict_flow5)
