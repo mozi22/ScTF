@@ -66,7 +66,7 @@ tf.app.flags.DEFINE_integer('SHUFFLE_BATCH_THREADS', 48,
 tf.app.flags.DEFINE_integer('SHUFFLE_BATCH_MIN_AFTER_DEQUEUE', 10,
                             """How many elements will be there in the queue to be dequeued.""")
 
-tf.app.flags.DEFINE_integer('NUM_GPUS', len(get_available_gpus()),
+tf.app.flags.DEFINE_integer('NUM_GPUS', 1,
                             """How many GPUs to use.""")
 
 tf.app.flags.DEFINE_float('MOVING_AVERAGE_DECAY', 0.9999,
@@ -103,18 +103,17 @@ class DatasetReader:
 
         opt = tf.train.AdamOptimizer(learning_rate)
    
-
         images, labels = tf.train.shuffle_batch(
-                            [ features_train['input_n'], 
-                            features_train['label_n']],
+                            [ features_train['input_n'] , features_train['label_n'] ],
                             batch_size=FLAGS.BATCH_SIZE,
                             capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY,
                             num_threads=FLAGS.SHUFFLE_BATCH_THREADS,
-                            min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE)
+                            min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
+                            enqueue_many=False)
         
         batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
             [images, labels], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
-    
+        
         tower_grads = []
         all_summaries = []
         with tf.variable_scope(tf.get_variable_scope()):
@@ -124,10 +123,10 @@ class DatasetReader:
 
                 # Dequeues one batch for the GPU
                 image_batch, label_batch = batch_queue.dequeue()
+
                 # Calculate the loss for one tower of the CIFAR model. This function
                 # constructs the entire CIFAR model but shares the variables across
                 # all towers.
-
                 loss = self.tower_loss(scope, image_batch, label_batch)
 
                 # Reuse variables for the next tower.
@@ -189,7 +188,6 @@ class DatasetReader:
             allow_soft_placement=True,
             log_device_placement=FLAGS.LOG_DEVICE_PLACEMENT))
         sess.run(init)
-
 
 
         if FLAGS.LOAD_FROM_CKPT == True:
@@ -255,28 +253,34 @@ class DatasetReader:
          Tensor of shape [] containing the total loss for a batch of data
         """
 
-        backward_flow_images = hpl.get_back_flow_input(images)
+        network_input_images, network_input_labels = self.get_network_input(images,labels)
+
+
+        # backward_flow_images = losses_helper.forward_backward_loss()
+
 
         # Build inference Graph. - forward flow
-        predict_flow5, predict_flow2 = network.train_network(images)
-        # Build inference Graph. - backward flow
+        predict_flow5, predict_flow2 = network.train_network(network_input_images)
 
+
+        # Build inference Graph. - backward flow
         # Build the portion of the Graph calculating the losses. Note that we will
         # assemble the total_loss using a custom function below.
 
         # _ = losses_helper.mse_loss(labels,predict_flow2)
-        _ = losses_helper.endpoint_loss(labels,predict_flow2)
-        _ = losses_helper.depth_loss(labels,predict_flow2)
-        # _ = losses_helper.photoconsistency_loss(images,predict_flow2)
+        _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2)
+        # _ = losses_helper.depth_loss(labels,predict_flow2)
+        _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2)
 
-        predict_flow5_label = hpl.downsample_label(labels)
+        predict_flow5_label = hpl.downsample_label(network_input_labels)
         _ = losses_helper.endpoint_loss(predict_flow5_label,predict_flow5)
-        _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
+        # _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
 
 
 
         tf.summary.histogram('prediction',predict_flow2)
         tf.summary.histogram('label',labels)
+
 
         # Assemble all of the losses for the current tower only.
         losses = tf.get_collection('losses', scope)
@@ -294,6 +298,10 @@ class DatasetReader:
             tf.summary.scalar(loss_name, l)
 
         return total_loss
+
+
+    def get_network_input(self,image_batch,label_batch):
+        return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
 
     def average_gradients(self,tower_grads):
         """Calculate the average gradient for each shared variable across all towers.

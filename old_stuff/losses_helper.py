@@ -7,7 +7,7 @@ import lmbspecialops as sops
 # warp the flow values to the image.
 def flow_warp(img,flow):
 
-  # returns [16,224,384,2]
+  # returns [16,224,384,6]
   input_size = img.get_shape().as_list()
 
   x = list(range(0,input_size[1]))
@@ -38,15 +38,35 @@ def flow_warp(img,flow):
 def photoconsistency_loss(img,predicted_flow, weight=10):
 
   with tf.variable_scope('photoconsistency_loss'):
-    # warping using predicted flow
-    warped_img = flow_warp(img,predicted_flow)
 
-    pc_loss = tf.subtract(img,warped_img)
+    img1 = img[:,:,:,0:4]
+    img2 = img[:,:,:,4:8]
+
+    # warping using predicted flow
+    warped_img = flow_warp(img1,predicted_flow)
+
+    pc_loss = sops.replace_nonfinite(img2 - warped_img)
 
     tf.losses.compute_weighted_loss(pc_loss,weights=weight)
 
   return pc_loss
 
+
+def forward_backward_loss(img,predicted_flow,weight=10)
+
+  with tf.variable_scope('fb_loss'):
+
+    img1 = img[:,:,:,0:4]
+    img2 = img[:,:,:,4:8]
+
+    # warping using predicted flow
+    warped_img = flow_warp(img1,predicted_flow)
+
+    fb_loss = sops.replace_nonfinite(img2 - warped_img)
+
+    tf.losses.compute_weighted_loss(fb_loss,weights=weight)
+
+  return pc_loss
 
 # defined here :: https://arxiv.org/pdf/1702.02295.pdf
 def endpoint_loss(gt_flow,predicted_flow,weight=1000):
@@ -91,3 +111,50 @@ def depth_loss(gt_flow,predicted_flow,weight=300):
     depth_loss = tf.losses.absolute_difference(gt_w,pred_w,weights=weight)
 
     return depth_loss
+
+
+
+def scale_invariant_gradient( inp, deltas, weights, epsilon=0.001):
+    """Computes the scale invariant gradient images
+    
+    inp: Tensor
+        
+    deltas: list of int
+      The pixel delta for the difference. 
+      This vector must be the same length as weight.
+    weights: list of float
+      The weight factor for each difference.
+      This vector must be the same length as delta.
+    epsilon: float
+      epsilon value for avoiding division by zero
+        
+    """
+    assert len(deltas)==len(weights)
+
+    sig_images = []
+    for delta, weight in zip(deltas,weights):
+        sig_images.append(sops.scale_invariant_gradient(inp, deltas=[delta], weights=[weight], epsilon=epsilon))
+    return tf.concat(sig_images,axis=1)
+
+
+def scale_invariant_gradient_loss( inp, gt, epsilon ):
+    """Computes the scale invariant gradient loss
+    inp: Tensor
+        Tensor with the scale invariant gradient images computed on the prediction
+    gt: Tensor
+        Tensor with the scale invariant gradient images computed on the ground truth
+    epsilon: float
+      epsilon value for avoiding division by zero
+    """
+    num_channels_inp = inp.get_shape().as_list()[1]
+    num_channels_gt = gt.get_shape().as_list()[1]
+    assert num_channels_inp%2==0
+    assert num_channels_inp==num_channels_gt
+
+    tmp = []
+    for i in range(num_channels_inp//2):
+        tmp.append(pointwise_l2_loss(inp[:,i*2:i*2+2,:,:], gt[:,i*2:i*2+2,:,:], epsilon))
+
+    return tf.add_n(tmp)
+
+

@@ -4,7 +4,7 @@ import numpy as np
 def tf_record_input_pipeline(filenames,version='1'):
 
     # Create a list of filenames and pass it to a queue
-    filename_queue = tf.train.string_input_producer(filenames,name='InputProducerV'+version)
+    filename_queue = tf.train.string_input_producer(filenames,name='InputProducerV'+version,shuffle=False)
     # Define a reader and read the next record
     recordReader = tf.TFRecordReader(name="TfReaderV"+version)
 
@@ -58,19 +58,23 @@ def tf_record_input_pipeline(filenames,version='1'):
 
     # extra
 
+
     # d1 = tf.expand_dims(depth1,axis=2)
     # d2 = tf.expand_dims(depth2,axis=2)
 
     # d_final = tf.concat([d1,d2],axis=2)
 
     # # depth should be added to both images before this line 
+
     img_pair = tf.concat([image1,image2],axis=-1)
+    img_pair_swapped = tf.concat([image2,image1],axis=-1)
 
 
     # change depth to inverse depth
     # depth_chng = tf.divide(1,depth_chng)
 
     label_with_depth_chng = combine_depth_values(label_pair,depth_chng,2)
+    label_with_depth_chng_swapped = tf.zeros(label_with_depth_chng.get_shape())
 
     # inputt = divide_inputs_to_patches(img_pair,8)
     # label = divide_inputs_to_patches(label_pair,3)
@@ -80,18 +84,71 @@ def tf_record_input_pipeline(filenames,version='1'):
     # padding2 = tf.constant([[4, 4],[0,0]])
 
 
-    img_pair_n = tf.pad(img_pair,padding1,'CONSTANT')
-    label_pair_n = tf.pad(label_with_depth_chng,padding1,'CONSTANT')
+    img_pair = tf.pad(img_pair,padding1,'CONSTANT')
+    labels = tf.pad(label_with_depth_chng,padding1,'CONSTANT')
+
+    img_pair_swapped = tf.pad(img_pair_swapped,padding1,'CONSTANT')
+    labels_swapped = tf.pad(label_with_depth_chng_swapped,padding1,'CONSTANT')
 
 
+    img_pair_final = tf.stack([img_pair,img_pair_swapped])
+    labels_final = tf.stack([labels,labels_swapped])
+
+
+    # just to check how shuffle_batch and batch behaves.
+    # test(img_pair,img_pair_swapped)
 
     return {
-        'input_n': img_pair_n,
-        'label_n': label_pair_n
+        'input_n': img_pair_final,
+        'label_n': labels_final
         # 'input': img_pair,
         # 'label': label_pair3
     }
 
+
+
+def test(img_pair,img_pair2):
+
+    sess = tf.InteractiveSession()
+    # img_1 = tf.constant([[[1,2],[5,6]],[[9,10],[13,14]]],dtype=tf.float32)
+    # img_2 = tf.constant([[[3,4],[7,8]],[[11,12],[15,16]]],dtype=tf.float32)
+    # img_3 = tf.constant([[[1,2],[5,6]],[[9,10],[13,14]]],dtype=tf.float32)
+    # img_4 = tf.constant([[[3,4],[7,8]],[[11,12],[15,16]]],dtype=tf.float32)
+
+    # img_pair = tf.concat([img_1,img_2],axis=-1)
+    # img_pair2 = tf.concat([img_2,img_1],axis=-1)
+
+    print(img_pair)
+    print(img_pair2)
+
+    # img_pair_final2 = tf.constant([[[3,4,1,2],[7,8,5,6]],[[11,12,9,10],[15,16,13,14]]],dtype=tf.float32)
+
+    img_pair_final = tf.stack([img_pair,img_pair2])
+
+    labels_final = tf.constant([[[1,2,3],[4,5,6]],[[7,8,9],[10,11,12]]],dtype=tf.float32)
+    labels_final = tf.zeros(labels_final.get_shape(),dtype=tf.float32)
+
+    print('jalala')
+    print(img_pair_final)
+    images, labels = tf.train.shuffle_batch(
+                        [ img_pair_final , labels_final ],
+                        batch_size=1,
+                        capacity=100,
+                        num_threads=48,
+                        min_after_dequeue=1,
+                        enqueue_many=False)
+
+    sess.run(tf.global_variables_initializer())
+    coord = tf.train.Coordinator()
+    threads = tf.train.start_queue_runners(sess=sess,coord=coord)
+
+    print('ranaola')
+    print(images)
+    print(sess.run(images[0,:,:,:,:]))
+
+
+    coord.request_stop()
+    coord.join(threads)
 # combines the depth value in the image RGB values to make it an RGBD tensor.
 # where the resulting tensor will have depth values in the 4th element of 3rd dimension i.e [0][0][3].
 # where [x][x][0] = R, [x][x][1] = G, [x][x][2] = B, [x][x][3] = D
