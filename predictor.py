@@ -4,12 +4,12 @@ import helpers as hpl
 import numpy as np
 from   PIL import Image
 import matplotlib.pyplot as plt
-import synthetic_tf_converter as converter
+# import synthetic_tf_converter as converter
 import tensorflow as tf
 import data_reader as dr
 import matplotlib.mlab as mlab
-import ijremote as ij
-
+# import ijremote as ij
+# import losses_helper as lh
 folder = '/home/muazzam/mywork/python/thesis/server/dataset_synthetic/driving/'
 # folder = '/misc/lmbraid19/muazzama/dataset_synthetic/driving/'
 
@@ -26,26 +26,29 @@ disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/i
 ''' ********************************************* this is the reading part ********************************************* '''
 ''' ********************************************* this is the reading part ********************************************* '''
 ''' ********************************************* this is the reading part ********************************************* '''
-def show_optical_flow(label_batch): 
+# def show_optical_flow(label_batch): 
 
-	factor = 0.4
-	input_size = int(960 * factor), int(540 * factor)
+# 	factor = 0.4
+# 	input_size = int(960 * factor), int(540 * factor)
 
-	opt_u = np.squeeze(label_batch[:,:,:,0]) * input_size[0]
-	opt_v = np.squeeze(label_batch[:,:,:,1]) * input_size[1]
+# 	opt_u = np.squeeze(label_batch[:,:,:,0]) * input_size[0]
+# 	opt_v = np.squeeze(label_batch[:,:,:,1]) * input_size[1]
 
-	opt_u = opt_u.astype(np.uint8)
-	opt_v = opt_v.astype(np.uint8)
+# 	opt_u = opt_u.astype(np.uint8)
+# 	opt_v = opt_v.astype(np.uint8)
 
-	opt_u = Image.fromarray(opt_u) 
-	opt_v = Image.fromarray(opt_v)
-
-
-	opt_u.show()
-	opt_v.show()
+# 	opt_u = Image.fromarray(opt_u) 
+# 	opt_v = Image.fromarray(opt_v)
 
 
+# 	opt_u.show()
+# 	opt_v.show()
 
+# sess = tf.InteractiveSession()
+# img = tf.constant([[1,-2,3],[4,5,6],[-7,8,9]],dtype=tf.float32)
+# warped = tf.constant([[1,2,-3],[4,0,-6],[-7,0,0]],dtype=tf.float32)
+
+# print(sess.run(tf.abs(lh.get_occulation_aware_image(img,warped))))
 # factor = 0.4
 # input_size = int(960 * factor), int(540 * factor)
 

@@ -118,8 +118,6 @@ def test(img_pair,img_pair2):
     # img_pair = tf.concat([img_1,img_2],axis=-1)
     # img_pair2 = tf.concat([img_2,img_1],axis=-1)
 
-    print(img_pair)
-    print(img_pair2)
 
     # img_pair_final2 = tf.constant([[[3,4,1,2],[7,8,5,6]],[[11,12,9,10],[15,16,13,14]]],dtype=tf.float32)
 
@@ -128,23 +126,20 @@ def test(img_pair,img_pair2):
     labels_final = tf.constant([[[1,2,3],[4,5,6]],[[7,8,9],[10,11,12]]],dtype=tf.float32)
     labels_final = tf.zeros(labels_final.get_shape(),dtype=tf.float32)
 
-    print('jalala')
-    print(img_pair_final)
     images, labels = tf.train.shuffle_batch(
                         [ img_pair_final , labels_final ],
-                        batch_size=1,
+                        batch_size=16,
                         capacity=100,
                         num_threads=48,
                         min_after_dequeue=1,
                         enqueue_many=False)
 
+    images = tf.Print(images,[images[0,0,:,:,0:3]],summarize=10000,message='jalalala')
     sess.run(tf.global_variables_initializer())
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess,coord=coord)
 
-    print('ranaola')
-    print(images)
-    print(sess.run(images[0,:,:,:,:]))
+    # print(sess.run(images[0,0,:,:,0:3]))
 
 
     coord.request_stop()

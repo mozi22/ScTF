@@ -131,6 +131,7 @@ class FlowPredictor:
 	def show_image(self,array,img_title):
 		a = Image.fromarray(array)
 		a.show(title=img_title)
+		a.save('prediction.jpg')
 
 
 

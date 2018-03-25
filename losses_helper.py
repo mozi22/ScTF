@@ -16,12 +16,13 @@ def flow_warp(img,flow):
 
   # X = Y = 224,384 
 
-  # converting shape of X = Y to (16,224,384), because flow size is (16,224,384,2)
+  # converting shape of X = Y to (16,224,384), because flow size is (16,224,384,*)
   X = tf.expand_dims(X,0)
   Y = tf.expand_dims(Y,0)
 
-  X = tf.pad(X,tf.constant([[8,7],[0,0],[0,0]]),"CONSTANT")
-  Y = tf.pad(Y,tf.constant([[8,7],[0,0],[0,0]]),"CONSTANT")
+
+  # X = tf.pad(X,tf.constant([[8,7],[0,0],[0,0]]),"CONSTANT")
+  # Y = tf.pad(Y,tf.constant([[8,7],[0,0],[0,0]]),"CONSTANT")
 
   X = tf.transpose(X,[0,2,1])
   Y = tf.transpose(Y,[0,2,1])
@@ -40,16 +41,18 @@ def photoconsistency_loss(img,predicted_flow, weight=100):
   with tf.variable_scope('photoconsistency_loss'):
 
     img1 = img[:,:,:,0:3]
-    img2 = img[:,:,:,4:7]
+    img2 = img[:,:,:,5:8]
 
     # warping using predicted flow
-    warped_img = flow_warp(img2,predicted_flow)
+    warped_img = flow_warp(img1,predicted_flow)
 
-    img1 = get_occulation_aware_image(img1,warped_img)
+    # img2 = get_occulation_aware_image(img2,warped_img)
+    # img2 = tf.Print(img2,[img2],summarize=10000,message="msg_before")
+    # img2 = tf.Print(img2,[img2],summarize=10000,message="msg_after")
 
-    pc_loss = sops.replace_nonfinite(warped_img - img1)
+    pc_loss = tf.losses.mean_squared_error(warped_img,img2)
 
-    tf.losses.compute_weighted_loss(pc_loss,weights=weight)
+    # tf.losses.compute_weighted_loss(pc_loss,weights=weight)
 
   return pc_loss
 
@@ -131,6 +134,9 @@ def scale_invariant_gradient( inp, deltas, weights, epsilon=0.001):
       epsilon value for avoiding division by zero
         
     """
+    inp = tf.transpose(inp,[0,3,1,2])
+
+
     assert len(deltas)==len(weights)
 
     sig_images = []
@@ -148,6 +154,7 @@ def scale_invariant_gradient_loss( inp, gt, epsilon ):
     epsilon: float
       epsilon value for avoiding division by zero
     """
+
     num_channels_inp = inp.get_shape().as_list()[1]
     num_channels_gt = gt.get_shape().as_list()[1]
     assert num_channels_inp%2==0
@@ -159,9 +166,33 @@ def scale_invariant_gradient_loss( inp, gt, epsilon ):
 
     return tf.add_n(tmp)
 
+def pointwise_l2_loss(inp, gt, epsilon, data_format='NCHW'):
+    """Computes the pointwise unsquared l2 loss.
+    The input tensors must use the format NCHW. 
+    This loss ignores nan values. 
+    The loss is normalized by the number of pixels.
+    
+    inp: Tensor
+        This is the prediction.
+        
+    gt: Tensor
+        The ground truth with the same shape as 'inp'
+        
+    epsilon: float
+        The epsilon value to avoid division by zero in the gradient computation
+    """
+    with tf.name_scope('pointwise_l2_loss'):
+        gt_ = tf.stop_gradient(gt)
+        diff = sops.replace_nonfinite(inp-gt_)
+        if data_format == 'NCHW':
+            return tf.reduce_mean(tf.sqrt(tf.reduce_sum(diff**2, axis=1)+epsilon))
+        else: # NHWC
+            return tf.reduce_mean(tf.sqrt(tf.reduce_sum(diff**2, axis=3)+epsilon))
+
+
 # returns an image with all the occulded pixel values as 0
 def get_occulation_aware_image(img,warped_img):
     masked_img = warped_img * tf.ones(img.get_shape())
     masked_img = masked_img / masked_img
     masked_img = sops.replace_nonfinite(masked_img)
-    return masked_img * img
+    return sops.replace_nonfinite(masked_img * warped_img)
