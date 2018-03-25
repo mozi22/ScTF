@@ -35,24 +35,26 @@ def flow_warp(img,flow):
 
   return tf.contrib.resampler.resampler(img,result)
 
-def photoconsistency_loss(img,predicted_flow, weight=10):
+def photoconsistency_loss(img,predicted_flow, weight=100):
 
   with tf.variable_scope('photoconsistency_loss'):
 
-    img1 = img[:,:,:,0:4]
-    img2 = img[:,:,:,4:8]
+    img1 = img[:,:,:,0:3]
+    img2 = img[:,:,:,4:7]
 
     # warping using predicted flow
-    warped_img = flow_warp(img1,predicted_flow)
+    warped_img = flow_warp(img2,predicted_flow)
 
-    pc_loss = sops.replace_nonfinite(img2 - warped_img)
+    img1 = get_occulation_aware_image(img1,warped_img)
+
+    pc_loss = sops.replace_nonfinite(warped_img - img1)
 
     tf.losses.compute_weighted_loss(pc_loss,weights=weight)
 
   return pc_loss
 
 
-def forward_backward_loss(img,predicted_flow,weight=10):
+def forward_backward_loss(img,predicted_flow,weight=100):
 
   with tf.variable_scope('fb_loss'):
 
@@ -157,4 +159,9 @@ def scale_invariant_gradient_loss( inp, gt, epsilon ):
 
     return tf.add_n(tmp)
 
-
+# returns an image with all the occulded pixel values as 0
+def get_occulation_aware_image(img,warped_img):
+    masked_img = warped_img * tf.ones(img.get_shape())
+    masked_img = masked_img / masked_img
+    masked_img = sops.replace_nonfinite(masked_img)
+    return masked_img * img
