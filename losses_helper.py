@@ -119,21 +119,24 @@ def depth_loss(gt_flow,predicted_flow,weight=300):
 
 
 
+# taken from DEMON Network
 def scale_invariant_gradient( inp, deltas, weights, epsilon=0.001):
-    """Computes the scale invariant gradient images
-    
-    inp: Tensor
-        
-    deltas: list of int
-      The pixel delta for the difference. 
-      This vector must be the same length as weight.
-    weights: list of float
-      The weight factor for each difference.
-      This vector must be the same length as delta.
-    epsilon: float
-      epsilon value for avoiding division by zero
-        
-    """
+  """Computes the scale invariant gradient images
+  
+  inp: Tensor
+      
+  deltas: list of int
+    The pixel delta for the difference. 
+    This vector must be the same length as weight.
+  weights: list of float
+    The weight factor for each difference.
+    This vector must be the same length as delta.
+  epsilon: float
+    epsilon value for avoiding division by zero
+      
+  """
+
+  with tf.variable_scope('scale_inv_images'):
     inp = tf.transpose(inp,[0,3,1,2])
 
 
@@ -142,19 +145,21 @@ def scale_invariant_gradient( inp, deltas, weights, epsilon=0.001):
     sig_images = []
     for delta, weight in zip(deltas,weights):
         sig_images.append(sops.scale_invariant_gradient(inp, deltas=[delta], weights=[weight], epsilon=epsilon))
-    return tf.concat(sig_images,axis=1)
+  return tf.concat(sig_images,axis=1)
 
 
+# taken from DEMON Network
 def scale_invariant_gradient_loss( inp, gt, epsilon ):
-    """Computes the scale invariant gradient loss
-    inp: Tensor
-        Tensor with the scale invariant gradient images computed on the prediction
-    gt: Tensor
-        Tensor with the scale invariant gradient images computed on the ground truth
-    epsilon: float
-      epsilon value for avoiding division by zero
-    """
+  """Computes the scale invariant gradient loss
+  inp: Tensor
+      Tensor with the scale invariant gradient images computed on the prediction
+  gt: Tensor
+      Tensor with the scale invariant gradient images computed on the ground truth
+  epsilon: float
+    epsilon value for avoiding division by zero
+  """
 
+  with tf.variable_scope('scale_invariant_gradient_loss'):
     num_channels_inp = inp.get_shape().as_list()[1]
     num_channels_gt = gt.get_shape().as_list()[1]
     assert num_channels_inp%2==0
@@ -166,6 +171,7 @@ def scale_invariant_gradient_loss( inp, gt, epsilon ):
 
     return tf.add_n(tmp)
 
+# taken from DEMON Network
 def pointwise_l2_loss(inp, gt, epsilon, data_format='NCHW'):
     """Computes the pointwise unsquared l2 loss.
     The input tensors must use the format NCHW. 

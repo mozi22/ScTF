@@ -270,7 +270,7 @@ class DatasetReader:
         # _ = losses_helper.mse_loss(labels,predict_flow2)
         _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2)
         # _ = losses_helper.depth_loss(labels,predict_flow2)
-        _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2)
+        # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2)
 
         scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
                                                                                 np.array([1,2,4,8,16]),
