@@ -146,7 +146,6 @@ def train_network(image_pair):
         conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=3, stride=2,activation=tf.nn.leaky_relu)
         conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=3, stride=2,activation=tf.nn.leaky_relu)
 
-
     # predict flow
     with tf.variable_scope('predict_flow5'):
         predict_flow4 = _predict_flow(conv5)

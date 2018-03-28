@@ -4,47 +4,13 @@ import numpy as np
 import lmbspecialops as sops
 
 
-# warp the flow values to the image.
-def flow_warp(img,flow):
 
-  # returns [16,224,384,6]
-  input_size = img.get_shape().as_list()
-
-  x = list(range(0,input_size[1]))
-  y = list(range(0,input_size[2]))
-  X, Y = tf.meshgrid(x, y)
-
-  # X = Y = 224,384 
-
-  # converting shape of X = Y to (16,224,384), because flow size is (16,224,384,*)
-  X = tf.expand_dims(X,0)
-  Y = tf.expand_dims(Y,0)
-
-
-  # X = tf.pad(X,tf.constant([[8,7],[0,0],[0,0]]),"CONSTANT")
-  # Y = tf.pad(Y,tf.constant([[8,7],[0,0],[0,0]]),"CONSTANT")
-
-  X = tf.transpose(X,[0,2,1])
-  Y = tf.transpose(Y,[0,2,1])
-
-  X = tf.cast(X,np.float32) + flow[:,:,:,0]
-  Y = tf.cast(Y,np.float32) + flow[:,:,:,1]
-
-  con = tf.stack([X,Y])
-
-  result = tf.transpose(con,[1,2,3,0])
-
-  return tf.contrib.resampler.resampler(img,result)
 
 def photoconsistency_loss(img,predicted_flow, weight=100):
 
   with tf.variable_scope('photoconsistency_loss'):
 
-    img1 = img[:,:,:,0:3]
-    img2 = img[:,:,:,5:8]
-
-    # warping using predicted flow
-    warped_img = flow_warp(img2,predicted_flow)
+    warped_img = get_flow_warp(img,predicted_flow)
 
     img2 = get_occulation_aware_image(img2,warped_img)
     # img2 = tf.Print(img2,[img2],summarize=10000,message="msg_before")
@@ -52,7 +18,6 @@ def photoconsistency_loss(img,predicted_flow, weight=100):
 
     pc_loss = tf.losses.mean_squared_error(warped_img,img1)
 
-    # tf.losses.compute_weighted_loss(pc_loss,weights=weight)
 
   return pc_loss
 
@@ -71,7 +36,7 @@ def forward_backward_loss(img,predicted_flow,weight=100):
 
     tf.losses.compute_weighted_loss(fb_loss,weights=weight)
 
-  return pc_loss
+  return fb_loss
 
 # defined here :: https://arxiv.org/pdf/1702.02295.pdf
 def endpoint_loss(gt_flow,predicted_flow,weight=1000):
@@ -103,19 +68,18 @@ def endpoint_loss(gt_flow,predicted_flow,weight=1000):
   return epe_loss
 
 
-def depth_loss(gt_flow,predicted_flow,weight=300):
+def depth_consistency_loss(img,predicted_flow,weight=300):
 
-  with tf.variable_scope('depth_loss'):
+  with tf.variable_scope('depth_consistency_loss'):
 
-    gt_flow = tf.stop_gradient(gt_flow)
+    warped_depth_img = get_flow_warp(img,predicted_flow)
 
-    # L1 loss on depth
-    gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
-    pred_w = tf.slice(predicted_flow,[0,0,0,2],[-1,-1,-1,1])
+    # loss = w - Z_1(x+u,y+v) + Z_0(x,y)
+    dc_loss = predicted_flow[:,:,:,2] - warped_depth_img + img[:,:,:,3]
 
-    depth_loss = tf.losses.absolute_difference(gt_w,pred_w,weights=weight)
+    tf.losses.compute_weighted_loss(dc_loss,weights=weight)
 
-    return depth_loss
+    return dc_loss
 
 
 
@@ -202,3 +166,46 @@ def get_occulation_aware_image(img,warped_img):
     masked_img = masked_img / masked_img
     masked_img = sops.replace_nonfinite(masked_img)
     return masked_img * img
+
+
+def get_flow_warp(img,prediced_flow,for_depth=False):
+
+    if for_depth:
+      img2 = img[:,:,:,7]
+    else:
+      img2 = img[:,:,:,5:8]
+
+    # warping using predicted flow
+    return flow_warp(img2,predicted_flow)
+
+# warp the flow values to the image.
+def flow_warp(img,flow):
+
+  # returns [16,224,384,6]
+  input_size = img.get_shape().as_list()
+
+  x = list(range(0,input_size[1]))
+  y = list(range(0,input_size[2]))
+  X, Y = tf.meshgrid(x, y)
+
+  # X = Y = 224,384 
+
+  # converting shape of X = Y to (16,224,384), because flow size is (16,224,384,*)
+  X = tf.expand_dims(X,0)
+  Y = tf.expand_dims(Y,0)
+
+
+  # X = tf.pad(X,tf.constant([[8,7],[0,0],[0,0]]),"CONSTANT")
+  # Y = tf.pad(Y,tf.constant([[8,7],[0,0],[0,0]]),"CONSTANT")
+
+  X = tf.transpose(X,[0,2,1])
+  Y = tf.transpose(Y,[0,2,1])
+
+  X = tf.cast(X,np.float32) + flow[:,:,:,0]
+  Y = tf.cast(Y,np.float32) + flow[:,:,:,1]
+
+  con = tf.stack([X,Y])
+
+  result = tf.transpose(con,[1,2,3,0])
+
+  return tf.contrib.resampler.resampler(img[:,:,:,2],result)
