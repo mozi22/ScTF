@@ -97,7 +97,6 @@ def tf_record_input_pipeline(filenames,version='1'):
 
     # just to check how shuffle_batch and batch behaves.
     # test(img_pair,img_pair_swapped)
-
     return {
         'input_n': img_pair_final,
         'label_n': labels_final

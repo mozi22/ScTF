@@ -44,13 +44,13 @@ def photoconsistency_loss(img,predicted_flow, weight=100):
     img2 = img[:,:,:,5:8]
 
     # warping using predicted flow
-    warped_img = flow_warp(img1,predicted_flow)
+    warped_img = flow_warp(img2,predicted_flow)
 
-    # img2 = get_occulation_aware_image(img2,warped_img)
+    img2 = get_occulation_aware_image(img2,warped_img)
     # img2 = tf.Print(img2,[img2],summarize=10000,message="msg_before")
     # img2 = tf.Print(img2,[img2],summarize=10000,message="msg_after")
 
-    pc_loss = tf.losses.mean_squared_error(warped_img,img2)
+    pc_loss = tf.losses.mean_squared_error(warped_img,img1)
 
     # tf.losses.compute_weighted_loss(pc_loss,weights=weight)
 
@@ -201,4 +201,4 @@ def get_occulation_aware_image(img,warped_img):
     masked_img = warped_img * tf.ones(img.get_shape())
     masked_img = masked_img / masked_img
     masked_img = sops.replace_nonfinite(masked_img)
-    return sops.replace_nonfinite(masked_img * warped_img)
+    return masked_img * img

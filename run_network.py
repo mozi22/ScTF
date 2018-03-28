@@ -23,7 +23,8 @@ def get_available_gpus():
 
 
 
-# these variables can be tuned to help training
+# Training Variables
+
 FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/multi_gpu_epe_loss_only/',
@@ -41,6 +42,7 @@ tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
 
 tf.app.flags.DEFINE_integer('MAX_STEPS', 100000,
                             """Number of batches to run.""")
+
 
 tf.app.flags.DEFINE_boolean('LOG_DEVICE_PLACEMENT', False,
                             """Whether to log device placement.""")
@@ -66,11 +68,24 @@ tf.app.flags.DEFINE_integer('SHUFFLE_BATCH_THREADS', 48,
 tf.app.flags.DEFINE_integer('SHUFFLE_BATCH_MIN_AFTER_DEQUEUE', 10,
                             """How many elements will be there in the queue to be dequeued.""")
 
-tf.app.flags.DEFINE_integer('NUM_GPUS', 1,
+tf.app.flags.DEFINE_integer('NUM_GPUS', len(get_available_gpus()),
                             """How many GPUs to use.""")
 
 tf.app.flags.DEFINE_float('MOVING_AVERAGE_DECAY', 0.9999,
                             """How fast the learning rate should go down.""")
+
+tf.app.flags.DEFINE_integer('TOTAL_TRAIN_EXAMPLES', 200,
+                            """How many samples are there in one epoch of testing.""")
+
+
+# Testing Variables
+
+tf.app.flags.DEFINE_integer('TOTAL_TEST_EXAMPLES', 100,
+                            """How many samples are there in one epoch of testing.""")
+
+tf.app.flags.DEFINE_integer('TEST_BATCH_SIZE', 16,
+                            """How many samples are there in one epoch of testing.""")
+
 
 # Polynomial Learning Rate
 
@@ -83,7 +98,14 @@ tf.app.flags.DEFINE_float('POWER', 7,
 
 class DatasetReader:
 
-    def train(self,features_train):
+    def __init__(self):
+        # for testing
+        self.X = tf.placeholder(dtype=tf.float32, shape=(FLAGS.TEST_BATCH_SIZE, 224, 384, 8))
+        self.Y = tf.placeholder(dtype=tf.float32, shape=(FLAGS.TEST_BATCH_SIZE, 224, 384, 3))
+        self.TEST_EPOCH = math.ceil(FLAGS.TOTAL_TEST_EXAMPLES / FLAGS.TEST_BATCH_SIZE)
+        self.TRAIN_EPOCH = math.ceil(FLAGS.TOTAL_TRAIN_EXAMPLES / FLAGS.BATCH_SIZE)
+
+    def train(self,features_train,features_test):
 
         global_step = tf.get_variable(
             'global_step', [],
@@ -110,12 +132,22 @@ class DatasetReader:
                             num_threads=FLAGS.SHUFFLE_BATCH_THREADS,
                             min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
                             enqueue_many=False)
+
+        self.images_test, self.labels_test = tf.train.shuffle_batch(
+                            [ features_test['input_n'] , features_test['label_n'] ],
+                            batch_size=FLAGS.TEST_BATCH_SIZE,
+                            capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY,
+                            num_threads=FLAGS.SHUFFLE_BATCH_THREADS,
+                            min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
+                            enqueue_many=False)
         
         batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
             [images, labels], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
+
+        self.batch_queue_test = tf.contrib.slim.prefetch_queue.prefetch_queue(
+            [self.images_test, self.labels_test], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
         
         tower_grads = []
-        all_summaries = []
         with tf.variable_scope(tf.get_variable_scope()):
           for i in xrange(FLAGS.NUM_GPUS):
             with tf.device('/gpu:%d' % i):
@@ -127,7 +159,7 @@ class DatasetReader:
                 # Calculate the loss for one tower of the CIFAR model. This function
                 # constructs the entire CIFAR model but shares the variables across
                 # all towers.
-                loss = self.tower_loss(scope, image_batch, label_batch)
+                self.loss = self.tower_loss(scope, image_batch, label_batch)
 
                 # Reuse variables for the next tower.
                 tf.get_variable_scope().reuse_variables()
@@ -137,7 +169,7 @@ class DatasetReader:
 
 
                 # Calculate the gradients for the batch of data on this CIFAR tower.
-                grads = opt.compute_gradients(loss)
+                grads = opt.compute_gradients(self.loss)
 
                 # Keep track of the gradients across all towers.
                 tower_grads.append(grads)
@@ -176,7 +208,7 @@ class DatasetReader:
         saver = tf.train.Saver(tf.global_variables())
 
         # Build the summary operation from the last tower summaries.
-        summary_op = tf.summary.merge(summaries)
+        self.summary_op = tf.summary.merge(summaries)
 
         # Build an initialization operation to run below.
         init = tf.global_variables_initializer()
@@ -200,6 +232,7 @@ class DatasetReader:
         # for debugging
 
         summary_writer = tf.summary.FileWriter(FLAGS.TRAIN_DIR, sess.graph)
+        self.test_summary_writer = tf.summary.FileWriter(FLAGS.TRAIN_DIR + '/test')
 
 
         # just to make sure we start from where we left, if load_from_ckpt = True
@@ -210,16 +243,31 @@ class DatasetReader:
             sess = tf_debug.LocalCLIDebugWrapperSession(sess)
 
         first_iteration = True
+
+        # this will print in console for which time we are calculating the test loss.
+        # first time or second time or third time and more
+        test_loss_calculating_index = 1
         # main loop
         for step in range(loop_start,loop_stop):
+
             start_time = time.time()
 
-            _, loss_value = sess.run([train_op, loss])
+            _, loss_value = sess.run([train_op, self.loss])
 
 
             duration = time.time() - start_time
 
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
+
+
+            # after every 10 epochs. perform testing
+            if step % (self.TRAIN_EPOCH + 10) == 0 and first_iteration==False:
+
+                print(' ')
+                print('Printing Test loss for '+str(test_loss_calculating_index)+' time')
+                print(' ')
+                self.perform_testing(sess,step)
+
 
             if step % 10 == 0 or first_iteration==True:
                 num_examples_per_step = FLAGS.BATCH_SIZE * FLAGS.NUM_GPUS
@@ -228,13 +276,17 @@ class DatasetReader:
                 first_iteration = False
 
 
+
+
+
+
             format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
                           'sec/batch)')
             print (format_str % (datetime.now(), step, np.log10(loss_value),
                                  examples_per_sec, sec_per_batch))
 
             if step % 100 == 0:
-                summary_str = sess.run(summary_op)
+                summary_str = sess.run(self.summary_op)
                 summary_writer.add_summary(summary_str, step)
 
             # Save the model checkpoint periodically.
@@ -348,3 +400,24 @@ class DatasetReader:
             grad_and_var = (grad, v)
             average_grads.append(grad_and_var)
         return average_grads
+
+
+
+    def perform_testing(self,sess,step):
+    
+
+        for step in range(step,step + self.TEST_EPOCH):
+
+            image_batch, label_batch = self.batch_queue_test.dequeue()
+            image_batch, label_batch = self.get_network_input(image_batch,label_batch)
+
+            image,label = sess.run([image_batch, label_batch])
+
+            loss,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: image, self.Y: label})
+
+        
+            self.test_summary_writer.add_summary(summary_str, step)
+
+            print('test loss = '+str(loss))
+
+        print(' ')
