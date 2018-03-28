@@ -261,19 +261,19 @@ class DatasetReader:
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
 
-            # after every 10 epochs. calculate test loss
-            if step % (self.TRAIN_EPOCH * 10) == 0 and first_iteration==False:
+            # # after every 10 epochs. calculate test loss
+            # if step % (self.TRAIN_EPOCH * 10) == 0 and first_iteration==True:
 
-                message = 'Printing Test loss for '+str(test_loss_calculating_index)+' time'
+            #     message = 'Printing Test loss for '+str(test_loss_calculating_index)+' time'
 
-                self.log()
-                self.log(message)
-                self.log()
+            #     self.log()
+            #     self.log(message)
+            #     self.log()
 
-                self.perform_testing(sess,step)
+            #     self.perform_testing(sess,step)
 
-                # increment index to know how many times we've calculated the test loss
-                test_loss_calculating_index = test_loss_calculating_index + 1
+            #     # increment index to know how many times we've calculated the test loss
+            #     test_loss_calculating_index = test_loss_calculating_index + 1
 
 
             if step % 10 == 0 or first_iteration==True:
@@ -285,8 +285,8 @@ class DatasetReader:
 
             format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
                           'sec/batch)')
-            self.log(b  format_str % (datetime.now(), step, np.log10(loss_value),
-                                 examples_per_sec, sec_per_batch))
+            self.log(message=(format_str % (datetime.now(), step, np.log10(loss_value),
+                                 examples_per_sec, sec_per_batch)))
 
             if step % 100 == 0:
                 summary_str = sess.run(self.summary_op)
@@ -297,6 +297,11 @@ class DatasetReader:
                 checkpoint_path = os.path.join(FLAGS.TRAIN_DIR, 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=step)
         summary_writer.close()
+
+
+
+
+
 
     def tower_loss(self,scope, images, labels):
         """Calculate the total loss on a single tower running the CIFAR model.
@@ -325,7 +330,7 @@ class DatasetReader:
         # _ = losses_helper.mse_loss(labels,predict_flow2)
         _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2)
         # _ = losses_helper.depth_loss(labels,predict_flow2)
-        # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2)
+        _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2)
 
         scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
                                                                                 np.array([1,2,4,8,16]),
@@ -405,7 +410,6 @@ class DatasetReader:
         return average_grads
 
 
-
     def perform_testing(self,sess,step):
     
 
@@ -416,14 +420,13 @@ class DatasetReader:
 
             image,label = sess.run([image_batch, label_batch])
 
-            loss,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: image, self.Y: label})
+            loss_value,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: image, self.Y: label})
 
             self.test_summary_writer.add_summary(summary_str, step)
 
 
-            format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
-                          'sec/batch)')
-            self.log(message=format_str % (datetime.now(), step, np.log10(loss)))
+            format_str = ('%s: step %d, loss = %.15f')
+            self.log(message=(format_str % (datetime.now(), step, np.log10(loss_value))))
 
 
         self.log()
