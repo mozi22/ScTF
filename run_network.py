@@ -102,8 +102,9 @@ class DatasetReader:
         # for testing
         self.X = tf.placeholder(dtype=tf.float32, shape=(FLAGS.TEST_BATCH_SIZE, 224, 384, 8))
         self.Y = tf.placeholder(dtype=tf.float32, shape=(FLAGS.TEST_BATCH_SIZE, 224, 384, 3))
-        self.TEST_EPOCH = math.ceil(FLAGS.TOTAL_TEST_EXAMPLES / FLAGS.TEST_BATCH_SIZE)
+
         self.TRAIN_EPOCH = math.ceil(FLAGS.TOTAL_TRAIN_EXAMPLES / FLAGS.BATCH_SIZE)
+        self.TEST_EPOCH = math.ceil(FLAGS.TOTAL_TEST_EXAMPLES / FLAGS.TEST_BATCH_SIZE)
 
     def train(self,features_train,features_test):
 
@@ -260,13 +261,19 @@ class DatasetReader:
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
 
-            # after every 10 epochs. perform testing
-            if step % (self.TRAIN_EPOCH + 10) == 0 and first_iteration==False:
+            # after every 10 epochs. calculate test loss
+            if step % (self.TRAIN_EPOCH * 10) == 0 and first_iteration==False:
 
-                print(' ')
-                print('Printing Test loss for '+str(test_loss_calculating_index)+' time')
-                print(' ')
+                message = 'Printing Test loss for '+str(test_loss_calculating_index)+' time'
+
+                self.log()
+                self.log(message)
+                self.log()
+
                 self.perform_testing(sess,step)
+
+                # increment index to know how many times we've calculated the test loss
+                test_loss_calculating_index = test_loss_calculating_index + 1
 
 
             if step % 10 == 0 or first_iteration==True:
@@ -276,13 +283,9 @@ class DatasetReader:
                 first_iteration = False
 
 
-
-
-
-
             format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
                           'sec/batch)')
-            print (format_str % (datetime.now(), step, np.log10(loss_value),
+            self.log(b  format_str % (datetime.now(), step, np.log10(loss_value),
                                  examples_per_sec, sec_per_batch))
 
             if step % 100 == 0:
@@ -415,9 +418,18 @@ class DatasetReader:
 
             loss,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: image, self.Y: label})
 
-        
             self.test_summary_writer.add_summary(summary_str, step)
 
-            print('test loss = '+str(loss))
 
-        print(' ')
+            format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
+                          'sec/batch)')
+            self.log(message=format_str % (datetime.now(), step, np.log10(loss)))
+
+
+        self.log()
+        self.log(message='Continue Training ...')
+        self.log()
+
+
+    def log(self,message=' '):
+        print(message)
