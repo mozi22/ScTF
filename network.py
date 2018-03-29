@@ -195,7 +195,6 @@ def train_network(image_pair):
             features_direct=conv0
         )
 
-
     with tf.variable_scope('predict_flow2'):
 
         predict_flow2 = _predict_flow(concat0)

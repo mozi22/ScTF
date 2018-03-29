@@ -14,7 +14,6 @@ class FlowPredictor:
 	# depth2: path of depth pfm 2
 	def preprocess(self,img1,img2,disparity1,disparity2):
 
-
 		factor = 0.4
 		self.input_size = int(960 * factor), int(540 * factor)
 		# self.driving_disp_chng_max = 7.5552e+08
@@ -64,7 +63,6 @@ class FlowPredictor:
 		# ij.setImage('imag1',self.depth1)
 		# ij.setImage('imag2',self.depth2)
 
-
 		# d1 = np.expand_dims(self.depth1,axis=2)
 		# d2 = np.expand_dims(self.depth2,axis=2)
 		# img_pair = np.concatenate((d1,d2),axis=2)
@@ -111,7 +109,6 @@ class FlowPredictor:
 
 		return depth1 - depth2
 
-
 	def warp(self,img,flow):
 		x = list(range(0,self.input_size[0]))
 		y = list(range(0,self.input_size[1] + 8))
@@ -120,20 +117,15 @@ class FlowPredictor:
 		X = tf.cast(X,np.float32) + flow[:,:,0]
 		Y = tf.cast(Y,np.float32) + flow[:,:,1]
 
-
-
 		con = tf.stack([X,Y])
 		result = tf.transpose(con,[1,2,0])
 		result = tf.expand_dims(result,0)
 		return tf.contrib.resampler.resampler(img[np.newaxis,:,:,:],result)
 
-
 	def show_image(self,array,img_title):
 		a = Image.fromarray(array)
 		a.show(title=img_title)
 		a.save('prediction_without_pc_loss.jpg')
-
-
 
 	def denormalize_flow(self,flow,show_flow):
 
@@ -159,9 +151,6 @@ class FlowPredictor:
 
 
 	def postprocess(self,flow,show_flow=True,gt=False):
-
-
-
 
 		if gt==True:
 			self.show_image(flow[:,:,0],'Flow_u')

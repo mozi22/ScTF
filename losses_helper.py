@@ -1,26 +1,18 @@
-
 import tensorflow as tf
 import numpy as np
-import lmbspecialops as sops
-
-
-
+# import lmbspecialops as sops
 
 def photoconsistency_loss(img,predicted_flow, weight=100):
 
   with tf.variable_scope('photoconsistency_loss'):
 
     warped_img = get_flow_warp(img,predicted_flow)
-
     img2 = get_occulation_aware_image(img2,warped_img)
     # img2 = tf.Print(img2,[img2],summarize=10000,message="msg_before")
     # img2 = tf.Print(img2,[img2],summarize=10000,message="msg_after")
-
     pc_loss = tf.losses.mean_squared_error(warped_img,img1)
 
-
   return pc_loss
-
 
 def forward_backward_loss(img,predicted_flow,weight=100):
 
@@ -80,7 +72,6 @@ def depth_consistency_loss(img,predicted_flow,weight=300):
     tf.losses.compute_weighted_loss(dc_loss,weights=weight)
 
     return dc_loss
-
 
 
 # taken from DEMON Network
@@ -184,28 +175,24 @@ def flow_warp(img,flow):
   # returns [16,224,384,6]
   input_size = img.get_shape().as_list()
 
-  x = list(range(0,input_size[1]))
-  y = list(range(0,input_size[2]))
+  x = list(range(0,input_size[2]))
+  y = list(range(0,input_size[1]))
+
   X, Y = tf.meshgrid(x, y)
 
-  # X = Y = 224,384 
-
-  # converting shape of X = Y to (16,224,384), because flow size is (16,224,384,*)
   X = tf.expand_dims(X,0)
   Y = tf.expand_dims(Y,0)
 
+  X = tf.cast(X,np.float32)
+  Y = tf.cast(Y,np.float32)
 
-  # X = tf.pad(X,tf.constant([[8,7],[0,0],[0,0]]),"CONSTANT")
-  # Y = tf.pad(Y,tf.constant([[8,7],[0,0],[0,0]]),"CONSTANT")
+  X = X[0,:,:] + flow[:,:,:,0]
+  Y = Y[0,:,:] + flow[:,:,:,1]
 
-  X = tf.transpose(X,[0,2,1])
-  Y = tf.transpose(Y,[0,2,1])
-
-  X = tf.cast(X,np.float32) + flow[:,:,:,0]
-  Y = tf.cast(Y,np.float32) + flow[:,:,:,1]
 
   con = tf.stack([X,Y])
 
   result = tf.transpose(con,[1,2,3,0])
 
-  return tf.contrib.resampler.resampler(img[:,:,:,2],result)
+  # result = tf.expand_dims(result,0)
+  return tf.contrib.resampler.resampler(img,result)

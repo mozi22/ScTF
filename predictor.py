@@ -8,17 +8,20 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import data_reader as dr
 import matplotlib.mlab as mlab
-# import ijremote as ij
+import ijremote as ij
 # import losses_helper as lh
 folder = '/home/muazzam/mywork/python/thesis/server/dataset_synthetic/driving/'
 # folder = '/misc/lmbraid19/muazzama/dataset_synthetic/driving/'
 
 img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0101.webp'
 img2 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0102.webp'
+img3 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0107.webp'
 disparity1 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0101.pfm'
 disparity2 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0102.pfm'
 opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0101_L.pfm'
+opt_flow3 = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0106_L.pfm'
 disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0101.pfm'
+disp_change3 = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0106.pfm'
 
 ''' ********************************************* this is the reading part ********************************************* '''
 ''' ********************************************* this is the reading part ********************************************* '''
@@ -108,8 +111,8 @@ disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/i
 # # data = np.dstack((denormu,denormv),dtype=np.float32)
 
 # flow_gt = hpl.readPFM(opt_flow)[0]
-# factor = 0.4
-# input_size = int(960 * factor), int(540 * factor)
+factor = 0.4
+input_size = int(960 * factor), int(540 * factor)
 
 # converter = converter.SyntheticTFRecordsWriter()
 # flow_gt = converter.downsample_opt_flow(flow_gt,input_size)
@@ -184,43 +187,70 @@ disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/i
 # disp_change = hpl.readPFM(disp_change)[0]
 # disp1 = hpl.readPFM(disparity1)[0]
 # disp2 = hpl.readPFM(disparity2)[0]
-# Image.fromarray(opt_flow2[:,:,0]).show()
-# Image.fromarray(opt_flow2[:,:,1]).show()
 
 predictor = ft.FlowPredictor()
 predictor.preprocess(img1,img2,disparity1,disparity2)
 # ij.setImage('depth_change',disp_change)
 # ij.setImage('depth1',disp1)
 # ij.setImage('depth2',disp2)
-predictor.predict()
+# predictor.predict()
 
 
 # for testing with ground truth
 
-# opt = hpl.readPFM(opt_flow)[0]
-# lbl = predictor.read_gt(opt_flow,disp_change)
-# opt_flow = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
+opt = hpl.readPFM(opt_flow)[0]
+lbl = predictor.read_gt(opt_flow,disp_change)
+opt_flow = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
+
+
+opt = hpl.readPFM(opt_flow3)[0]
+lbl = predictor.read_gt(opt_flow3,disp_change3)
+opt_flow3 = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
 # predictor.postprocess(flow=opt_flow,show_flow=True,gt=True)
 
+# print(opt_flow[:,:,0].shape)
 
 
 
 
 
+import losses_helper as lhpl
+np.set_printoptions(threshold=np.nan)
+
+img1 = Image.open(img1)
+img2 = Image.open(img2)
+img3 = Image.open(img3)
+img1 = img1.resize(input_size, Image.BILINEAR)
+img2 = img2.resize(input_size, Image.BILINEAR)
+img3 = img3.resize(input_size, Image.BILINEAR)
+
+img2 = np.array(img2,dtype=np.float32)
+img2 = np.pad(img2,((4,4),(0,0),(0,0)),'constant')
+
+img3 = np.array(img3,dtype=np.float32)
+img3 = np.pad(img3,((4,4),(0,0),(0,0)),'constant')
+
+opt_flow = tf.expand_dims(tf.convert_to_tensor(opt_flow,dtype=tf.float32),axis=0)
+opt_flow3 = tf.expand_dims(tf.convert_to_tensor(opt_flow3,dtype=tf.float32),axis=0)
+img2 = tf.expand_dims(tf.convert_to_tensor(np.array(img2),dtype=tf.float32),axis=0)
+img3 = tf.expand_dims(tf.convert_to_tensor(np.array(img3),dtype=tf.float32),axis=0)
 
 
+img = tf.concat([img2,img3],axis=0)
+opt_flow = tf.concat([opt_flow,opt_flow3],axis=0)
 
 
+# predictor.show_image(img2.eval()[0].astype(np.uint8),'normal_img')
+# print(opt_flow)
+# ij.setImage('flow',opt_flow.eval()[0,:,:,1])
+
+result = lhpl.flow_warp(img,opt_flow)
+# print(result.eval())
+predictor.show_image(result.eval()[0].astype(np.uint8),'warped_img')
 
 # for testing
 
 # Image.fromarray(opt.astype(np.uint8)).show()
-
-
-
-
-
-
 # dispar1 = hpl.readPFM(disparity1)[0]
 # dispar2 = hpl.readPFM(disparity2)[0]
 # opt_flow = hpl.readPFM(opt_flow)[0]
