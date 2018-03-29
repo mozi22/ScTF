@@ -23,6 +23,10 @@ test_filenames = [
 				# prefix+'monkaa_TEST.tfrecords'
 ]
 
+
+
+
+
 train_features = data_reader.tf_record_input_pipeline(train_filenames,version='1')
 test_features = data_reader.tf_record_input_pipeline(test_filenames,version='2')
 

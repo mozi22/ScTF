@@ -1,16 +1,21 @@
 import tensorflow as tf
 import numpy as np
-# import lmbspecialops as sops
+import lmbspecialops as sops
 
-def photoconsistency_loss(img,predicted_flow, weight=100):
+
+# loss value ranges around 0.01 to 0.1
+def photoconsistency_loss(img,predicted_flow, weight=10):
 
   with tf.variable_scope('photoconsistency_loss'):
 
-    warped_img = get_flow_warp(img,predicted_flow)
-    img2 = get_occulation_aware_image(img2,warped_img)
-    # img2 = tf.Print(img2,[img2],summarize=10000,message="msg_before")
-    # img2 = tf.Print(img2,[img2],summarize=10000,message="msg_after")
-    pc_loss = tf.losses.mean_squared_error(warped_img,img1)
+    img1, img2 = get_separate_rgb_images(img)
+
+    warped_img = flow_warp(img2,predicted_flow)
+    img1 = get_occulation_aware_image(img1,warped_img)
+
+    pc_loss = tf.reduce_mean(tf.squared_difference(img1, warped_img))
+    # pc_loss = tf.Print(pc_loss,[pc_loss],'pcloss ye hai ')
+    tf.losses.compute_weighted_loss(pc_loss,weights=weight)
 
   return pc_loss
 
@@ -20,7 +25,7 @@ def forward_backward_loss(img,predicted_flow,weight=100):
 
     img1 = img[:,:,:,0:4]
     img2 = img[:,:,:,4:8]
-
+ 
     # warping using predicted flow
     warped_img = flow_warp(img1,predicted_flow)
 
@@ -30,8 +35,9 @@ def forward_backward_loss(img,predicted_flow,weight=100):
 
   return fb_loss
 
+# loss value ranges around 0.01 to 2.0
 # defined here :: https://arxiv.org/pdf/1702.02295.pdf
-def endpoint_loss(gt_flow,predicted_flow,weight=1000):
+def endpoint_loss(gt_flow,predicted_flow,weight=500):
 
   with tf.variable_scope('epe_loss'):
 
@@ -55,19 +61,24 @@ def endpoint_loss(gt_flow,predicted_flow,weight=1000):
     epe_loss = tf.sqrt((diff_u**2) + (diff_v**2))
     epe_loss = epe_loss / total_num_of_pixels 
 
+    epe_loss = tf.reduce_sum(epe_loss)
+    # epe_loss = tf.Print(epe_loss,[epe_loss],'epeloss ye hai ')
+
     tf.losses.compute_weighted_loss(epe_loss,weights=weight)
   
-  return epe_loss
 
+  return epe_loss
 
 def depth_consistency_loss(img,predicted_flow,weight=300):
 
   with tf.variable_scope('depth_consistency_loss'):
 
-    warped_depth_img = get_flow_warp(img,predicted_flow)
+    img1, img2 = get_separate_depth_images(img)
+
+    warped_depth_img = flow_warp(img2,predicted_flow,depth=True)
 
     # loss = w - Z_1(x+u,y+v) + Z_0(x,y)
-    dc_loss = predicted_flow[:,:,:,2] - warped_depth_img + img[:,:,:,3]
+    dc_loss = predicted_flow[:,:,:,2] - warped_depth_img[:,:,:,0] + img[:,:,:,3]
 
     tf.losses.compute_weighted_loss(dc_loss,weights=weight)
 
@@ -103,8 +114,10 @@ def scale_invariant_gradient( inp, deltas, weights, epsilon=0.001):
   return tf.concat(sig_images,axis=1)
 
 
+
+# loss value ranges around 80 to 100
 # taken from DEMON Network
-def scale_invariant_gradient_loss( inp, gt, epsilon ):
+def scale_invariant_gradient_loss( inp, gt, epsilon,weight=100):
   """Computes the scale invariant gradient loss
   inp: Tensor
       Tensor with the scale invariant gradient images computed on the prediction
@@ -124,7 +137,14 @@ def scale_invariant_gradient_loss( inp, gt, epsilon ):
     for i in range(num_channels_inp//2):
         tmp.append(pointwise_l2_loss(inp[:,i*2:i*2+2,:,:], gt[:,i*2:i*2+2,:,:], epsilon))
 
-    return tf.add_n(tmp)
+
+    tmp = tf.add_n(tmp)
+
+
+    # tmp = tf.Print(tmp,[tmp],'sigl ye hai ')
+    tf.losses.compute_weighted_loss(tmp,weights=weight)
+
+    return tmp
 
 # taken from DEMON Network
 def pointwise_l2_loss(inp, gt, epsilon, data_format='NCHW'):
@@ -153,24 +173,22 @@ def pointwise_l2_loss(inp, gt, epsilon, data_format='NCHW'):
 
 # returns an image with all the occulded pixel values as 0
 def get_occulation_aware_image(img,warped_img):
-    masked_img = warped_img * tf.ones(img.get_shape())
+    masked_img = img * tf.ones(img.get_shape())
     masked_img = masked_img / masked_img
     masked_img = sops.replace_nonfinite(masked_img)
     return masked_img * img
 
 
-def get_flow_warp(img,prediced_flow,for_depth=False):
 
-    if for_depth:
-      img2 = img[:,:,:,7]
-    else:
-      img2 = img[:,:,:,5:8]
 
-    # warping using predicted flow
-    return flow_warp(img2,predicted_flow)
+def get_separate_rgb_images(img):
+  return img[:,:,:,0:3],img[:,:,:,4:7]
+
+def get_separate_depth_images(img):
+  return img[:,:,:,3],img[:,:,:,7]
 
 # warp the flow values to the image.
-def flow_warp(img,flow):
+def flow_warp(img,flow,depth=False):
 
   # returns [16,224,384,6]
   input_size = img.get_shape().as_list()
@@ -193,6 +211,10 @@ def flow_warp(img,flow):
   con = tf.stack([X,Y])
 
   result = tf.transpose(con,[1,2,3,0])
+
+  if depth == True:
+    img = tf.expand_dims(img,axis=3)
+    print(img)
 
   # result = tf.expand_dims(result,0)
   return tf.contrib.resampler.resampler(img,result)

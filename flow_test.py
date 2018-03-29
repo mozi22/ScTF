@@ -3,7 +3,7 @@ import tensorflow as tf
 from   PIL import Image
 import helpers as hpl
 import network
-import matplotlib.pyplot as plt
+import matplotlib as plt
 import ijremote as ij
 
 class FlowPredictor:
@@ -80,7 +80,7 @@ class FlowPredictor:
 		self.sess = tf.InteractiveSession()
 		# # self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
 		# self.load_model_ckpt(self.sess,'ckpt/driving/conv10/train/model_ckpt_24300.ckpt')
-		self.load_model_ckpt(self.sess,'ckpt/driving/multi_gpu_epe_loss_only/')
+		self.load_model_ckpt(self.sess,'ckpt/driving/epe_pc_sigl/')
 
 
 	def read_gt(self,opt_flow,disp_chng):

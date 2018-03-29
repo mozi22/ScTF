@@ -3,14 +3,15 @@ import flow_test as ft
 import helpers as hpl
 import numpy as np
 from   PIL import Image
-import matplotlib.pyplot as plt
+import matplotlib as plt
+
 # import synthetic_tf_converter as converter
 import tensorflow as tf
 import data_reader as dr
-import matplotlib.mlab as mlab
-import ijremote as ij
+# import matplotlib.mlab as mlab
+# import ijremote as ij
 # import losses_helper as lh
-folder = '/home/muazzam/mywork/python/thesis/server/dataset_synthetic/driving/'
+folder = '../dataset_synthetic/driving/'
 # folder = '/misc/lmbraid19/muazzama/dataset_synthetic/driving/'
 
 img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0101.webp'
@@ -193,19 +194,19 @@ predictor.preprocess(img1,img2,disparity1,disparity2)
 # ij.setImage('depth_change',disp_change)
 # ij.setImage('depth1',disp1)
 # ij.setImage('depth2',disp2)
-# predictor.predict()
+predictor.predict()
 
 
 # for testing with ground truth
 
-opt = hpl.readPFM(opt_flow)[0]
-lbl = predictor.read_gt(opt_flow,disp_change)
-opt_flow = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
+# opt = hpl.readPFM(opt_flow)[0]
+# lbl = predictor.read_gt(opt_flow,disp_change)
+# opt_flow = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
 
 
-opt = hpl.readPFM(opt_flow3)[0]
-lbl = predictor.read_gt(opt_flow3,disp_change3)
-opt_flow3 = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
+# opt = hpl.readPFM(opt_flow3)[0]
+# lbl = predictor.read_gt(opt_flow3,disp_change3)
+# opt_flow3 = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
 # predictor.postprocess(flow=opt_flow,show_flow=True,gt=True)
 
 # print(opt_flow[:,:,0].shape)
@@ -214,39 +215,52 @@ opt_flow3 = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
 
 
 
-import losses_helper as lhpl
-np.set_printoptions(threshold=np.nan)
+# import losses_helper as lhpl
+# np.set_printoptions(threshold=np.nan)
 
-img1 = Image.open(img1)
-img2 = Image.open(img2)
-img3 = Image.open(img3)
-img1 = img1.resize(input_size, Image.BILINEAR)
-img2 = img2.resize(input_size, Image.BILINEAR)
-img3 = img3.resize(input_size, Image.BILINEAR)
+# img1 = Image.open(img1)
+# img2 = Image.open(img2)
+# img3 = Image.open(img3)
+# img1 = img1.resize(input_size, Image.BILINEAR)
+# img2 = img2.resize(input_size, Image.BILINEAR)
+# img3 = img3.resize(input_size, Image.BILINEAR)
 
-img2 = np.array(img2,dtype=np.float32)
-img2 = np.pad(img2,((4,4),(0,0),(0,0)),'constant')
+# img1 = np.array(img1,dtype=np.float32)
+# img1 = np.pad(img1,((4,4),(0,0),(0,0)),'constant')
 
-img3 = np.array(img3,dtype=np.float32)
-img3 = np.pad(img3,((4,4),(0,0),(0,0)),'constant')
+# img2 = np.array(img2,dtype=np.float32)
+# img2 = np.pad(img2,((4,4),(0,0),(0,0)),'constant')
 
-opt_flow = tf.expand_dims(tf.convert_to_tensor(opt_flow,dtype=tf.float32),axis=0)
-opt_flow3 = tf.expand_dims(tf.convert_to_tensor(opt_flow3,dtype=tf.float32),axis=0)
-img2 = tf.expand_dims(tf.convert_to_tensor(np.array(img2),dtype=tf.float32),axis=0)
-img3 = tf.expand_dims(tf.convert_to_tensor(np.array(img3),dtype=tf.float32),axis=0)
+# img3 = np.array(img3,dtype=np.float32)
+# img3 = np.pad(img3,((4,4),(0,0),(0,0)),'constant')
+
+# opt_flow = tf.expand_dims(tf.convert_to_tensor(opt_flow,dtype=tf.float32),axis=0)
+# opt_flow3 = tf.expand_dims(tf.convert_to_tensor(opt_flow3,dtype=tf.float32),axis=0)
+# img1 = tf.expand_dims(tf.convert_to_tensor(np.array(img1),dtype=tf.float32),axis=0)
+# img2 = tf.expand_dims(tf.convert_to_tensor(np.array(img2),dtype=tf.float32),axis=0)
+# img3 = tf.expand_dims(tf.convert_to_tensor(np.array(img3),dtype=tf.float32),axis=0)
 
 
-img = tf.concat([img2,img3],axis=0)
-opt_flow = tf.concat([opt_flow,opt_flow3],axis=0)
+# img = tf.concat([img2,img3],axis=0)
+# opt_flow = tf.concat([opt_flow,opt_flow3],axis=0)
 
 
 # predictor.show_image(img2.eval()[0].astype(np.uint8),'normal_img')
 # print(opt_flow)
 # ij.setImage('flow',opt_flow.eval()[0,:,:,1])
 
-result = lhpl.flow_warp(img,opt_flow)
-# print(result.eval())
-predictor.show_image(result.eval()[0].astype(np.uint8),'warped_img')
+# result = lhpl.flow_warp(img,opt_flow)
+
+
+
+# resultt = lhpl.get_occulation_aware_image(img1,result)
+# print(resultt)
+
+# print(img1)
+# # print(result.eval())
+# predictor.show_image(img1.eval()[0].astype(np.uint8),'warped_img')
+# predictor.show_image(resultt.eval()[0].astype(np.uint8),'warped_img')
+
 
 # for testing
 
