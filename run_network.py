@@ -320,7 +320,10 @@ class DatasetReader:
 
 
         # Build inference Graph. - forward flow
-        predict_flow5, predict_flow2 = network.train_network(network_input_images)
+        tunnel_layer_top = network.network_tunnel(network_input_images[:,:,:,0:4],'tunnel_layer_top')
+        tunnel_layer_bottom = network.network_tunnel(network_input_images[:,:,:,4:8],'tunnel_layer_bottom')
+        predict_flow5, predict_flow2 = network.network_core(tunnel_layer_top,tunnel_layer_bottom)
+
 
 
         # Build inference Graph. - backward flow

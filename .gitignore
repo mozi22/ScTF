@@ -13,3 +13,6 @@ dataset/
 __pycache__/
 *.pyc
 *.pyo
+ggg.py
+prediction.jpg
+prediction_without_pc_loss.jpg

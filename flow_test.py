@@ -231,4 +231,3 @@ class FlowPredictor:
 	def load_model_ckpt(self,sess,filename):
 		saver = tf.train.Saver()
 		saver.restore(sess, tf.train.latest_checkpoint(filename))
-
