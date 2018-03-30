@@ -4,7 +4,7 @@ from   PIL import Image
 import helpers as hpl
 import network
 import matplotlib as plt
-import ijremote as ij
+# import ijremote as ij
 
 class FlowPredictor:
 
@@ -80,7 +80,7 @@ class FlowPredictor:
 		self.sess = tf.InteractiveSession()
 		# # self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
 		# self.load_model_ckpt(self.sess,'ckpt/driving/conv10/train/model_ckpt_24300.ckpt')
-		self.load_model_ckpt(self.sess,'ckpt/driving/epe_pc_sigl/')
+		self.load_model_ckpt(self.sess,'ckpt/driving/epe_pc_sigl_dc/')
 
 
 	def read_gt(self,opt_flow,disp_chng):
@@ -134,11 +134,11 @@ class FlowPredictor:
 		w = flow[:,:,2] * self.max_depth_driving_chng
 		# w = 1 / w
 
-		if show_flow:
+		# if show_flow:
 		# # 	self.show_image(u,'Flow_u')
 		# # 	self.show_image(v,'Flow_v')
 		#   # self.show_image(w,'Flow_w')
-			ij.setImage('PredictedFlow_w',w)
+			# ij.setImage('PredictedFlow_w',w)
 
 		# Image.fromarray(u).save('predictflow_u.tiff')
 		# Image.fromarray(v).save('predictflow_v.tiff')

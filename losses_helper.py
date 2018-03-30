@@ -69,13 +69,17 @@ def endpoint_loss(gt_flow,predicted_flow,weight=500):
 
   return epe_loss
 
-def depth_consistency_loss(img,predicted_flow,weight=300):
+def depth_consistency_loss(img,predicted_flow,weight=10):
 
   with tf.variable_scope('depth_consistency_loss'):
 
     img1, img2 = get_separate_depth_images(img)
 
-    warped_depth_img = flow_warp(img2,predicted_flow,depth=True)
+
+    img2 = tf.expand_dims(img2,axis=3)
+
+
+    warped_depth_img = flow_warp(img2,predicted_flow)
 
     # loss = w - Z_1(x+u,y+v) + Z_0(x,y)
     dc_loss = predicted_flow[:,:,:,2] - warped_depth_img[:,:,:,0] + img[:,:,:,3]
@@ -188,7 +192,7 @@ def get_separate_depth_images(img):
   return img[:,:,:,3],img[:,:,:,7]
 
 # warp the flow values to the image.
-def flow_warp(img,flow,depth=False):
+def flow_warp(img,flow):
 
   # returns [16,224,384,6]
   input_size = img.get_shape().as_list()
@@ -211,10 +215,6 @@ def flow_warp(img,flow,depth=False):
   con = tf.stack([X,Y])
 
   result = tf.transpose(con,[1,2,3,0])
-
-  if depth == True:
-    img = tf.expand_dims(img,axis=3)
-    print(img)
 
   # result = tf.expand_dims(result,0)
   return tf.contrib.resampler.resampler(img,result)

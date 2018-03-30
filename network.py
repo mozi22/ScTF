@@ -1,6 +1,11 @@
 import tensorflow as tf
+import lmbspecialops as sops
 
 
+def myLeakyRelu(x):
+    """Leaky ReLU with leak factor 0.1"""
+    # return tf.maximum(0.1*x,x)
+    return sops.leaky_relu(x, leak=0.2)
 
 def convrelu2(name,inputs, filters, kernel_size, stride, activation=None):
 
@@ -53,7 +58,7 @@ def _upsample_prediction(inp, num_outputs):
         kernel_size=4,
         strides=2,
         padding='same',
-        activation=tf.nn.leaky_relu,
+        activation=myLeakyRelu,
         name="upconv"
     )
     return output
@@ -110,7 +115,7 @@ def _refine(inp, num_outputs, upsampled_prediction=None, features_direct=None,na
         kernel_size=4,
         strides=2,
         padding='same',
-        activation=tf.nn.leaky_relu,
+        activation=myLeakyRelu,
         name="upconv"
     )
 
@@ -139,12 +144,12 @@ def train_network(image_pair):
     with tf.variable_scope('down_convs'):
 
 
-        conv0 = convrelu2(name='conv0', inputs=image_pair, filters=16, kernel_size=5, stride=1,activation=tf.nn.leaky_relu)
-        conv1 = convrelu2(name='conv1', inputs=conv0, filters=32, kernel_size=5, stride=2,activation=tf.nn.leaky_relu)
-        conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=3, stride=2,activation=tf.nn.leaky_relu)
-        conv3 = convrelu2(name='conv3', inputs=conv2, filters=128, kernel_size=3, stride=2,activation=tf.nn.leaky_relu)
-        conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=3, stride=2,activation=tf.nn.leaky_relu)
-        conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=3, stride=2,activation=tf.nn.leaky_relu)
+        conv0 = convrelu2(name='conv0', inputs=image_pair, filters=16, kernel_size=5, stride=1,activation=myLeakyRelu)
+        conv1 = convrelu2(name='conv1', inputs=conv0, filters=32, kernel_size=5, stride=2,activation=myLeakyRelu)
+        conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=3, stride=2,activation=myLeakyRelu)
+        conv3 = convrelu2(name='conv3', inputs=conv2, filters=128, kernel_size=3, stride=2,activation=myLeakyRelu)
+        conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=3, stride=2,activation=myLeakyRelu)
+        conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=3, stride=2,activation=myLeakyRelu)
 
     # predict flow
     with tf.variable_scope('predict_flow5'):
