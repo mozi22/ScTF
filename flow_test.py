@@ -27,6 +27,8 @@ class FlowPredictor:
 		self.img1_arr = np.array(self.init_img1,dtype=np.float32)
 		self.img2_arr = np.array(self.init_img2,dtype=np.float32)
 
+
+
 		# normalize images
 		self.img1 = self.img1_arr / 255
 		self.img2 = self.img2_arr / 255
@@ -80,7 +82,7 @@ class FlowPredictor:
 		self.sess = tf.InteractiveSession()
 		# # self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
 		# self.load_model_ckpt(self.sess,'ckpt/driving/conv10/train/model_ckpt_24300.ckpt')
-		self.load_model_ckpt(self.sess,'ckpt/driving/epe_pc_sigl_dc/')
+		self.load_model_ckpt(self.sess,'ckpt/driving/corr_net/')
 
 
 	def read_gt(self,opt_flow,disp_chng):
@@ -110,8 +112,8 @@ class FlowPredictor:
 		return depth1 - depth2
 
 	def warp(self,img,flow):
-		x = list(range(0,self.input_size[0]))
-		y = list(range(0,self.input_size[1] + 8))
+		x = list(range(0,160))
+		y = list(range(0,80))
 		X, Y = tf.meshgrid(x, y)
 
 		X = tf.cast(X,np.float32) + flow[:,:,0]
@@ -161,10 +163,24 @@ class FlowPredictor:
 
 		# ij.setImage('PredictedFlow_u',flow)
 		# ij.setImage('PredictedFlow_v',flow[:,:,1])
+
 		self.img2_arr = np.pad(self.img2_arr,((4,4),(0,0),(0,0)),'constant')
+		print('mozi')
+		print(self.img2_arr.shape)
+
+		# Take only RGB values, not D
+		self.img2_arr = self.img2_arr[:,:,0:3]
+		self.img2_arr = Image.fromarray(self.img2_arr,'RGB')
+		self.img2_arr = self.img2_arr.resize((160,80), Image.BILINEAR)
+		self.img2_arr = np.array(self.img2_arr,dtype=np.float32)
+
 		flow = self.warp(self.img2_arr,flow)
 
-		result = flow.eval()[0].astype(np.uint8)
+		result = flow.eval()[0]
+
+		print(result)
+
+		result = result.astype(np.uint8)
 		self.show_image(result,'warped_img')
 
 		# plt.hist(result, bins='auto')  # arguments are passed to np.histogram
@@ -177,7 +193,8 @@ class FlowPredictor:
 
 	def predict(self):
 		feed_dict = {
-			self.X: self.img_pair,
+			self.X1: self.img_pair[:,:,:,0:4],
+			self.X2: self.img_pair[:,:,:,4:8]
 		}
 
 		v = self.sess.run({'prediction': self.predict_flow2},feed_dict=feed_dict)
@@ -224,9 +241,14 @@ class FlowPredictor:
 
 		self.batch_size = 1
 
-		self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 8))
+		self.X1 = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 4))
+		self.X2 = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 4))
 		self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 3))
-		self.predict_flow5, self.predict_flow2 = network.train_network(self.X)
+	
+		self.tunnel1 = network.network_tunnel(self.X1,'tunnel_layer1')
+		self.tunnel2 = network.network_tunnel(self.X2,'tunnel_layer2')
+		
+		self.predict_flow5, self.predict_flow2 = network.network_core(self.tunnel1,self.tunnel2)
 
 	def load_model_ckpt(self,sess,filename):
 		saver = tf.train.Saver()

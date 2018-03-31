@@ -151,9 +151,6 @@ def network_core(tunnel_layer1,tunnel_layer2):
     with tf.variable_scope('network_core'):
 
 
-        print('tunnel')
-        print(tunnel_layer1)
-        print(tunnel_layer2)
         # change N-H-W-C to N-C-H-W
         tunnel_layer1 = tf.transpose(tunnel_layer1,[0,3,1,2])
         tunnel_layer2 = tf.transpose(tunnel_layer2,[0,3,1,2])
