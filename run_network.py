@@ -312,8 +312,11 @@ class DatasetReader:
         Returns:
          Tensor of shape [] containing the total loss for a batch of data
         """
-
         network_input_images, network_input_labels = self.get_network_input(images,labels)
+
+        # the correlation network won't return the same size of image as input. Hence we need to bring down the original image
+        # dimensions in order to compare and calculate losses.
+        loss_comparable_images, loss_comparable_labels = losses_helper.get_loss_comparable_images(network_input_images,network_input_labels)
 
 
         # backward_flow_images = losses_helper.forward_backward_loss()
@@ -329,12 +332,11 @@ class DatasetReader:
         # Build inference Graph. - backward flow
         # Build the portion of the Graph calculating the losses. Note that we will
         # assemble the total_loss using a custom function below.
+        _ = losses_helper.endpoint_loss(loss_comparable_labels,predict_flow2)
+        _ = losses_helper.photoconsistency_loss(loss_comparable_images,predict_flow2)
+        _ = losses_helper.depth_consistency_loss(loss_comparable_images,predict_flow2)
 
-        _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2)
-        _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2)
-        _ = losses_helper.depth_consistency_loss(network_input_images,predict_flow2)
-
-        scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
+        scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(loss_comparable_labels,
                                                                                 np.array([1,2,4,8,16]),
                                                                                 np.array([1,1,1,1,1]))
 
@@ -345,7 +347,7 @@ class DatasetReader:
         _ = losses_helper.scale_invariant_gradient_loss(scale_invariant_gradient_image_pred,scale_invariant_gradient_image_gt,0.0001)
 
 
-        predict_flow5_label = hpl.downsample_label(network_input_labels)
+        predict_flow5_label = losses_helper.downsample_label(network_input_labels)
         _ = losses_helper.endpoint_loss(predict_flow5_label,predict_flow5)
         # _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
 

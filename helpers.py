@@ -54,18 +54,6 @@ def warp(img,flow):
     result = tf.expand_dims(result,0)
     return tf.contrib.resampler.resampler(img[np.newaxis,:,:,:],result)
 
-# resize the gt_flow to the size of predict_flow4 for minimizing loss also after encoder ( before decoder )
-def downsample_label(gt_flow):
-
-  gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
-  gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
-  gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
-
-  gt_u = tf.image.resize_images(gt_u,[7,12],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-  gt_v = tf.image.resize_images(gt_u,[7,12],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-  gt_w = tf.image.resize_images(gt_u,[7,12],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-
-  return tf.concat([gt_u,gt_v,gt_w],axis=-1)
 
 
 def swap_images_for_back_flow(images):

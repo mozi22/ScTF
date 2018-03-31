@@ -54,7 +54,6 @@ def endpoint_loss(gt_flow,predicted_flow,weight=500):
     pred_u = tf.slice(predicted_flow,[0,0,0,0],[-1,-1,-1,1])
     pred_v = tf.slice(predicted_flow,[0,0,0,1],[-1,-1,-1,1])
 
-
     diff_u = sops.replace_nonfinite(gt_u - pred_u)
     diff_v = sops.replace_nonfinite(gt_v - pred_v)
 
@@ -183,6 +182,23 @@ def get_occulation_aware_image(img,warped_img):
     return masked_img * img
 
 
+# reduces the images size from 224x384 to 80x160
+def get_loss_comparable_images(img,labels):
+  return tf.image.resize_images(img,[80,160]), tf.image.resize_images(labels,[80,160])
+
+
+# resize the gt_flow to the size of predict_flow4 for minimizing loss also after encoder ( before decoder )
+def downsample_label(gt_flow):
+
+  gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
+  gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
+  gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
+
+  gt_u = tf.image.resize_images(gt_u,[5,10],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_v = tf.image.resize_images(gt_u,[5,10],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_w = tf.image.resize_images(gt_u,[5,10],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+
+  return tf.concat([gt_u,gt_v,gt_w],axis=-1)
 
 
 def get_separate_rgb_images(img):
