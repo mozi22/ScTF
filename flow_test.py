@@ -27,8 +27,6 @@ class FlowPredictor:
 		self.img1_arr = np.array(self.init_img1,dtype=np.float32)
 		self.img2_arr = np.array(self.init_img2,dtype=np.float32)
 
-
-
 		# normalize images
 		self.img1 = self.img1_arr / 255
 		self.img2 = self.img2_arr / 255
@@ -126,6 +124,7 @@ class FlowPredictor:
 
 	def show_image(self,array,img_title):
 		a = Image.fromarray(array)
+		a = a.resize((240,320), Image.BILINEAR)
 		a.show(title=img_title)
 		a.save('prediction_without_pc_loss.jpg')
 
@@ -163,24 +162,16 @@ class FlowPredictor:
 
 		# ij.setImage('PredictedFlow_u',flow)
 		# ij.setImage('PredictedFlow_v',flow[:,:,1])
-
 		self.img2_arr = np.pad(self.img2_arr,((4,4),(0,0),(0,0)),'constant')
-		print('mozi')
-		print(self.img2_arr.shape)
-
-		# Take only RGB values, not D
-		self.img2_arr = self.img2_arr[:,:,0:3]
-		self.img2_arr = Image.fromarray(self.img2_arr,'RGB')
-		self.img2_arr = self.img2_arr.resize((160,80), Image.BILINEAR)
+		self.img2_arr = Image.fromarray(self.img2_arr[:,:,0:3],'RGB')
+		self.img2_arr = self.img2_arr.resize((80,160), Image.BILINEAR)
 		self.img2_arr = np.array(self.img2_arr,dtype=np.float32)
+
 
 		flow = self.warp(self.img2_arr,flow)
 
-		result = flow.eval()[0]
+		result = flow.eval()[0].astype(np.uint8)
 
-		print(result)
-
-		result = result.astype(np.uint8)
 		self.show_image(result,'warped_img')
 
 		# plt.hist(result, bins='auto')  # arguments are passed to np.histogram
@@ -244,10 +235,10 @@ class FlowPredictor:
 		self.X1 = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 4))
 		self.X2 = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 4))
 		self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 3))
-	
+
 		self.tunnel1 = network.network_tunnel(self.X1,'tunnel_layer1')
 		self.tunnel2 = network.network_tunnel(self.X2,'tunnel_layer2')
-		
+
 		self.predict_flow5, self.predict_flow2 = network.network_core(self.tunnel1,self.tunnel2)
 
 	def load_model_ckpt(self,sess,filename):
