@@ -3,6 +3,7 @@ import tensorflow as tf
 from   PIL import Image
 import helpers as hpl
 import network
+import math
 import matplotlib as plt
 # import ijremote as ij
 
@@ -123,10 +124,11 @@ class FlowPredictor:
 		return tf.contrib.resampler.resampler(img[np.newaxis,:,:,:],result)
 
 	def show_image(self,array,img_title):
+		# shaper = array.shape
 		a = Image.fromarray(array)
-		a = a.resize((240,320), Image.BILINEAR)
+		# a = a.resize((math.ceil(shaper[1] * 2),math.ceil(shaper[0] * 2)), Image.BILINEAR)
 		a.show(title=img_title)
-		a.save('prediction_without_pc_loss.jpg')
+		# a.save('prediction_without_pc_loss.jpg')
 
 	def denormalize_flow(self,flow,show_flow):
 
@@ -163,8 +165,12 @@ class FlowPredictor:
 		# ij.setImage('PredictedFlow_u',flow)
 		# ij.setImage('PredictedFlow_v',flow[:,:,1])
 		self.img2_arr = np.pad(self.img2_arr,((4,4),(0,0),(0,0)),'constant')
+		self.img2_arr = self.img2_arr.astype(np.uint8)
 		self.img2_arr = Image.fromarray(self.img2_arr[:,:,0:3],'RGB')
-		self.img2_arr = self.img2_arr.resize((80,160), Image.BILINEAR)
+
+		self.img2_arr = self.img2_arr.resize((160,80), Image.BILINEAR)
+
+
 		self.img2_arr = np.array(self.img2_arr,dtype=np.float32)
 
 
