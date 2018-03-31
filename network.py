@@ -120,20 +120,14 @@ def _refine(inp, num_outputs, upsampled_prediction=None, features_direct=None,na
     )
 
 
-
-
     inputs = [upsampled_features, features_direct, upsampled_prediction]
     concat_inputs = [ x for x in inputs if not x is None ]
 
     return tf.concat(concat_inputs, axis=3)
 
 
-def change_nans_to_zeros(x):
-    return tf.where(tf.is_nan(x), tf.zeros_like(x), x)
-
-
 # creates the individual conv layers called the tunnels
-def network_tunnel(image):
+def network_tunnel(image,var_scope_name):
 
     # contracting part
     with tf.variable_scope(var_scope_name):
@@ -141,14 +135,16 @@ def network_tunnel(image):
 
         conv0 = convrelu2(name='conv0', inputs=image, filters=16, kernel_size=5, stride=1,activation=myLeakyRelu)
         conv1 = convrelu2(name='conv1', inputs=conv0, filters=32, kernel_size=5, stride=2,activation=myLeakyRelu)
-        conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=3, stride=2,activation=myLeakyRelu)
-        conv3 = convrelu2(name='conv3', inputs=conv2, filters=128, kernel_size=3, stride=2,activation=myLeakyRelu)
 
-    return conv3
+        conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=3, stride=2,activation=myLeakyRelu)
+        conv2_1 = convrelu2(name='conv2_1', inputs=conv2, filters=64, kernel_size=3, stride=1,activation=myLeakyRelu)
+
+
+    return conv2_1
 
 
 # performs correlation of the tunnel layers and goes forward with the rest of the convolutions and than refinement
-def network_core(tunnel_layer1,tunnel_layer2,var_scope_name):
+def network_core(tunnel_layer1,tunnel_layer2):
 
     with tf.variable_scope('network_core'):
 
@@ -157,16 +153,20 @@ def network_core(tunnel_layer1,tunnel_layer2,var_scope_name):
         tunnel_layer1 = tf.transpose(tunnel_layer1,[0,3,1,2])
         tunnel_layer2 = tf.transpose(tunnel_layer2,[0,3,1,2])
 
+
         # perform correlation
         correlated_layer = sops.correlation(input1=tunnel_layer1,
                                             input2=tunnel_layer2,
                                             kernel_size=0,
                                             max_displacement=15,
                                             stride1=1,
-                                            stride2=2)
+                                            stride2=1)
 
 
-        conv3_1 = convrelu2(name='conv3_1', inputs=correlated_layer, filters=128, kernel_size=3, stride=1,activation=myLeakyRelu)
+        correlated_layer = tf.transpose(correlated_layer,[0,2,3,1])
+
+        conv3 = convrelu2(name='conv3', inputs=correlated_layer, filters=128, kernel_size=3, stride=2,activation=myLeakyRelu)
+        conv3_1 = convrelu2(name='conv3_1', inputs=conv3, filters=128, kernel_size=3, stride=1,activation=myLeakyRelu)
 
         conv4 = convrelu2(name='conv4', inputs=conv3_1, filters=256, kernel_size=3, stride=2,activation=myLeakyRelu)
         conv4_1 = convrelu2(name='conv4_1', inputs=conv4, filters=256, kernel_size=3, stride=1,activation=myLeakyRelu)
@@ -180,8 +180,6 @@ def network_core(tunnel_layer1,tunnel_layer2,var_scope_name):
 
     with tf.variable_scope('upsample_flow4to3'):
         predict_flow4to3 = _upsample_prediction(predict_flow4, 3)
-        # predict_flow4to3 = change_nans_to_zeros(predict_flow4to3)
-
 
 
     with tf.variable_scope('refine4'):
@@ -227,6 +225,6 @@ def network_core(tunnel_layer1,tunnel_layer2,var_scope_name):
 
         predict_flow2 = _predict_flow(concat0)
     
-    predict_flow2 = change_nans_to_zeros(predict_flow2)
+    predict_flow2 = sops.replace_nonfinite(predict_flow2)
 
     return predict_flow4, predict_flow2
