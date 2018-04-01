@@ -29,10 +29,10 @@ FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/corr_net/',
                            """Directory where to write event logs """
-                           """and checkpoint.""")
+                           """and checkpoints.""")
 
 tf.app.flags.DEFINE_boolean('LOAD_FROM_CKPT', False,
-                            """Whether to log device placement.""")
+                            """Whether to continue training from latest checkpoint.""")
 
 tf.app.flags.DEFINE_boolean('DEBUG_MODE', False,
                             """Run training in Debug Mode.""")
@@ -41,20 +41,15 @@ tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
                            """The name of the tower """)
 
 tf.app.flags.DEFINE_integer('MAX_STEPS', 100000,
-                            """Number of batches to run.""")
+                            """Number of steps to run.""")
 
 
 tf.app.flags.DEFINE_boolean('LOG_DEVICE_PLACEMENT', False,
                             """Whether to log device placement.""")
 
-tf.app.flags.DEFINE_integer('EXAMPLES_PER_EPOCH_TRAIN', 200,
-                            """How many samples are there in one epoch of training.""")
-
-tf.app.flags.DEFINE_integer('EXAMPLES_PER_EPOCH_TEST', 100,
-                            """How many samples are there in one epoch of testing.""")
 
 tf.app.flags.DEFINE_integer('BATCH_SIZE', 16,
-                            """How many samples are there in one epoch of testing.""")
+                            """Number of samples in a batch.""")
 
 tf.app.flags.DEFINE_integer('NUM_EPOCHS_PER_DECAY', 1,
                             """How many epochs per decay.""")
@@ -63,10 +58,10 @@ tf.app.flags.DEFINE_integer('SHUFFLE_BATCH_QUEUE_CAPACITY', 100,
                             """How many elements will be there in the queue to be dequeued.""")
 
 tf.app.flags.DEFINE_integer('SHUFFLE_BATCH_THREADS', 48,
-                            """How many elements will be there in the queue to be dequeued.""")
+                            """How many threads should be used by shuffle batch for batching.""")
 
 tf.app.flags.DEFINE_integer('SHUFFLE_BATCH_MIN_AFTER_DEQUEUE', 10,
-                            """How many elements will be there in the queue to be dequeued.""")
+                            """How many elements minimum elements should be there in the queue after shuffle_batch dequeues.""")
 
 tf.app.flags.DEFINE_integer('NUM_GPUS', len(get_available_gpus()),
                             """How many GPUs to use.""")
@@ -75,16 +70,19 @@ tf.app.flags.DEFINE_float('MOVING_AVERAGE_DECAY', 0.9999,
                             """How fast the learning rate should go down.""")
 
 tf.app.flags.DEFINE_integer('TOTAL_TRAIN_EXAMPLES', 200,
-                            """How many samples are there in one epoch of testing.""")
+                            """Total number of samples we have for training.""")
 
 
 # Testing Variables
 
+tf.app.flags.DEFINE_integer('ENABLED_TESTING', False,
+                            """When this is true. Testing is performed while training..""")
+
 tf.app.flags.DEFINE_integer('TOTAL_TEST_EXAMPLES', 100,
-                            """How many samples are there in one epoch of testing.""")
+                            """Total number of samples we have for testing.""")
 
 tf.app.flags.DEFINE_integer('TEST_BATCH_SIZE', 16,
-                            """How many samples are there in one epoch of testing.""")
+                            """How many samples are there in one batch of testing.""")
 
 
 # Polynomial Learning Rate
@@ -112,8 +110,6 @@ class DatasetReader:
             'global_step', [],
             initializer=tf.constant_initializer(0), trainable=False)
 
-        # num_batches_per_epoch = (FLAGS.EXAMPLES_PER_EPOCH_TRAIN / FLAGS.BATCH_SIZE)
-        # decay_steps = int(num_batches_per_epoch * FLAGS.NUM_EPOCHS_PER_DECAY)
         decay_steps = FLAGS.MAX_STEPS
         start_learning_rate = FLAGS.START_LEARNING_RATE
         end_learning_rate = FLAGS.END_LEARNING_RATE
@@ -262,18 +258,18 @@ class DatasetReader:
 
 
             # # after every 10 epochs. calculate test loss
-            # if step % (self.TRAIN_EPOCH * 10) == 0 and first_iteration==True:
+            if step % (self.TRAIN_EPOCH * 10) == 0 and first_iteration==True and FLAGS.ENABLED_TESTING == True:
 
-            #     message = 'Printing Test loss for '+str(test_loss_calculating_index)+' time'
+                message = 'Printing Test loss for '+str(test_loss_calculating_index)+' time'
 
-            #     self.log()
-            #     self.log(message)
-            #     self.log()
+                self.log()
+                self.log(message)
+                self.log()
 
-            #     self.perform_testing(sess,step)
+                self.perform_testing(sess,step)
 
-            #     # increment index to know how many times we've calculated the test loss
-            #     test_loss_calculating_index = test_loss_calculating_index + 1
+                # increment index to know how many times we've calculated the test loss
+                test_loss_calculating_index = test_loss_calculating_index + 1
 
 
             if step % 10 == 0 or first_iteration==True:
