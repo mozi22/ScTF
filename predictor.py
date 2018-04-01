@@ -18,7 +18,7 @@ img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/lef
 img2 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0082.webp'
 disparity1 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0081.pfm'
 disparity2 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0082.pfm'
-opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0082_L.pfm'
+opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0081_L.pfm'
 disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0103.pfm'
 
 img3 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0107.webp'
@@ -239,16 +239,18 @@ input_size = int(960 * factor), int(540 * factor)
 # ij.setImage('depth_change',disp_change)
 # ij.setImage('depth1',disp1)
 # ij.setImage('depth2',disp2)
-predictor.predict()
+# predictor.predict()
 
 
 # for testing with ground truth
 
 
 
-opt = hpl.readPFM(opt_flow3)[0]
-lbl = predictor.read_gt(opt_flow3,disp_change3)
-# opt_flow3 = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
+opt = hpl.readPFM(opt_flow)[0]
+lbl = predictor.read_gt(opt_flow,disp_change3)
+# opt = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
+
+print(lbl.shape)
 
 # predictor.postprocess(flow=opt_flow,show_flow=True,gt=True)
 

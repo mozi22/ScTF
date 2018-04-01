@@ -194,9 +194,20 @@ def downsample_label(gt_flow):
   gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
   gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
 
+  # since we're reducing the size, we need to reduce the flow values by the same factor.
+  # decreasing width from 224 to 5 means we decreased the image by a factor of 0.022 ( 224 * 0.022 )
+  gt_u = gt_u[:,:,:,0] * 0.022
+  gt_v = gt_v[:,:,:,0] * 0.022
+  gt_w = gt_w[:,:,:,0] * 0.022
+
+  # decreasing width from 384 to 10 means we decreased the image by a factor of 0.026 ( 384 * 0.026 )
+  gt_u = gt_u[:,:,:,1] * 0.026
+  gt_v = gt_v[:,:,:,1] * 0.026
+  gt_w = gt_w[:,:,:,1] * 0.026
+
   gt_u = tf.image.resize_images(gt_u,[5,10],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-  gt_v = tf.image.resize_images(gt_u,[5,10],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-  gt_w = tf.image.resize_images(gt_u,[5,10],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_v = tf.image.resize_images(gt_v,[5,10],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_w = tf.image.resize_images(gt_w,[5,10],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
   return tf.concat([gt_u,gt_v,gt_w],axis=-1)
 

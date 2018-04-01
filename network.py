@@ -167,7 +167,7 @@ def network_core(tunnel_layer1,tunnel_layer2):
 
         correlated_layer = tf.transpose(correlated_layer,[0,2,3,1])
 
-        # resize from 82x162 to 80x162 to make sure we can reach this size easily while refinement
+        # resize from 82x162 to 80x160 to make sure we can reach this size easily while refinement
         correlated_layer = tf.image.resize_images(correlated_layer,[80,160])
 
 

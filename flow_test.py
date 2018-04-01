@@ -91,7 +91,8 @@ class FlowPredictor:
 		disp_chng = Image.fromarray(disp_chng)
 		disp_chng = disp_chng.resize(self.input_size,Image.NEAREST)
 
-		opt_flow = self.downsample_opt_flow(opt_flow,self.input_size)
+		opt_flow = self.downsample_opt_flow(opt_flow,(160,80))
+
 
 		# z = np.zeros((opt_flow.shape[0],opt_flow.shape[1]))
 
@@ -142,8 +143,8 @@ class FlowPredictor:
 		self.show_image(v,'Flow_v')
 			# ij.setImage('PredictedFlow_w',w)
 
-		# Image.fromarray(u).save('predictflow_u.tiff')
-		# Image.fromarray(v).save('predictflow_v.tiff')
+		Image.fromarray(u).save('predictflow_u.tiff')
+		Image.fromarray(v).save('predictflow_v.tiff')
 		
 		flow = np.stack((u,v),axis=2)
 		
@@ -180,6 +181,8 @@ class FlowPredictor:
 
 
 		flow = self.warp(self.img2_arr,flow)
+
+
 
 		result = flow.eval()[0].astype(np.uint8)
 
