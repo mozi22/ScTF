@@ -27,7 +27,7 @@ def get_available_gpus():
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/testing/',
+tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/corr_net/',
                            """Directory where to write event logs """
                            """and checkpoints.""")
 
