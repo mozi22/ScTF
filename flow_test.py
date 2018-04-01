@@ -124,10 +124,12 @@ class FlowPredictor:
 		result = tf.expand_dims(result,0)
 		return tf.contrib.resampler.resampler(img[np.newaxis,:,:,:],result)
 
-	def show_image(self,array,img_title):
+	def show_image(self,array,img_title,final_image=False):
 		# shaper = array.shape
 		a = Image.fromarray(array)
-		# a = a.resize((math.ceil(shaper[1] * 2),math.ceil(shaper[0] * 2)), Image.BILINEAR)
+
+		# if final_image == True:
+		# 	a = a.resize((320,160), Image.BILINEAR)
 		a.show(title=img_title)
 		# a.save('prediction_without_pc_loss.jpg')
 
@@ -186,7 +188,7 @@ class FlowPredictor:
 
 		result = flow.eval()[0].astype(np.uint8)
 
-		self.show_image(result,'warped_img')
+		self.show_image(result,'warped_img',final_image=True)
 
 		# plt.hist(result, bins='auto')  # arguments are passed to np.histogram
 		# plt.title("Histogram with 'auto' bins")
