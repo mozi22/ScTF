@@ -258,7 +258,7 @@ class DatasetReader:
 
 
             # # after every 10 epochs. calculate test loss
-            if step % (self.TRAIN_EPOCH * 10) == 0 and first_iteration==True and FLAGS.ENABLED_TESTING == True:
+            if (step % (self.TRAIN_EPOCH * 10) == 0 and first_iteration==False) and FLAGS.ENABLED_TESTING == True:
 
                 message = 'Printing Test loss for '+str(test_loss_calculating_index)+' time'
 
@@ -323,7 +323,7 @@ class DatasetReader:
         tunnel_layer_bottom = network.network_tunnel(network_input_images[:,:,:,4:8],'tunnel_layer2')
         predict_flow5, predict_flow2 = network.network_core(tunnel_layer_top,tunnel_layer_bottom)
 
-
+        
 
         # Build inference Graph. - backward flow
         # Build the portion of the Graph calculating the losses. Note that we will

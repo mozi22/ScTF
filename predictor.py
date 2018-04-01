@@ -7,7 +7,7 @@ import matplotlib as plt
 
 # import synthetic_tf_converter as converter
 import tensorflow as tf
-import data_reader as dr
+# import data_reader as dr
 # import matplotlib.mlab as mlab
 # import ijremote as ij
 # import losses_helper as lhpl
@@ -246,12 +246,14 @@ predictor.predict()
 
 
 
-# opt = hpl.readPFM(opt_flow3)[0]
-# lbl = predictor.read_gt(opt_flow3,disp_change3)
+opt = hpl.readPFM(opt_flow3)[0]
+lbl = predictor.read_gt(opt_flow3,disp_change3)
 # opt_flow3 = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
+
 # predictor.postprocess(flow=opt_flow,show_flow=True,gt=True)
 
-# print(opt_flow[:,:,0].shape)
+# ijremote.open(opt_flow[:,:,0],'label_0')
+# ijremote.open(opt_flow[:,:,1],'label_1')
 
 
 

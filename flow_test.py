@@ -138,9 +138,8 @@ class FlowPredictor:
 		# w = 1 / w
 
 		# if show_flow:
-		# # 	self.show_image(u,'Flow_u')
-		# # 	self.show_image(v,'Flow_v')
-		#   # self.show_image(w,'Flow_w')
+		self.show_image(u,'Flow_u')
+		self.show_image(v,'Flow_v')
 			# ij.setImage('PredictedFlow_w',w)
 
 		# Image.fromarray(u).save('predictflow_u.tiff')
@@ -155,6 +154,8 @@ class FlowPredictor:
 
 	def postprocess(self,flow,show_flow=True,gt=False):
 
+		print(flow.shape)
+
 		if gt==True:
 			self.show_image(flow[:,:,0],'Flow_u')
 			self.show_image(flow[:,:,1],'Flow_v')
@@ -162,8 +163,12 @@ class FlowPredictor:
 		else:
 			flow = self.denormalize_flow(flow,show_flow)
 
-		# ij.setImage('PredictedFlow_u',flow)
+
+
+
+		# ij.setImage('PredictedFlow_u',flow[:,:,0])
 		# ij.setImage('PredictedFlow_v',flow[:,:,1])
+
 		self.img2_arr = np.pad(self.img2_arr,((4,4),(0,0),(0,0)),'constant')
 		self.img2_arr = self.img2_arr.astype(np.uint8)
 		self.img2_arr = Image.fromarray(self.img2_arr[:,:,0:3],'RGB')
