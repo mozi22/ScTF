@@ -14,12 +14,12 @@ import data_reader as dr
 folder = '../dataset_synthetic/driving/'
 # folder = '/misc/lmbraid19/muazzama/dataset_synthetic/driving/'
 
-img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0081.webp'
-img2 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0082.webp'
-disparity1 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0081.pfm'
-disparity2 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0082.pfm'
-opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0082_L.pfm'
-disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0103.pfm'
+img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0100.webp'
+img2 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0101.webp'
+disparity1 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0100.pfm'
+disparity2 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0101.pfm'
+opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0100_L.pfm'
+disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0100.pfm'
 
 img3 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0107.webp'
 opt_flow3 = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0106_L.pfm'
@@ -103,7 +103,6 @@ disparity3 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0107
 ''' ********************************************* from file example ********************************************* '''
 ''' ********************************************* from file example ********************************************* '''
 ''' ********************************************* from file example ********************************************* '''
-
 
 predictor = ft.FlowPredictor()
 predictor.preprocess(img1,img2,disparity1,disparity2)

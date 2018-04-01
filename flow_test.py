@@ -15,6 +15,7 @@ class FlowPredictor:
 	# depth2: path of depth pfm 2
 	def preprocess(self,img1,img2,disparity1,disparity2):
 
+
 		factor = 0.4
 		self.input_size = int(960 * factor), int(540 * factor)
 		# self.driving_disp_chng_max = 7.5552e+08
@@ -25,8 +26,9 @@ class FlowPredictor:
 		# read resized images to network standards
 		self.init_img1, self.init_img2 = self.read_image(img1,img2)
 
-		self.img1_arr = np.array(self.init_img1,dtype=np.float32)
-		self.img2_arr = np.array(self.init_img2,dtype=np.float32)
+		self.img1_arr = np.array(self.init_img1,dtype=np.float32)[:,:,0:3]
+		self.img2_arr = np.array(self.init_img2,dtype=np.float32)[:,:,0:3]
+
 
 		# normalize images
 		self.img1 = self.img1_arr / 255
@@ -57,6 +59,10 @@ class FlowPredictor:
 		self.depth1 = self.depth1 / self.max_depth_driving
 		self.depth2 = self.depth2 / self.max_depth_driving
 
+		# print(self.img1.shape)
+		# print(self.img2.shape)
+		# print(self.depth1.shape)
+		# print(self.depth2.shape)
 		# combine depth values with images
 		rgbd1 = self.combine_depth_values(self.img1,self.depth1)
 		rgbd2 = self.combine_depth_values(self.img2,self.depth2)
@@ -74,6 +80,9 @@ class FlowPredictor:
 		# # add padding to axis=0 to make the input image (224,384,8)
 		self.img_pair = np.pad(img_pair,((4,4),(0,0),(0,0)),'constant')
 
+		print('parinting')
+		print(self.img_pair.shape)
+
 		# # change dimension from (224,384,8) to (1,224,384,8)
 		self.img_pair = np.expand_dims(self.img_pair,0)
 		self.initialize_network()
@@ -81,7 +90,7 @@ class FlowPredictor:
 		self.sess = tf.InteractiveSession()
 		# # self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
 		# self.load_model_ckpt(self.sess,'ckpt/driving/conv10/train/model_ckpt_24300.ckpt')
-		self.load_model_ckpt(self.sess,'ckpt/driving/corr_net/')
+		self.load_model_ckpt(self.sess,'ckpt/driving/epe_pc_sigl_dc/')
 
 
 	def read_gt(self,opt_flow,disp_chng):
@@ -201,6 +210,7 @@ class FlowPredictor:
 
 		img1 = Image.open(img1)
 		img2 = Image.open(img2)
+
 
 		img1 = img1.resize(self.input_size, Image.BILINEAR)
 		img2 = img2.resize(self.input_size, Image.BILINEAR)
