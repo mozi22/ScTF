@@ -140,17 +140,13 @@ def train_network(image_pair):
 
         conv0 = convrelu2(name='conv0', inputs=image_pair, filters=16, kernel_size=5, stride=1,activation=myLeakyRelu)
         conv1 = convrelu2(name='conv1', inputs=conv0, filters=32, kernel_size=5, stride=2,activation=myLeakyRelu)
-
         conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=3, stride=2,activation=myLeakyRelu)
-
         conv3 = convrelu2(name='conv3', inputs=conv2, filters=128, kernel_size=3, stride=2,activation=myLeakyRelu)
-        conv3_1 = convrelu2(name='conv3_1', inputs=conv3, filters=128, kernel_size=3, stride=1,activation=myLeakyRelu)
-
-        conv4 = convrelu2(name='conv4', inputs=conv3_1, filters=256, kernel_size=3, stride=2,activation=myLeakyRelu)
-        conv4_1 = convrelu2(name='conv4_1', inputs=conv4, filters=256, kernel_size=3, stride=1,activation=myLeakyRelu)
-
-        conv5 = convrelu2(name='conv5', inputs=conv4_1, filters=512, kernel_size=3, stride=2,activation=myLeakyRelu)
-        conv5_1 = convrelu2(name='conv5_1', inputs=conv5, filters=512, kernel_size=3, stride=1,activation=myLeakyRelu)
+        # conv3_1 = convrelu2(name='conv3_1', inputs=conv3, filters=128, kernel_size=3, stride=1,activation=myLeakyRelu)
+        conv4 = convrelu2(name='conv4', inputs=conv3, filters=256, kernel_size=3, stride=2,activation=myLeakyRelu)
+        # conv4_1 = convrelu2(name='conv4_1', inputs=conv4, filters=256, kernel_size=3, stride=1,activation=myLeakyRelu)
+        conv5 = convrelu2(name='conv5', inputs=conv4, filters=512, kernel_size=3, stride=2,activation=myLeakyRelu)
+        # conv5_1 = convrelu2(name='conv5_1', inputs=conv5, filters=512, kernel_size=3, stride=1,activation=myLeakyRelu)
 
     # predict flow
     with tf.variable_scope('predict_flow5'):
@@ -164,10 +160,10 @@ def train_network(image_pair):
 
     with tf.variable_scope('refine4'):
         concat4 = _refine(
-            inp=conv5_1,
+            inp=conv5,
             num_outputs=512,
             upsampled_prediction=predict_flow4to3, 
-            features_direct=conv4_1,
+            features_direct=conv4,
             name='paddit'
         )
 
@@ -176,7 +172,7 @@ def train_network(image_pair):
         concat3 = _refine(
             inp=concat4, 
             num_outputs=256, 
-            features_direct=conv3_1
+            features_direct=conv3
         )
 
     with tf.variable_scope('refine2'):

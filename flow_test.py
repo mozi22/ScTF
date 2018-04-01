@@ -3,6 +3,7 @@ import tensorflow as tf
 from   PIL import Image
 import helpers as hpl
 import network
+import math
 import matplotlib as plt
 # import ijremote as ij
 
@@ -80,7 +81,7 @@ class FlowPredictor:
 		self.sess = tf.InteractiveSession()
 		# # self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
 		# self.load_model_ckpt(self.sess,'ckpt/driving/conv10/train/model_ckpt_24300.ckpt')
-		self.load_model_ckpt(self.sess,'ckpt/driving/epe_pc_sigl_dc/')
+		self.load_model_ckpt(self.sess,'ckpt/driving/corr_net/')
 
 
 	def read_gt(self,opt_flow,disp_chng):
@@ -123,9 +124,11 @@ class FlowPredictor:
 		return tf.contrib.resampler.resampler(img[np.newaxis,:,:,:],result)
 
 	def show_image(self,array,img_title):
+		# shaper = array.shape
 		a = Image.fromarray(array)
+		# a = a.resize((math.ceil(shaper[1] * 2),math.ceil(shaper[0] * 2)), Image.BILINEAR)
 		a.show(title=img_title)
-		a.save('prediction_without_pc_loss.jpg')
+		# a.save('prediction_without_pc_loss.jpg')
 
 	def denormalize_flow(self,flow,show_flow):
 
@@ -135,9 +138,8 @@ class FlowPredictor:
 		# w = 1 / w
 
 		# if show_flow:
-		# # 	self.show_image(u,'Flow_u')
-		# # 	self.show_image(v,'Flow_v')
-		#   # self.show_image(w,'Flow_w')
+		self.show_image(u,'Flow_u')
+		self.show_image(v,'Flow_v')
 			# ij.setImage('PredictedFlow_w',w)
 
 		# Image.fromarray(u).save('predictflow_u.tiff')
@@ -152,6 +154,8 @@ class FlowPredictor:
 
 	def postprocess(self,flow,show_flow=True,gt=False):
 
+		print(flow.shape)
+
 		if gt==True:
 			self.show_image(flow[:,:,0],'Flow_u')
 			self.show_image(flow[:,:,1],'Flow_v')
@@ -159,12 +163,16 @@ class FlowPredictor:
 		else:
 			flow = self.denormalize_flow(flow,show_flow)
 
-		# ij.setImage('PredictedFlow_u',flow)
+
+
+		# ij.setImage('PredictedFlow_u',flow[:,:,0])
 		# ij.setImage('PredictedFlow_v',flow[:,:,1])
-		self.img2_arr = np.pad(self.img2_arr,((4,4),(0,0),(0,0)),'constant')
+
+
 		flow = self.warp(self.img2_arr,flow)
 
 		result = flow.eval()[0].astype(np.uint8)
+
 		self.show_image(result,'warped_img')
 
 		# plt.hist(result, bins='auto')  # arguments are passed to np.histogram
@@ -225,10 +233,10 @@ class FlowPredictor:
 		self.batch_size = 1
 
 		self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 8))
-		self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 3))
+
 		self.predict_flow5, self.predict_flow2 = network.train_network(self.X)
+
 
 	def load_model_ckpt(self,sess,filename):
 		saver = tf.train.Saver()
 		saver.restore(sess, tf.train.latest_checkpoint(filename))
-
