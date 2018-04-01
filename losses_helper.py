@@ -183,8 +183,30 @@ def get_occulation_aware_image(img,warped_img):
 
 
 # reduces the images size from 224x384 to 80x160
-def get_loss_comparable_images(img,labels):
-  return tf.image.resize_images(img,[80,160]), tf.image.resize_images(labels,[80,160])
+def get_loss_comparable_images(img,gt_flow):
+
+
+
+  gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
+  gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
+  gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
+
+
+  # since we're reducing the size, we need to reduce the flow values by the same factor.
+  # decreasing width from 224 to 80 means we decreased the image by a factor ( 224 * 0.35 )
+  gt_u = gt_u * 0.35
+
+  # decreasing width from 384 to 160 means we decreased the image by a factor ( 384 * 0.41 )
+  gt_v = gt_v * 0.41
+
+  # decreasing depth, in this case we'll just take the avg of factors of width and height ( 0.35 + 0.41 / 2 )
+  gt_w = gt_w * 0.38
+
+  gt_u = tf.image.resize_images(gt_u,[80,160],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_v = tf.image.resize_images(gt_v,[80,160],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_w = tf.image.resize_images(gt_w,[80,160],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+
+  return tf.image.resize_images(img,[80,160]), tf.concat([gt_u,gt_v,gt_w],axis=-1)
 
 
 # resize the gt_flow to the size of predict_flow4 for minimizing loss also after encoder ( before decoder )
@@ -195,15 +217,14 @@ def downsample_label(gt_flow):
   gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
 
   # since we're reducing the size, we need to reduce the flow values by the same factor.
-  # decreasing width from 224 to 5 means we decreased the image by a factor of 0.022 ( 224 * 0.022 )
-  gt_u = gt_u[:,:,:,0] * 0.022
-  gt_v = gt_v[:,:,:,0] * 0.022
-  gt_w = gt_w[:,:,:,0] * 0.022
+  # decreasing width from 224 to 5 means we decreased the image by a factor ( 384 * 0.022 )
+  gt_u = gt_u * 0.022
 
-  # decreasing width from 384 to 10 means we decreased the image by a factor of 0.026 ( 384 * 0.026 )
-  gt_u = gt_u[:,:,:,1] * 0.026
-  gt_v = gt_v[:,:,:,1] * 0.026
-  gt_w = gt_w[:,:,:,1] * 0.026
+  # decreasing width from 384 to 10 means we decreased the image by a factor ( 384 * 0.026 )
+  gt_v = gt_v * 0.026
+
+  # decreasing depth, in this case we'll just take the avg of factors of width and height ( 0.026 + 0.024 / 2 )
+  gt_w = gt_w * 0.024
 
   gt_u = tf.image.resize_images(gt_u,[5,10],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
   gt_v = tf.image.resize_images(gt_v,[5,10],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
