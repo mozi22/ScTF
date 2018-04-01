@@ -67,6 +67,29 @@ def downsample_label(gt_flow):
 
   return tf.concat([gt_u,gt_v,gt_w],axis=-1)
 
+# resize the gt_flow to the size of predict_flow4 for minimizing loss also after encoder ( before decoder )
+def downsample_label(gt_flow):
+
+  gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
+  gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
+  gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
+
+  # since we're reducing the size, we need to reduce the flow values by the same factor.
+  # decreasing width from 224 to 7 means we decreased the image by a factor of 0.031 ( 224 * 0.031 )
+  gt_u = gt_u[:,:,:,0] * 0.031
+  gt_v = gt_v[:,:,:,0] * 0.031
+  gt_w = gt_w[:,:,:,0] * 0.031
+
+  # decreasing width from 384 to 12 means we decreased the image by a factor of 0.031 ( 384 * 0.031 )
+  gt_u = gt_u[:,:,:,1] * 0.031
+  gt_v = gt_v[:,:,:,1] * 0.031
+  gt_w = gt_w[:,:,:,1] * 0.031
+
+  gt_u = tf.image.resize_images(gt_u,[7,12],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_v = tf.image.resize_images(gt_v,[7,12],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_w = tf.image.resize_images(gt_w,[7,12],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+
+  return tf.concat([gt_u,gt_v,gt_w],axis=-1)
 
 def swap_images_for_back_flow(images):
 
