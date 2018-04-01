@@ -342,7 +342,7 @@ class DatasetReader:
         _ = losses_helper.scale_invariant_gradient_loss(scale_invariant_gradient_image_pred,scale_invariant_gradient_image_gt,0.0001)
 
 
-        predict_flow5_label = hpl.downsample_label(network_input_labels)
+        predict_flow5_label = losses_helper.downsample_label(network_input_labels)
         _ = losses_helper.endpoint_loss(predict_flow5_label,predict_flow5)
         # _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
 
