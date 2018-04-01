@@ -239,7 +239,7 @@ input_size = int(960 * factor), int(540 * factor)
 # ij.setImage('depth_change',disp_change)
 # ij.setImage('depth1',disp1)
 # ij.setImage('depth2',disp2)
-# predictor.predict()
+predictor.predict()
 
 
 # for testing with ground truth

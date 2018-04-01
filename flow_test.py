@@ -139,8 +139,8 @@ class FlowPredictor:
 		# w = 1 / w
 
 		# if show_flow:
-		self.show_image(u,'Flow_u')
-		self.show_image(v,'Flow_v')
+		# self.show_image(u,'Flow_u')
+		# self.show_image(v,'Flow_v')
 			# ij.setImage('PredictedFlow_w',w)
 
 		Image.fromarray(u).save('predictflow_u.tiff')
