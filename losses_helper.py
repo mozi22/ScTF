@@ -48,30 +48,9 @@ def forward_backward_loss(predicted_flow,weight=100):
     flow_forward = predicted_flow[0:forward_part,:,:,:]
     flow_backward = predicted_flow[forward_part:batch_size,:,:,:]
 
+    # step 1,2,3
+    B = flow_warp(flow_backward,flow_forward)
 
-    # step 1
-    x = list(range(0,tensor_shape[2]))
-    y = list(range(0,tensor_shape[1]))
-
-    X, Y = tf.meshgrid(x, y)
-
-    X = tf.expand_dims(X,0)
-    Y = tf.expand_dims(Y,0)
-
-    X = tf.cast(X,np.float32)
-    Y = tf.cast(Y,np.float32)
-
-    # step 2
-    X = X[0,:,:] + flow_forward[:,:,:,0]
-    Y = Y[0,:,:] + flow_forward[:,:,:,1]
-
-    con = tf.stack([X,Y])
-
-    result = tf.transpose(con,[1,2,3,0])
-
-    # step 3
-    B = tf.contrib.resampler.resampler(flow_backward,result)
-  
     # step 4
     fb_loss = sops.replace_nonfinite(flow_forward + B)
 
