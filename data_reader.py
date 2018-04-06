@@ -94,7 +94,6 @@ def tf_record_input_pipeline(filenames,version='1'):
     img_pair_final = tf.stack([img_pair,img_pair_swapped])
     labels_final = tf.stack([labels,labels_swapped])
 
-
     # just to check how shuffle_batch and batch behaves.
     # test(img_pair,img_pair_swapped)
     return {

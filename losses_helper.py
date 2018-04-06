@@ -19,21 +19,65 @@ def photoconsistency_loss(img,predicted_flow, weight=10):
 
   return pc_loss
 
-def forward_backward_loss(img,predicted_flow,weight=100):
+def forward_backward_loss(predicted_flow,weight=100):
 
   with tf.variable_scope('fb_loss'):
 
-    img1 = img[:,:,:,0:4]
-    img2 = img[:,:,:,4:8]
- 
-    # warping using predicted flow
-    warped_img = flow_warp(img1,predicted_flow)
+    '''
+      So, here we do the following steps. 
 
-    fb_loss = sops.replace_nonfinite(img2 - warped_img)
+       1) Use meshgrid to generate pixel positions in X and Y direction
+       2) Add forward flow values to the meshgrid X,Y positions, than we get the resulting flow field, we call it A.
+       3) Warp A with the backward flow field (by warp I mean use resampler), where we pass in the backward_flow as
+          arg1 and A as arg 2. This means now our flow field is pointing backwards, this gives us B.
+       4) Now simply perform flow_forward + B to find  the difference between the forward and backward flow fields. 
+       5) We've to minimize this difference to 0 ( or loss to 0 ). 
+    '''
+
+    # get batch size ( assuming batch_size will always be divisible by 2 )
+
+    tensor_shape = predicted_flow.get_shape().as_list()
+
+    batch_size = tensor_shape[0]
+    # if the BS is 32, first 16 images represent forward flow prediction and the next 16 represent backward flow predictions.
+    forward_part = batch_size // 2
+
+
+    # 0 - 16 is the forward flow
+    # 17 - 31 is the backward flow
+    flow_forward = predicted_flow[0:forward_part,:,:,:]
+    flow_backward = predicted_flow[forward_part:batch_size,:,:,:]
+
+
+    # step 1
+    x = list(range(0,tensor_shape[2]))
+    y = list(range(0,tensor_shape[1]))
+
+    X, Y = tf.meshgrid(x, y)
+
+    X = tf.expand_dims(X,0)
+    Y = tf.expand_dims(Y,0)
+
+    X = tf.cast(X,np.float32)
+    Y = tf.cast(Y,np.float32)
+
+    # step 2
+    X = X[0,:,:] + flow_forward[:,:,:,0]
+    Y = Y[0,:,:] + flow_forward[:,:,:,1]
+
+    con = tf.stack([X,Y])
+
+    result = tf.transpose(con,[1,2,3,0])
+
+    # step 3
+    B = tf.contrib.resampler.resampler(flow_backward,result)
+  
+    # step 4
+    fb_loss = sops.replace_nonfinite(flow_forward + B)
 
     tf.losses.compute_weighted_loss(fb_loss,weights=weight)
 
-  return fb_loss
+  # return fb_loss
 
 # loss value ranges around 0.01 to 2.0
 # defined here :: https://arxiv.org/pdf/1702.02295.pdf

@@ -27,7 +27,7 @@ def get_available_gpus():
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/epe_only/',
+tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/testing/',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 
@@ -313,19 +313,33 @@ class DatasetReader:
          Tensor of shape [] containing the total loss for a batch of data
         """
 
-        network_input_images, network_input_labels = self.get_network_input(images,labels)
+        network_input_images, network_input_labels = self.get_network_input_forward(images,labels)
+        network_input_images_back, network_input_labels_back = self.get_network_input_backward(images,labels)
 
+        # FB = forward-backward
+        concatenated_FB_images = tf.concat([network_input_images,network_input_images_back],axis=0)
 
         # backward_flow_images = losses_helper.forward_backward_loss()
 
-
         # Build inference Graph. - forward flow
-        predict_flow5, predict_flow2 = network.train_network(network_input_images)
+        predict_flow5, predict_flow2 = network.train_network(concatenated_FB_images)
+
 
 
         # Build inference Graph. - backward flow
         # Build the portion of the Graph calculating the losses. Note that we will
         # assemble the total_loss using a custom function below.
+
+        _ = losses_helper.forward_backward_loss(predict_flow2)
+
+
+        batch_size = predict_flow2.get_shape().as_list()[0]
+        batch_half = batch_size // 2
+
+        # for other losses, we only consider forward flow
+        predict_flow2 = predict_flow2[0:batch_half,:,:,:]
+        predict_flow5 = predict_flow5[batch_half:batch_size,:,:,:]
+
 
         _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2)
         _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2)
@@ -370,8 +384,11 @@ class DatasetReader:
         return total_loss
 
 
-    def get_network_input(self,image_batch,label_batch):
+    def get_network_input_forward(self,image_batch,label_batch):
         return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
+
+    def get_network_input_backward(self,image_batch,label_batch):
+        return image_batch[:,1,:,:,:], label_batch[:,1,:,:,:]
 
     def average_gradients(self,tower_grads):
         """Calculate the average gradient for each shared variable across all towers.
