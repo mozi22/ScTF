@@ -29,7 +29,7 @@ tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', False,
 tf.app.flags.DEFINE_boolean('SHOW_GT_WARPED_RESULT', False,
                             """Perform warping with ground truth flow values.""")
 
-tf.app.flags.DEFINE_boolean('SHOW_GT_IMGS', False,
+tf.app.flags.DEFINE_boolean('SHOW_GT_IMGS', True,
                             """Show the ground truth images.""")
 
 
@@ -37,23 +37,38 @@ tf.app.flags.DEFINE_boolean('SHOW_GT_IMGS', False,
 tf.app.flags.DEFINE_string('PARENT_FOLDER', '../dataset_synthetic/driving/',
                            """The root folder for the dataset """)
 
-tf.app.flags.DEFINE_string('IMG1', FLAGS.PARENT_FOLDER + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0076.webp',
+tf.app.flags.DEFINE_string('IMG1',  'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_string('IMG2', FLAGS.PARENT_FOLDER + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0077.webp',
+tf.app.flags.DEFINE_string('IMG2',  'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_string('DISPARITY1', FLAGS.PARENT_FOLDER + 'disparity/35mm_focallength/scene_backwards/fast/left/0076.pfm',
+tf.app.flags.DEFINE_string('DISPARITY1', 'disparity/35mm_focallength/scene_backwards/fast/left/',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_string('DISPARITY2', FLAGS.PARENT_FOLDER + 'disparity/35mm_focallength/scene_backwards/fast/left/0077.pfm',
+tf.app.flags.DEFINE_string('DISPARITY2', 'disparity/35mm_focallength/scene_backwards/fast/left/',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_string('FLOW', FLAGS.PARENT_FOLDER + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0076_L.pfm',
+tf.app.flags.DEFINE_string('FLOW', 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_string('DISPARITY_CHNG', FLAGS.PARENT_FOLDER + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0076.pfm',
+tf.app.flags.DEFINE_string('DISPARITY_CHNG', 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/',
                            """The name of the tower """)
+
+
+tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe_pc_sigl_dc_fb/',
+                           """The name of the tower """)
+
+
+IMG1_NUMBER = '0001'
+IMG2_NUMBER = '0002'
+
+FLAGS.IMG1 = FLAGS.PARENT_FOLDER + FLAGS.IMG1 + IMG1_NUMBER + '.webp'
+FLAGS.IMG2 = FLAGS.PARENT_FOLDER + FLAGS.IMG2 + IMG2_NUMBER + '.webp'
+FLAGS.DISPARITY1 = FLAGS.PARENT_FOLDER + FLAGS.DISPARITY1 + IMG1_NUMBER + '.pfm'
+FLAGS.DISPARITY2 = FLAGS.PARENT_FOLDER + FLAGS.DISPARITY2 + IMG2_NUMBER + '.pfm'
+FLAGS.DISPARITY_CHNG = FLAGS.PARENT_FOLDER + FLAGS.DISPARITY_CHNG + IMG1_NUMBER + '.pfm'
+FLAGS.FLOW = FLAGS.PARENT_FOLDER + FLAGS.FLOW + 'OpticalFlowIntoFuture_' + IMG1_NUMBER + '_L.pfm'
 
 
 
@@ -113,7 +128,7 @@ class FlowPredictor:
 		self.initialize_network()
 
 		self.sess = tf.InteractiveSession()
-		self.load_model_ckpt(self.sess,'ckpt/driving/epe_pc_sigl_dc_fb/')
+		self.load_model_ckpt(self.sess,FLAGS.CKPT_FOLDER)
 
 
 	def read_gt(self,opt_flow,disp_chng):
@@ -159,7 +174,7 @@ class FlowPredictor:
 		elif disparity_change != None:
 
 
-			disparity_change = disp_chng.resize(input_size,Image.NEAREST)
+			disparity_change = disparity_change.resize(input_size,Image.NEAREST)
 
 			disparity_change = np.array(disparity_change)
 	
@@ -204,7 +219,7 @@ class FlowPredictor:
 		a.show(title=img_title)
 		# a.save('prediction_without_pc_loss.jpg')
 
-	def denormalize_flow(self,flow,show_flow):
+	def denormalize_flow(self,flow):
 
 		u = flow[:,:,0] * self.input_size[0]
 		v = flow[:,:,1] * self.input_size[1]
@@ -252,7 +267,6 @@ class FlowPredictor:
 
 		dt2 = Image.fromarray(v,mode='F')
 		dt2 = dt2.resize(size, Image.NEAREST)
-
 		u = np.array(dt)
 		v = np.array(dt2)
 
@@ -285,21 +299,20 @@ predictor.preprocess(FLAGS.IMG1,FLAGS.IMG2,FLAGS.DISPARITY1,FLAGS.DISPARITY2)
 gt_flow, gt_depth_change = predictor.read_gt(FLAGS.FLOW,FLAGS.DISPARITY_CHNG)
 pr_flow, pr_depth_change = predictor.predict()
 
-
-
 # show gt images
 if FLAGS.SHOW_GT_IMGS == True:
 	predictor.init_img1.show()
 	predictor.init_img2.show()
 
 # show gt flows
-if FLAGS.SHOW_GT_IMGS == True:
+if FLAGS.SHOW_GT_FLOWS == True:
 	ij.setImage('gt_flow_u',gt_flow[:,:,0])
 	ij.setImage('gt_flow_v',gt_flow[:,:,1])
 
 
 # warp with gt predited flow values
 if FLAGS.SHOW_GT_WARPED_RESULT == True:
+	gt_flow = np.pad(gt_flow,((4,4),(0,0),(0,0)),'constant')
 	flow = predictor.warp(predictor.img2_arr,gt_flow)
 	result = flow.eval()[0].astype(np.uint8)
 	predictor.show_image(result,'warped_img_gt')
