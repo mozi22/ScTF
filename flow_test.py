@@ -17,19 +17,23 @@ tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_DEPTH_CHANGE', False,
 tf.app.flags.DEFINE_boolean('SHOW_GT_DEPTHS', False,
                             """Show Depth Images Ground Truth.""")
 
+tf.app.flags.DEFINE_boolean('SHOW_GT_DEPTH_CHANGE', False,
+                            """Show Depth Images Ground Truth.""")
+
+
 tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', False,
                             """Show both U and V Flow Values.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_GT_FLOWS', False,
                             """Show both U and V Flow Values Ground truths.""")
 
-tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', True,
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', False,
                             """Perform warping with predicted flow values.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_GT_WARPED_RESULT', False,
                             """Perform warping with ground truth flow values.""")
 
-tf.app.flags.DEFINE_boolean('SHOW_GT_IMGS', False,
+tf.app.flags.DEFINE_boolean('SHOW_GT_IMGS', True,
                             """Show the ground truth images.""")
 
 
@@ -56,7 +60,7 @@ tf.app.flags.DEFINE_string('DISPARITY_CHNG', 'disparity_change/35mm_focallength/
                            """The name of the tower """)
 
 
-tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe_sigl/',
+tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe_pc_sigl/',
                            """The name of the tower """)
 
 
@@ -336,3 +340,8 @@ if FLAGS.SHOW_PREDICTED_WARPED_RESULT == True:
 	flow = predictor.warp(predictor.img2_arr,pr_flow)
 	result = flow.eval()[0].astype(np.uint8)
 	predictor.show_image(result,'warped_img_pr')
+
+# show inv depth values for both images
+if FLAGS.SHOW_GT_DEPTH_CHANGE == True:
+	gt_depth_change = 1 / gt_depth_change
+	ij.setImage('gt_inv_depth_change',gt_depth_change)

@@ -16,7 +16,7 @@ def convrelu2(name,inputs, filters, kernel_size, stride, activation=None):
         strides=[stride,1],
         padding='same',
         name=name+'y',
-        activation=tf.nn.relu
+        activation=activation
     )
 
 

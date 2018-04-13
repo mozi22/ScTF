@@ -92,20 +92,21 @@ def endpoint_loss(gt_flow,predicted_flow,weight=500):
 
   return epe_loss
 
-def depth_consistency_loss(img,predicted_flow,weight=10):
+def depth_consistency_loss(img,predicted_optflow_uv,weight=10):
 
   with tf.variable_scope('depth_consistency_loss'):
 
-    img1, img2 = get_separate_depth_images(img)
+    img1_depth, img2_depth = get_separate_depth_images(img)
 
 
-    img2 = tf.expand_dims(img2,axis=3)
+    img2_depth = tf.expand_dims(img2_depth,axis=3)
 
 
-    warped_depth_img = flow_warp(img2,predicted_flow)
+    # will return a single channel depth image warped with uv optical flow
+    warped_depth_img = flow_warp(img2_depth,predicted_optflow_uv[:,:,:,0:2])
 
     # loss = w - Z_1(x+u,y+v) + Z_0(x,y)
-    dc_loss = predicted_flow[:,:,:,2] - warped_depth_img[:,:,:,0] + img[:,:,:,3]
+    dc_loss = predicted_optflow_uv[:,:,:,2] - warped_depth_img[:,:,:,0] + img1_depth
 
     tf.losses.compute_weighted_loss(dc_loss,weights=weight)
 

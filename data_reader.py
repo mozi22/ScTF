@@ -46,61 +46,82 @@ def tf_record_input_pipeline(filenames,version='1'):
     depth1 = tf.reshape(depth1, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp1")
     depth2 = tf.reshape(depth2, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp2")
 
-    label_pair = tf.reshape(opt_flow, [input_pipeline_dimensions[0],input_pipeline_dimensions[1],2],name="reshape_opt_flow")
+    optical_flow = tf.reshape(opt_flow, [input_pipeline_dimensions[0],input_pipeline_dimensions[1],2],name="reshape_opt_flow")
     depth_chng = tf.reshape(depth_chng,[input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_depth_change")
 
 
     image1 = tf.divide(image1,[255])
     image2 = tf.divide(image2,[255])
 
-    image1 = combine_depth_values(image1,depth1,2)
-    image2 = combine_depth_values(image2,depth2,2)
+    # return train_for_opticalflow(image1,image2,optical_flow)
 
-    # extra
-
-
-    # d1 = tf.expand_dims(depth1,axis=2)
-    # d2 = tf.expand_dims(depth2,axis=2)
-
-    # d_final = tf.concat([d1,d2],axis=2)
-
-    # # depth should be added to both images before this line 
-
-    img_pair = tf.concat([image1,image2],axis=-1)
-    img_pair_swapped = tf.concat([image2,image1],axis=-1)
+    return train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
 
 
-    # change depth to inverse depth
-    # depth_chng = tf.divide(1,depth_chng)
+def train_for_opticalflow(image1,image2,optical_flow):
 
-    label_with_depth_chng = combine_depth_values(label_pair,depth_chng,2)
-    label_with_depth_chng_swapped = tf.zeros(label_with_depth_chng.get_shape())
+    img_pair_rgb = tf.concat([image1,image2],axis=-1)
+    img_pair_rgb_swapped = tf.concat([image2,image1],axis=-1)
+
+
+    optical_flow_swapped = tf.zeros(optical_flow.get_shape())
 
     # inputt = divide_inputs_to_patches(img_pair,8)
     # label = divide_inputs_to_patches(label_pair,3)
 
     # padding_input = tf.constant([[0, 0],[5, 4],[0, 0]])
-    padding1 = tf.constant([[4, 4],[0, 0],[0,0]])
+    x_dimension_padding = tf.constant([[4, 4],[0, 0],[0,0]])
     # padding2 = tf.constant([[4, 4],[0,0]])
 
 
-    img_pair = tf.pad(img_pair,padding1,'CONSTANT')
-    labels = tf.pad(label_with_depth_chng,padding1,'CONSTANT')
+    padded_img_pair_rgb = tf.pad(img_pair_rgb,x_dimension_padding,'CONSTANT')
+    padded_optical_flow = tf.pad(optical_flow,x_dimension_padding,'CONSTANT')
 
-    img_pair_swapped = tf.pad(img_pair_swapped,padding1,'CONSTANT')
-    labels_swapped = tf.pad(label_with_depth_chng_swapped,padding1,'CONSTANT')
+    padded_img_pair_rgb_swapped = tf.pad(img_pair_rgb_swapped,x_dimension_padding,'CONSTANT')
+    padded_optical_flow_swapped = tf.pad(optical_flow_swapped,x_dimension_padding,'CONSTANT')
 
 
-    img_pair_final = tf.stack([img_pair,img_pair_swapped])
-    labels_final = tf.stack([labels,labels_swapped])
+    fb_rgb_img_pair = tf.stack([padded_img_pair_rgb,padded_img_pair_rgb_swapped])
+    fb_rgb_optflow = tf.stack([padded_optical_flow,padded_optical_flow_swapped])
 
-    # just to check how shuffle_batch and batch behaves.
-    # test(img_pair,img_pair_swapped)
     return {
-        'input_n': img_pair_final,
-        'label_n': labels_final
-        # 'input': img_pair,
-        # 'label': label_pair3
+        'input_n': fb_rgb_img_pair,
+        'label_n': fb_rgb_optflow
+    }
+
+def train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow):
+    image1 = combine_depth_values(image1,depth1,2)
+    image2 = combine_depth_values(image2,depth2,2)
+
+    img_pair_rgbd = tf.concat([image1,image2],axis=-1)
+    img_pair_rgbd_swapped = tf.concat([image2,image1],axis=-1)
+
+    # comment for optical flow. Uncomment for Sceneflow
+    optical_flow_with_depth_change = combine_depth_values(optical_flow,depth_chng,2)
+
+    optical_flow_with_depth_change_swapped = tf.zeros(optical_flow_with_depth_change.get_shape())
+
+    # inputt = divide_inputs_to_patches(img_pair,8)
+    # label = divide_inputs_to_patches(label_pair,3)
+
+    # padding_input = tf.constant([[0, 0],[5, 4],[0, 0]])
+    x_dimension_padding = tf.constant([[4, 4],[0, 0],[0,0]])
+    # padding2 = tf.constant([[4, 4],[0,0]])
+
+
+    padded_img_pair_rgbd = tf.pad(img_pair_rgbd,x_dimension_padding,'CONSTANT')
+    padded_optical_flow_with_depth_change = tf.pad(optical_flow_with_depth_change,x_dimension_padding,'CONSTANT')
+
+    padded_img_pair_rgbd_swapped = tf.pad(img_pair_rgbd_swapped,x_dimension_padding,'CONSTANT')
+    padded_optical_flow_with_depth_change_swapped = tf.pad(optical_flow_with_depth_change_swapped,x_dimension_padding,'CONSTANT')
+
+
+    fb_rgbd_img_pair = tf.stack([padded_img_pair_rgbd,padded_img_pair_rgbd_swapped])
+    fb_rgbd_optflow_with_depth_change = tf.stack([padded_optical_flow_with_depth_change,padded_optical_flow_with_depth_change_swapped])
+
+    return {
+        'input_n': fb_rgbd_img_pair,
+        'label_n': fb_rgbd_optflow_with_depth_change
     }
 
 
