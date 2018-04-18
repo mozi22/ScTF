@@ -1,21 +1,18 @@
-import io
+import os
+import re
+import time
+import math
 import network
+import logging
 import numpy as np
-from   PIL import Image
-import tensorflow as tf
-import helpers as hpl
 import losses_helper
+import tensorflow as tf
+from six.moves import xrange
 import tensorflow.contrib.slim as slim
 from tensorflow.python import debug as tf_debug
 from tensorflow.python.client import device_lib
-import time
-import math
 from datetime import datetime
-from tensorflow.python import debug as tf_debug
-import re
 # import ijremote
-from six.moves import xrange
-import os
 
 def get_available_gpus():
     local_device_protos = device_lib.list_local_devices()
@@ -89,7 +86,7 @@ tf.app.flags.DEFINE_integer('TEST_BATCH_SIZE', 16,
 
 # Polynomial Learning Rate
 
-tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.001,
+tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.0001,
                             """Where to start the learning.""")
 tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.000001,
                             """Where to end the learning.""")
@@ -125,7 +122,7 @@ class DatasetReader:
 
 
         opt = tf.train.AdamOptimizer(learning_rate)
-   
+    
         images, labels = tf.train.shuffle_batch(
                             [ features_train['input_n'] , features_train['label_n'] ],
                             batch_size=FLAGS.BATCH_SIZE,
@@ -134,19 +131,19 @@ class DatasetReader:
                             min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
                             enqueue_many=False)
 
-        self.images_test, self.labels_test = tf.train.shuffle_batch(
-                            [ features_test['input_n'] , features_test['label_n'] ],
-                            batch_size=FLAGS.TEST_BATCH_SIZE,
-                            capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY,
-                            num_threads=FLAGS.SHUFFLE_BATCH_THREADS,
-                            min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
-                            enqueue_many=False)
+        # self.images_test, self.labels_test = tf.train.shuffle_batch(
+        #                     [ features_test['input_n'] , features_test['label_n'] ],
+        #                     batch_size=FLAGS.TEST_BATCH_SIZE,
+        #                     capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY,
+        #                     num_threads=FLAGS.SHUFFLE_BATCH_THREADS,
+        #                     min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
+        #                     enqueue_many=False)
         
         batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
             [images, labels], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
 
-        self.batch_queue_test = tf.contrib.slim.prefetch_queue.prefetch_queue(
-            [self.images_test, self.labels_test], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
+        # self.batch_queue_test = tf.contrib.slim.prefetch_queue.prefetch_queue(
+        #     [self.images_test, self.labels_test], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
         
         tower_grads = []
         with tf.variable_scope(tf.get_variable_scope()):
@@ -217,9 +214,20 @@ class DatasetReader:
         # Start running operations on the Graph. allow_soft_placement must be set to
         # True to build towers on GPU, as some of the ops do not have GPU
         # implementations.
-        sess = tf.Session(config=tf.ConfigProto(
-            allow_soft_placement=True,
-            log_device_placement=FLAGS.LOG_DEVICE_PLACEMENT))
+
+        tf_config = tf.ConfigProto(allow_soft_placement=True,
+            log_device_placement=FLAGS.LOG_DEVICE_PLACEMENT)
+
+        if 'dacky' in os.uname()[1]:
+            logging.info('Dacky: Running with memory usage limits')
+            # change tf_config for dacky to use only 1 GPU
+            tf_config.gpu_options.per_process_gpu_memory_fraction = 0.6
+            os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+        else:
+            # change tf_config for lmb_cluster so that GPU is visible and utilized
+            os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+        sess = tf.Session(config=tf_config)
         sess.run(init)
 
 
@@ -248,6 +256,7 @@ class DatasetReader:
         # this will print in console for which time we are calculating the test loss.
         # first time or second time or third time and more
         test_loss_calculating_index = 1
+
         # main loop
         for step in range(loop_start,loop_stop):
 
@@ -296,12 +305,12 @@ class DatasetReader:
             if step % 1000 == 0 or (step + 1) == FLAGS.MAX_STEPS:
                 checkpoint_path = os.path.join(FLAGS.TRAIN_DIR, 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=step)
+
+
+            if step == 4000:
+                break
+
         summary_writer.close()
-
-
-
-
-
 
     def tower_loss(self,scope, images, labels):
         """Calculate the total loss on a single tower running the CIFAR model.
@@ -325,45 +334,46 @@ class DatasetReader:
         predict_flow5, predict_flow2 = network.train_network(concatenated_FB_images)
 
 
-
         # Build inference Graph. - backward flow
         # Build the portion of the Graph calculating the losses. Note that we will
         # assemble the total_loss using a custom function below.
 
         # _ = losses_helper.forward_backward_loss(predict_flow2)
 
-
         batch_size = predict_flow2.get_shape().as_list()[0]
         batch_half = batch_size // 2
 
         # for other losses, we only consider forward flow
-        predict_flow2 = predict_flow2[0:batch_half,:,:,:]
-        predict_flow5 = predict_flow5[batch_half:batch_size,:,:,:]
+        predict_flow2_forward = predict_flow2[0:batch_half,:,:,:]
+        predict_flow2_backward = predict_flow2[batch_half:batch_size,:,:,:]
 
+        predict_flow5_forward = predict_flow5[0:batch_half,:,:,:]
+        predict_flow5_backward = predict_flow5[batch_half:batch_size,:,:,:]
 
-        _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2)
-        _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2)
-        # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flow2)
+        _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2_forward)
+        _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2_forward)
+        # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flow2_forward)
 
         scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
                                                                                 np.array([1,2,4,8,16]),
                                                                                 np.array([1,1,1,1,1]))
 
-        scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(predict_flow2,
+        scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(predict_flow2_forward,
                                                                                 np.array([1,2,4,8,16]),
                                                                                 np.array([1,1,1,1,1]))
 
         _ = losses_helper.scale_invariant_gradient_loss(scale_invariant_gradient_image_pred,scale_invariant_gradient_image_gt,0.0001)
 
-
         predict_flow5_label = losses_helper.downsample_label(network_input_labels)
-        _ = losses_helper.endpoint_loss(predict_flow5_label,predict_flow5)
+        _ = losses_helper.endpoint_loss(predict_flow5_label,predict_flow5_forward)
         # _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
 
+        tf.summary.histogram('prediction_flow2_forward',predict_flow2_forward)
+        tf.summary.histogram('prediction_flow5_forward',predict_flow5_forward)
+        tf.summary.histogram('prediction_flow2_backward',predict_flow2_backward)
+        tf.summary.histogram('prediction_flow5_backward',predict_flow5_backward)
 
-
-        tf.summary.histogram('prediction',predict_flow2)
-        tf.summary.histogram('label',labels)
+        tf.summary.histogram('gt_flow2_forward',network_input_labels)
 
 
         # Assemble all of the losses for the current tower only.

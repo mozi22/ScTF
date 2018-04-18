@@ -27,7 +27,7 @@ tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', False,
 tf.app.flags.DEFINE_boolean('SHOW_GT_FLOWS', False,
                             """Show both U and V Flow Values Ground truths.""")
 
-tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', False,
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', True,
                             """Perform warping with predicted flow values.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_GT_WARPED_RESULT', False,
@@ -60,7 +60,7 @@ tf.app.flags.DEFINE_string('DISPARITY_CHNG', 'disparity_change/35mm_focallength/
                            """The name of the tower """)
 
 
-tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe_pc_sigl/',
+tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe/',
                            """The name of the tower """)
 
 

@@ -1,0 +1,7 @@
+
+steps needed to change between sceneflow and opt flow training.
+
+change downsample function in losses_helper
+change get_separate_rgb_images function in losses_helper
+change function call in data_reader.py
+change filter from 3 to 2 in _predict_flow function in network.py

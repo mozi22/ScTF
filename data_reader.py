@@ -5,17 +5,14 @@ def tf_record_input_pipeline(filenames,version='1'):
 
     # Create a list of filenames and pass it to a queue
     filename_queue = tf.train.string_input_producer(filenames,name='InputProducerV'+version,shuffle=False)
+
     # Define a reader and read the next record
     recordReader = tf.TFRecordReader(name="TfReaderV"+version)
 
     key, fullExample = recordReader.read(filename_queue)
 
-
-
     # Decode the record read by the reader
     features = tf.parse_single_example(fullExample, {
-        # 'width': tf.FixedLenFeature([], tf.int64),
-        # 'height': tf.FixedLenFeature([], tf.int64),
         'depth1': tf.FixedLenFeature([], tf.string),
         'depth2': tf.FixedLenFeature([], tf.string),
         'depth_change': tf.FixedLenFeature([], tf.string),
@@ -26,7 +23,6 @@ def tf_record_input_pipeline(filenames,version='1'):
     name="ExampleParserV"+version)
 
     # Convert the image data from binary back to arrays(Tensors)
-
     depth1 = tf.decode_raw(features['depth1'], tf.float32)
     depth2 = tf.decode_raw(features['depth2'], tf.float32)
     depth_chng = tf.decode_raw(features['depth_change'], tf.float32)
@@ -49,20 +45,17 @@ def tf_record_input_pipeline(filenames,version='1'):
     optical_flow = tf.reshape(opt_flow, [input_pipeline_dimensions[0],input_pipeline_dimensions[1],2],name="reshape_opt_flow")
     depth_chng = tf.reshape(depth_chng,[input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_depth_change")
 
-
     image1 = tf.divide(image1,[255])
     image2 = tf.divide(image2,[255])
 
-    # return train_for_opticalflow(image1,image2,optical_flow)
-
-    return train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
+    return train_for_opticalflow(image1,image2,optical_flow)
+    # return train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
 
 
 def train_for_opticalflow(image1,image2,optical_flow):
 
     img_pair_rgb = tf.concat([image1,image2],axis=-1)
     img_pair_rgb_swapped = tf.concat([image2,image1],axis=-1)
-
 
     optical_flow_swapped = tf.zeros(optical_flow.get_shape())
 
@@ -73,13 +66,11 @@ def train_for_opticalflow(image1,image2,optical_flow):
     x_dimension_padding = tf.constant([[4, 4],[0, 0],[0,0]])
     # padding2 = tf.constant([[4, 4],[0,0]])
 
-
     padded_img_pair_rgb = tf.pad(img_pair_rgb,x_dimension_padding,'CONSTANT')
     padded_optical_flow = tf.pad(optical_flow,x_dimension_padding,'CONSTANT')
 
     padded_img_pair_rgb_swapped = tf.pad(img_pair_rgb_swapped,x_dimension_padding,'CONSTANT')
     padded_optical_flow_swapped = tf.pad(optical_flow_swapped,x_dimension_padding,'CONSTANT')
-
 
     fb_rgb_img_pair = tf.stack([padded_img_pair_rgb,padded_img_pair_rgb_swapped])
     fb_rgb_optflow = tf.stack([padded_optical_flow,padded_optical_flow_swapped])
@@ -90,6 +81,7 @@ def train_for_opticalflow(image1,image2,optical_flow):
     }
 
 def train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow):
+
     image1 = combine_depth_values(image1,depth1,2)
     image2 = combine_depth_values(image2,depth2,2)
 
@@ -108,13 +100,11 @@ def train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow):
     x_dimension_padding = tf.constant([[4, 4],[0, 0],[0,0]])
     # padding2 = tf.constant([[4, 4],[0,0]])
 
-
     padded_img_pair_rgbd = tf.pad(img_pair_rgbd,x_dimension_padding,'CONSTANT')
     padded_optical_flow_with_depth_change = tf.pad(optical_flow_with_depth_change,x_dimension_padding,'CONSTANT')
 
     padded_img_pair_rgbd_swapped = tf.pad(img_pair_rgbd_swapped,x_dimension_padding,'CONSTANT')
     padded_optical_flow_with_depth_change_swapped = tf.pad(optical_flow_with_depth_change_swapped,x_dimension_padding,'CONSTANT')
-
 
     fb_rgbd_img_pair = tf.stack([padded_img_pair_rgbd,padded_img_pair_rgbd_swapped])
     fb_rgbd_optflow_with_depth_change = tf.stack([padded_optical_flow_with_depth_change,padded_optical_flow_with_depth_change_swapped])
@@ -123,8 +113,6 @@ def train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow):
         'input_n': fb_rgbd_img_pair,
         'label_n': fb_rgbd_optflow_with_depth_change
     }
-
-
 
 def test(img_pair,img_pair2):
 
