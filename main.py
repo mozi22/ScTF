@@ -1,6 +1,8 @@
 import run_network
 import data_reader
 import multiprocessing
+import os
+os.environ['TF_CPP_MIN_VLOG_LEVEL']='3'
 # # read data
 # img1 = Image.open(os.path.join(examples_dir,'sculpture1.png'))
 # img2 = Image.open(os.path.join(examples_dir,'sculpture2.png'))
@@ -8,7 +10,7 @@ import multiprocessing
 # input_data = prepare_input_data(img1,img2,data_format)
 
 # print(get_available_gpus())
-prefix = '../dataset_synthetic/'
+prefix = '../dataset_synthetic/big_image/'
 
 # # with tf.name_scope("datareader"):
 train_filenames = [
@@ -27,10 +29,10 @@ test_filenames = [
 
 
 
-train_features = data_reader.tf_record_input_pipeline(train_filenames,version='1')
-test_features = data_reader.tf_record_input_pipeline(test_filenames,version='2')
+train_features = data_reader.tf_record_input_pipeline_full_image(train_filenames,version='1')
+# test_features = data_reader.tf_record_input_pipeline(test_filenames,version='2')
 
 reader = run_network.DatasetReader()
-reader.train(train_features,test_features)
+reader.train(train_features,'test_features')
 # # reader.main(train_features,test_features)
 # # print(helpers.readPFM('0006.pfm'))

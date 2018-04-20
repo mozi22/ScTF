@@ -27,7 +27,7 @@ def get_available_gpus():
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/corr_net2/',
+tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/corr_net_full/',
                            """Directory where to write event logs """
                            """and checkpoints.""")
 
@@ -87,7 +87,7 @@ tf.app.flags.DEFINE_integer('TEST_BATCH_SIZE', 16,
 
 # Polynomial Learning Rate
 
-tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.001,
+tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.0001,
                             """Where to start the learning.""")
 tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.000001,
                             """Where to end the learning.""")
@@ -130,19 +130,19 @@ class DatasetReader:
                             min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
                             enqueue_many=False)
 
-        self.images_test, self.labels_test = tf.train.shuffle_batch(
-                            [ features_test['input_n'] , features_test['label_n'] ],
-                            batch_size=FLAGS.TEST_BATCH_SIZE,
-                            capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY,
-                            num_threads=FLAGS.SHUFFLE_BATCH_THREADS,
-                            min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
-                            enqueue_many=False)
+        # self.images_test, self.labels_test = tf.train.shuffle_batch(
+        #                     [ features_test['input_n'] , features_test['label_n'] ],
+        #                     batch_size=FLAGS.TEST_BATCH_SIZE,
+        #                     capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY,
+        #                     num_threads=FLAGS.SHUFFLE_BATCH_THREADS,
+        #                     min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
+        #                     enqueue_many=False)
         
         batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
             [images, labels], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
 
-        self.batch_queue_test = tf.contrib.slim.prefetch_queue.prefetch_queue(
-            [self.images_test, self.labels_test], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
+        # self.batch_queue_test = tf.contrib.slim.prefetch_queue.prefetch_queue(
+        #     [self.images_test, self.labels_test], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
         
         tower_grads = []
         with tf.variable_scope(tf.get_variable_scope()):

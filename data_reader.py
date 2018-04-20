@@ -105,6 +105,110 @@ def tf_record_input_pipeline(filenames,version='1'):
     }
 
 
+def tf_record_input_pipeline_full_image(filenames,version='1'):
+
+    # Create a list of filenames and pass it to a queue
+    filename_queue = tf.train.string_input_producer(filenames,name='InputProducerV'+version,shuffle=False)
+    # Define a reader and read the next record
+    recordReader = tf.TFRecordReader(name="TfReaderV"+version)
+
+    key, fullExample = recordReader.read(filename_queue)
+
+
+
+    # Decode the record read by the reader
+    features = tf.parse_single_example(fullExample, {
+        # 'width': tf.FixedLenFeature([], tf.int64),
+        # 'height': tf.FixedLenFeature([], tf.int64),
+        'depth1': tf.FixedLenFeature([], tf.string),
+        'depth2': tf.FixedLenFeature([], tf.string),
+        'depth_change': tf.FixedLenFeature([], tf.string),
+        'opt_flow': tf.FixedLenFeature([], tf.string),
+        'image1': tf.FixedLenFeature([], tf.string),
+        'image2': tf.FixedLenFeature([], tf.string)
+    },
+    name="ExampleParserV"+version)
+
+    # Convert the image data from binary back to arrays(Tensors)
+
+    depth1 = tf.decode_raw(features['depth1'], tf.float32)
+    depth2 = tf.decode_raw(features['depth2'], tf.float32)
+    depth_chng = tf.decode_raw(features['depth_change'], tf.float32)
+
+    image1 = tf.decode_raw(features['image1'], tf.uint8)
+    image2 = tf.decode_raw(features['image2'], tf.uint8)
+    opt_flow = tf.decode_raw(features['opt_flow'], tf.float32)
+
+    input_pipeline_dimensions = [324, 576]
+    image1 = tf.to_float(image1)
+    image2 = tf.to_float(image2)
+
+    # reshape data to its original form
+    image1 = tf.reshape(image1, [input_pipeline_dimensions[0],input_pipeline_dimensions[1], 3],name="reshape_img1")
+    image2 = tf.reshape(image2, [input_pipeline_dimensions[0],input_pipeline_dimensions[1], 3],name="reshape_img2")
+
+    depth1 = tf.reshape(depth1, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp1")
+    depth2 = tf.reshape(depth2, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp2")
+
+    label_pair = tf.reshape(opt_flow, [input_pipeline_dimensions[0],input_pipeline_dimensions[1],2],name="reshape_opt_flow")
+    depth_chng = tf.reshape(depth_chng,[input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_depth_change")
+
+
+    image1 = tf.divide(image1,[255])
+    image2 = tf.divide(image2,[255])
+
+    image1 = combine_depth_values(image1,depth1,2)
+    image2 = combine_depth_values(image2,depth2,2)
+
+    # extra
+
+
+    # d1 = tf.expand_dims(depth1,axis=2)
+    # d2 = tf.expand_dims(depth2,axis=2)
+
+    # d_final = tf.concat([d1,d2],axis=2)
+
+    # # depth should be added to both images before this line 
+
+    img_pair = tf.concat([image1,image2],axis=-1)
+    img_pair_swapped = tf.concat([image2,image1],axis=-1)
+
+
+    # change depth to inverse depth
+    # depth_chng = tf.divide(1,depth_chng)
+
+    label_with_depth_chng = combine_depth_values(label_pair,depth_chng,2)
+    label_with_depth_chng_swapped = tf.zeros(label_with_depth_chng.get_shape())
+
+    # inputt = divide_inputs_to_patches(img_pair,8)
+    # label = divide_inputs_to_patches(label_pair,3)
+
+    # padding_input = tf.constant([[0, 0],[5, 4],[0, 0]])
+    padding1 = tf.constant([[4, 4],[0, 0],[0,0]])
+    # padding2 = tf.constant([[4, 4],[0,0]])
+
+
+    img_pair = tf.pad(img_pair,padding1,'CONSTANT')
+    labels = tf.pad(label_with_depth_chng,padding1,'CONSTANT')
+
+    img_pair_swapped = tf.pad(img_pair_swapped,padding1,'CONSTANT')
+    labels_swapped = tf.pad(label_with_depth_chng_swapped,padding1,'CONSTANT')
+
+
+    img_pair_final = tf.stack([img_pair,img_pair_swapped])
+    labels_final = tf.stack([labels,labels_swapped])
+
+
+    # just to check how shuffle_batch and batch behaves.
+    # test(img_pair,img_pair_swapped)
+    return {
+        'input_n': img_pair_final,
+        'label_n': labels_final
+        # 'input': img_pair,
+        # 'label': label_pair3
+    }
+
+
 
 def test(img_pair,img_pair2):
 

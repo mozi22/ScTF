@@ -202,11 +202,11 @@ def get_loss_comparable_images(img,gt_flow):
   # decreasing depth, in this case we'll just take the avg of factors of width and height ( 0.35 + 0.41 / 2 )
   gt_w = gt_w * 0.38
 
-  gt_u = tf.image.resize_images(gt_u,[80,160],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-  gt_v = tf.image.resize_images(gt_v,[80,160],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-  gt_w = tf.image.resize_images(gt_w,[80,160],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_u = tf.image.resize_images(gt_u,[160,288],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_v = tf.image.resize_images(gt_v,[160,288],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_w = tf.image.resize_images(gt_w,[160,288],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-  return tf.image.resize_images(img,[80,160]), tf.concat([gt_u,gt_v,gt_w],axis=-1)
+  return tf.image.resize_images(img,[160,288]), tf.concat([gt_u,gt_v,gt_w],axis=-1)
 
 
 # resize the gt_flow to the size of predict_flow4 for minimizing loss also after encoder ( before decoder )
@@ -226,9 +226,9 @@ def downsample_label(gt_flow):
   # decreasing depth, in this case we'll just take the avg of factors of width and height ( 0.026 + 0.024 / 2 )
   gt_w = gt_w * 0.024
 
-  gt_u = tf.image.resize_images(gt_u,[5,10],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-  gt_v = tf.image.resize_images(gt_v,[5,10],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-  gt_w = tf.image.resize_images(gt_w,[5,10],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_u = tf.image.resize_images(gt_u,[10,18],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_v = tf.image.resize_images(gt_v,[10,18],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_w = tf.image.resize_images(gt_w,[10,18],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
   return tf.concat([gt_u,gt_v,gt_w],axis=-1)
 
