@@ -131,14 +131,18 @@ def network_tunnel(image,var_scope_name):
 
     # contracting part
     with tf.variable_scope(var_scope_name):
-        print(image)
-
-        conv1 = convrelu2(name='conv1', inputs=image, filters=64, kernel_size=5, stride=2,activation=myLeakyRelu)
-        conv2 = convrelu2(name='conv2', inputs=conv1, filters=128, kernel_size=3, stride=1,activation=myLeakyRelu)
-        conv3 = convrelu2(name='conv3', inputs=conv2, filters=256, kernel_size=3, stride=1,activation=myLeakyRelu)
 
 
-    return conv3
+        conv1 = convrelu2(name='conv1', inputs=image, filters=16, kernel_size=5, stride=2,activation=myLeakyRelu)
+
+        conv2 = convrelu2(name='conv2', inputs=conv1, filters=32, kernel_size=3, stride=1,activation=myLeakyRelu)
+        conv2_1 = convrelu2(name='conv2_1', inputs=conv2, filters=32, kernel_size=3, stride=1,activation=myLeakyRelu)
+
+        conv3 = convrelu2(name='conv3', inputs=conv2_1, filters=64, kernel_size=3, stride=2,activation=myLeakyRelu)
+        conv3_1 = convrelu2(name='conv3_1', inputs=conv3, filters=64, kernel_size=3, stride=1,activation=myLeakyRelu)
+
+
+    return conv3_1
 
 
 # performs correlation of the tunnel layers and goes forward with the rest of the convolutions and than refinement
@@ -146,38 +150,25 @@ def network_core(tunnel_layer1,tunnel_layer2):
 
     with tf.variable_scope('network_core'):
 
-        # tunnel_layer1 = tf.image.resize_images(tunnel_layer1,tf.constant([384,512]))
-        # tunnel_layer2 = tf.image.resize_images(tunnel_layer2,tf.constant([384,512]))
-        print('mozi')
-        print(tunnel_layer1)
-        print(tunnel_layer2)
 
         # change N-H-W-C to N-C-H-W
         tunnel_layer1 = tf.transpose(tunnel_layer1,[0,3,1,2])
         tunnel_layer2 = tf.transpose(tunnel_layer2,[0,3,1,2])
 
 
-
-        print('mozi2')
-        print(tunnel_layer1)
-        print(tunnel_layer2)
-
         # perform correlation
         correlated_layer = sops.correlation(input1=tunnel_layer1,
                                             input2=tunnel_layer2,
                                             kernel_size=1,
-                                            max_displacement=10,
+                                            max_displacement=15,
                                             stride1=1,
                                             stride2=1)
 
+        
         correlated_layer = tf.transpose(correlated_layer,[0,2,3,1])
 
-        print('pehle')
-        print(correlated_layer)
-        # padding = tf.constant([[0, 0],[2, 2],[5,5],[0,0]])
-        # correlated_layer = tf.pad(correlated_layer,padding,'CONSTANT')
-        # print('bad mein')
-        # print(correlated_layer)
+        # resize from 82x162 to 80x160 to make sure we can reach this size easily while refinement
+        correlated_layer = tf.image.resize_images(correlated_layer,[80,160])
 
 
         conv4_1 = convrelu2(name='conv4', inputs=correlated_layer, filters=128, kernel_size=3, stride=2,activation=myLeakyRelu)
@@ -189,8 +180,6 @@ def network_core(tunnel_layer1,tunnel_layer2):
         conv6_1 = convrelu2(name='conv6_1', inputs=conv6, filters=512, kernel_size=3, stride=1,activation=myLeakyRelu)
 
         conv7_1 = convrelu2(name='conv7', inputs=conv6_1, filters=1024, kernel_size=3, stride=2,activation=myLeakyRelu)
-
-
 
     # predict flow
     with tf.variable_scope('predict_flow5'):

@@ -5,7 +5,77 @@ import helpers as hpl
 import network
 import math
 import matplotlib as plt
-# import ijremote as ij
+import ijremote as ij
+
+
+FLAGS = tf.app.flags.FLAGS
+
+
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_DEPTH_CHANGE', False,
+                            """Show Depth Images.""")
+
+tf.app.flags.DEFINE_boolean('SHOW_GT_DEPTHS', False,
+                            """Show Depth Images Ground Truth.""")
+
+tf.app.flags.DEFINE_boolean('SHOW_GT_DEPTH_CHANGE', False,
+                            """Show Depth Images Ground Truth.""")
+
+
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', False,
+                            """Show both U and V Flow Values.""")
+
+tf.app.flags.DEFINE_boolean('SHOW_GT_FLOWS', False,
+                            """Show both U and V Flow Values Ground truths.""")
+
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', True,
+                            """Perform warping with predicted flow values.""")
+
+tf.app.flags.DEFINE_boolean('SHOW_GT_WARPED_RESULT', False,
+                            """Perform warping with ground truth flow values.""")
+
+tf.app.flags.DEFINE_boolean('SHOW_GT_IMGS', False,
+                            """Show the ground truth images.""")
+
+
+
+tf.app.flags.DEFINE_string('PARENT_FOLDER', '../dataset_synthetic/driving/',
+                           """The root folder for the dataset """)
+
+tf.app.flags.DEFINE_string('IMG1',  'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/',
+                           """The name of the tower """)
+
+tf.app.flags.DEFINE_string('IMG2',  'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/',
+                           """The name of the tower """)
+
+tf.app.flags.DEFINE_string('DISPARITY1', 'disparity/35mm_focallength/scene_backwards/fast/left/',
+                           """The name of the tower """)
+
+tf.app.flags.DEFINE_string('DISPARITY2', 'disparity/35mm_focallength/scene_backwards/fast/left/',
+                           """The name of the tower """)
+
+tf.app.flags.DEFINE_string('FLOW', 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/',
+                           """The name of the tower """)
+
+tf.app.flags.DEFINE_string('DISPARITY_CHNG', 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/',
+                           """The name of the tower """)
+
+
+tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/corr_net/',
+                           """The name of the tower """)
+
+
+IMG1_NUMBER = '0001'
+IMG2_NUMBER = '0002'
+
+FLAGS.IMG1 = FLAGS.PARENT_FOLDER + FLAGS.IMG1 + IMG1_NUMBER + '.webp'
+FLAGS.IMG2 = FLAGS.PARENT_FOLDER + FLAGS.IMG2 + IMG2_NUMBER + '.webp'
+FLAGS.DISPARITY1 = FLAGS.PARENT_FOLDER + FLAGS.DISPARITY1 + IMG1_NUMBER + '.pfm'
+FLAGS.DISPARITY2 = FLAGS.PARENT_FOLDER + FLAGS.DISPARITY2 + IMG2_NUMBER + '.pfm'
+FLAGS.DISPARITY_CHNG = FLAGS.PARENT_FOLDER + FLAGS.DISPARITY_CHNG + IMG1_NUMBER + '.pfm'
+FLAGS.FLOW = FLAGS.PARENT_FOLDER + FLAGS.FLOW + 'OpticalFlowIntoFuture_' + IMG1_NUMBER + '_L.pfm'
+
+
+
 
 class FlowPredictor:
 
@@ -14,6 +84,7 @@ class FlowPredictor:
 	# depth1: path of depth pfm 1
 	# depth2: path of depth pfm 2
 	def preprocess(self,img1,img2,disparity1,disparity2):
+
 
 		factor = 0.4
 		self.input_size = int(960 * factor), int(540 * factor)
@@ -25,8 +96,9 @@ class FlowPredictor:
 		# read resized images to network standards
 		self.init_img1, self.init_img2 = self.read_image(img1,img2)
 
-		self.img1_arr = np.array(self.init_img1,dtype=np.float32)
-		self.img2_arr = np.array(self.init_img2,dtype=np.float32)
+		self.img1_arr = np.array(self.init_img1,dtype=np.float32)[:,:,0:3]
+		self.img2_arr = np.array(self.init_img2,dtype=np.float32)[:,:,0:3]
+
 
 		# normalize images
 		self.img1 = self.img1_arr / 255
@@ -38,38 +110,19 @@ class FlowPredictor:
 
 		disp1 = Image.fromarray(disp1)
 		disp2 = Image.fromarray(disp2)
-		# resize disparity values
-		disp1 = disp1.resize(self.input_size,Image.NEAREST)
-		disp2 = disp2.resize(self.input_size,Image.NEAREST)
 
-		# resize disp values
+		self.inv_depth1, self.inv_depth2, _ = self.get_resized_inverse_depth(disp1,disp2,None,self.input_size)
 
-		disp1 = np.array(disp1)
-		disp2 = np.array(disp2)
-
-		self.depth1 = self.get_depth_from_disp(disp1)
-		self.depth2 = self.get_depth_from_disp(disp2)
-
-		self.depth1 = 1 / self.depth1
-		self.depth2 = 1 / self.depth2
 
 		# normalize disp values
-		self.depth1 = self.depth1 / self.max_depth_driving
-		self.depth2 = self.depth2 / self.max_depth_driving
+		self.depth1 = self.inv_depth1 / self.max_depth_driving
+		self.depth2 = self.inv_depth2 / self.max_depth_driving
 
-		# combine depth values with images
 		rgbd1 = self.combine_depth_values(self.img1,self.depth1)
 		rgbd2 = self.combine_depth_values(self.img2,self.depth2)
 
-		# ij.setImage('imag1',self.depth1)
-		# ij.setImage('imag2',self.depth2)
-
-		# d1 = np.expand_dims(self.depth1,axis=2)
-		# d2 = np.expand_dims(self.depth2,axis=2)
-		# img_pair = np.concatenate((d1,d2),axis=2)
 		# # combine images to 8 channel rgbd-rgbd
 		img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
-		# img_pair = np.concatenate((self.img1,self.img2),axis=2)
 
 		# # add padding to axis=0 to make the input image (224,384,8)
 		self.img_pair = np.pad(img_pair,((4,4),(0,0),(0,0)),'constant')
@@ -79,9 +132,7 @@ class FlowPredictor:
 		self.initialize_network()
 
 		self.sess = tf.InteractiveSession()
-		# # self.load_model_ckpt(self.sess,'ckpt/driving/depth/train/model_ckpt_15000.ckpt')
-		# self.load_model_ckpt(self.sess,'ckpt/driving/conv10/train/model_ckpt_24300.ckpt')
-		self.load_model_ckpt(self.sess,'ckpt/driving/corr_net/')
+		self.load_model_ckpt(self.sess,FLAGS.CKPT_FOLDER)
 
 
 	def read_gt(self,opt_flow,disp_chng):
@@ -89,18 +140,59 @@ class FlowPredictor:
 		disp_chng = hpl.readPFM(disp_chng)[0]
 
 		disp_chng = Image.fromarray(disp_chng)
-		disp_chng = disp_chng.resize(self.input_size,Image.NEAREST)
 
-		opt_flow = self.downsample_opt_flow(opt_flow,(160,80))
+		_ ,_ , resized_inv_depth = self.get_resized_inverse_depth(None,None,disp_chng,self.input_size)
 
 
-		# z = np.zeros((opt_flow.shape[0],opt_flow.shape[1]))
+		opt_flow = self.downsample_opt_flow(opt_flow,self.input_size)
 
-		# opt_flow = self.combine_depth_values(opt_flow,z)
-		# Image.fromarray(opt_flow,'RGB').show()
+		return opt_flow * 0.4, resized_inv_depth
 
-		# final_label = self.combine_depth_values(opt_flow,disp_chng)
-		return opt_flow * 0.4
+	# send in the disparity values, this will return the normalized inverse depth values.
+	def get_resized_inverse_depth(self,disparity,disparity2,disparity_change,input_size):
+
+
+		depth1 = None
+		depth2 = None
+		depth_change = None
+
+		if disparity != None:
+		
+			disparity = disparity.resize(input_size,Image.NEAREST)
+			disparity2 = disparity2.resize(input_size,Image.NEAREST)
+	
+			disparity = np.array(disparity)
+			disparity2 = np.array(disparity2)
+
+			disparity = disparity * 0.4
+			disparity2 = disparity2 * 0.4
+
+			# convert disparities to depth
+			depth1 = self.get_depth_from_disp(disparity)
+			depth2 = self.get_depth_from_disp(disparity2)
+
+			# get inverse depth
+			depth1 = 1 / depth1
+			depth2 = 1 / depth2
+
+		elif disparity_change != None:
+
+
+			disparity_change = disparity_change.resize(input_size,Image.NEAREST)
+
+			disparity_change = np.array(disparity_change)
+	
+			disparity_change = disparity_change * 0.4
+
+			# there are 0 values in disparity_change. We can add an epsilon to to shift the matrix.
+			# disparity_change = disparity_change + 1e-6
+
+			depth_change = self.get_depth_from_disp(disparity_change)
+
+			depth_change = 1 / depth_change
+
+
+		return depth1,depth2,depth_change
 
 
 	def get_depth_chng_from_disp_chng(self,disparity,disparity_change):
@@ -111,9 +203,13 @@ class FlowPredictor:
 
 		return depth1 - depth2
 
+
+
 	def warp(self,img,flow):
+
 		x = list(range(0,160))
 		y = list(range(0,80))
+
 		X, Y = tf.meshgrid(x, y)
 
 		X = tf.cast(X,np.float32) + flow[:,:,0]
@@ -122,90 +218,37 @@ class FlowPredictor:
 		con = tf.stack([X,Y])
 		result = tf.transpose(con,[1,2,0])
 		result = tf.expand_dims(result,0)
-		return tf.contrib.resampler.resampler(img[np.newaxis,:,:,:],result)
+		return tf.contrib.resampler.resampler(self.result_img2[np.newaxis,:,:,:],result)
 
-	def show_image(self,array,img_title,final_image=False):
+	def show_image(self,array,img_title):
+		print('array.shape')
+		print(array.shape)
 		# shaper = array.shape
 		a = Image.fromarray(array)
-
-		# if final_image == True:
-		# 	a = a.resize((320,160), Image.BILINEAR)
+		# a = a.resize((math.ceil(shaper[1] * 2),math.ceil(shaper[0] * 2)), Image.BILINEAR)
 		a.show(title=img_title)
 		# a.save('prediction_without_pc_loss.jpg')
 
-	def denormalize_flow(self,flow,show_flow):
+	def denormalize_flow(self,flow):
 
 		u = flow[:,:,0] * self.input_size[0]
 		v = flow[:,:,1] * self.input_size[1]
 		w = flow[:,:,2] * self.max_depth_driving_chng
-		# w = 1 / w
-
-		# if show_flow:
-		# self.show_image(u,'Flow_u')
-		# self.show_image(v,'Flow_v')
-			# ij.setImage('PredictedFlow_w',w)
-
-		Image.fromarray(u).save('predictflow_u.tiff')
-		Image.fromarray(v).save('predictflow_v.tiff')
 		
 		flow = np.stack((u,v),axis=2)
 		
-		# not being used currently.
-		# flow_with_depth = np.stack((u,v,w),axis=2)
-		return flow
-
-
-	def postprocess(self,flow,show_flow=True,gt=False):
-
-		print(flow.shape)
-
-		if gt==True:
-			self.show_image(flow[:,:,0],'Flow_u')
-			self.show_image(flow[:,:,1],'Flow_v')
-			self.show_image(flow[:,:,2],'Flow_w')
-		else:
-			flow = self.denormalize_flow(flow,show_flow)
-
-
-
-
-		# ij.setImage('PredictedFlow_u',flow[:,:,0])
-		# ij.setImage('PredictedFlow_v',flow[:,:,1])
-
-		self.img2_arr = np.pad(self.img2_arr,((4,4),(0,0),(0,0)),'constant')
-		self.img2_arr = self.img2_arr.astype(np.uint8)
-		self.img2_arr = Image.fromarray(self.img2_arr[:,:,0:3],'RGB')
-
-		self.img2_arr = self.img2_arr.resize((160,80), Image.BILINEAR)
-
-
-		self.img2_arr = np.array(self.img2_arr,dtype=np.float32)
-
-
-		flow = self.warp(self.img2_arr,flow)
-
-
-
-		result = flow.eval()[0].astype(np.uint8)
-
-		self.show_image(result,'warped_img',final_image=True)
-
-		# plt.hist(result, bins='auto')  # arguments are passed to np.histogram
-		# plt.title("Histogram with 'auto' bins")
-		# plt.show()
-		# self.init_img1.show(title='img1')
-		# self.init_img2.show(title='img2')
-
+		return flow, w
 
 
 	def predict(self):
 		feed_dict = {
 			self.X1: self.img_pair[:,:,:,0:4],
-			self.X2: self.img_pair[:,:,:,4:8]
+			self.X2: self.img_pair[:,:,:,4:8],
 		}
 
 		v = self.sess.run({'prediction': self.predict_flow2},feed_dict=feed_dict)
-		self.postprocess(v['prediction'][0])
+
+		return self.denormalize_flow(v['prediction'][0])
 
 	def get_depth_from_disp(self,disparity):
 		focal_length = 35
@@ -218,8 +261,12 @@ class FlowPredictor:
 		img1 = Image.open(img1)
 		img2 = Image.open(img2)
 
+
 		img1 = img1.resize(self.input_size, Image.BILINEAR)
 		img2 = img2.resize(self.input_size, Image.BILINEAR)
+
+		self.result_img1 = np.array(img1.resize((80,160), Image.BILINEAR))
+		self.result_img2 = np.array(img2.resize((80,160), Image.BILINEAR))
 
 		return img1, img2
 
@@ -234,7 +281,6 @@ class FlowPredictor:
 
 		dt2 = Image.fromarray(v,mode='F')
 		dt2 = dt2.resize(size, Image.NEAREST)
-
 		u = np.array(dt)
 		v = np.array(dt2)
 
@@ -250,13 +296,68 @@ class FlowPredictor:
 
 		self.X1 = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 4))
 		self.X2 = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 4))
-		self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 3))
 
-		self.tunnel1 = network.network_tunnel(self.X1,'tunnel_layer1')
-		self.tunnel2 = network.network_tunnel(self.X2,'tunnel_layer2')
+		tunnel_layer_1 = network.network_tunnel(self.X1,'tunnel_layer1')
+		tunnel_layer_2 = network.network_tunnel(self.X2,'tunnel_layer2')
+		self.predict_flow5, self.predict_flow2 = network.network_core(tunnel_layer_1,tunnel_layer_2)
 
-		self.predict_flow5, self.predict_flow2 = network.network_core(self.tunnel1,self.tunnel2)
 
 	def load_model_ckpt(self,sess,filename):
 		saver = tf.train.Saver()
 		saver.restore(sess, tf.train.latest_checkpoint(filename))
+
+
+
+####### work part ######
+
+predictor = FlowPredictor()
+predictor.preprocess(FLAGS.IMG1,FLAGS.IMG2,FLAGS.DISPARITY1,FLAGS.DISPARITY2)
+
+gt_flow, gt_depth_change = predictor.read_gt(FLAGS.FLOW,FLAGS.DISPARITY_CHNG)
+pr_flow, pr_depth_change = predictor.predict()
+
+
+# show gt images
+if FLAGS.SHOW_GT_IMGS == True:
+	predictor.init_img1.show()
+	predictor.init_img2.show()
+
+# show gt flows
+if FLAGS.SHOW_GT_FLOWS == True:
+	ij.setImage('gt_flow_u',gt_flow[:,:,0])
+	ij.setImage('gt_flow_v',gt_flow[:,:,1])
+
+
+# warp with gt predited flow values
+if FLAGS.SHOW_GT_WARPED_RESULT == True:
+	gt_flow = np.pad(gt_flow,((4,4),(0,0),(0,0)),'constant')
+	flow = predictor.warp(predictor.img2_arr,gt_flow)
+	result = flow.eval()[0].astype(np.uint8)
+	predictor.show_image(result,'warped_img_gt')
+
+# show inv depth values for both images
+if FLAGS.SHOW_GT_DEPTHS == True:
+	ij.setImage('gt_inv_depth1',predictor.inv_depth1)
+	ij.setImage('gt_inv_depth2',predictor.inv_depth2)
+
+# show predicted depth change
+if FLAGS.SHOW_PREDICTED_DEPTH_CHANGE == True:
+	ij.setImage('predicted_depth',pr_depth_change)
+
+# show predicted flow values
+if FLAGS.SHOW_PREDICTED_FLOWS == True:
+	ij.setImage('predicted_flow_u',pr_flow[:,:,0])
+	ij.setImage('predicted_flow_v',pr_flow[:,:,1])
+
+# show warped result with predicted flow values
+if FLAGS.SHOW_PREDICTED_WARPED_RESULT == True:
+
+	flow = predictor.warp(predictor.img2_arr,pr_flow)
+	print(flow)
+	result = flow.eval()[0].astype(np.uint8)
+	predictor.show_image(result,'warped_img_pr')
+
+# show inv depth values for both images
+if FLAGS.SHOW_GT_DEPTH_CHANGE == True:
+	gt_depth_change = 1 / gt_depth_change
+	ij.setImage('gt_inv_depth_change',gt_depth_change)
