@@ -27,7 +27,7 @@ tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', False,
 tf.app.flags.DEFINE_boolean('SHOW_GT_FLOWS', False,
                             """Show both U and V Flow Values Ground truths.""")
 
-tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', True,
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', False,
                             """Perform warping with predicted flow values.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_GT_WARPED_RESULT', False,
@@ -218,8 +218,8 @@ class FlowPredictor:
 		con = tf.stack([X,Y])
 		result = tf.transpose(con,[1,2,0])
 		result = tf.expand_dims(result,0)
-		
-		
+
+
 		return tf.contrib.resampler.resampler(self.result_img2[np.newaxis,:,:,:],result)
 
 	def show_image(self,array,img_title):
