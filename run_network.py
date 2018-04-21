@@ -28,7 +28,7 @@ tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/epe_pc_sigl_all/',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 
-tf.app.flags.DEFINE_boolean('LOAD_FROM_CKPT', False,
+tf.app.flags.DEFINE_boolean('LOAD_FROM_CKPT', True,
                             """Whether to log device placement.""")
 
 tf.app.flags.DEFINE_boolean('DEBUG_MODE', False,
@@ -86,7 +86,7 @@ tf.app.flags.DEFINE_integer('TEST_BATCH_SIZE', 16,
 
 # Polynomial Learning Rate
 
-tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.001,
+tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.0001,
                             """Where to start the learning.""")
 tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.000001,
                             """Where to end the learning.""")
@@ -307,8 +307,8 @@ class DatasetReader:
                 saver.save(sess, checkpoint_path, global_step=step)
 
 
-            if step == 4000:
-                break
+            # if step == 4000:
+            #     break
 
         summary_writer.close()
 
