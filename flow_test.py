@@ -218,6 +218,8 @@ class FlowPredictor:
 		con = tf.stack([X,Y])
 		result = tf.transpose(con,[1,2,0])
 		result = tf.expand_dims(result,0)
+		
+		
 		return tf.contrib.resampler.resampler(self.result_img2[np.newaxis,:,:,:],result)
 
 	def show_image(self,array,img_title):
@@ -265,8 +267,8 @@ class FlowPredictor:
 		img1 = img1.resize(self.input_size, Image.BILINEAR)
 		img2 = img2.resize(self.input_size, Image.BILINEAR)
 
-		self.result_img1 = np.array(img1.resize((80,160), Image.BILINEAR))
-		self.result_img2 = np.array(img2.resize((80,160), Image.BILINEAR))
+		self.result_img1 = np.array(img1.resize((80,160), Image.BILINEAR),dtype=np.float32)
+		self.result_img2 = np.array(img2.resize((80,160), Image.BILINEAR),dtype=np.float32)
 
 		return img1, img2
 
@@ -353,7 +355,6 @@ if FLAGS.SHOW_PREDICTED_FLOWS == True:
 if FLAGS.SHOW_PREDICTED_WARPED_RESULT == True:
 
 	flow = predictor.warp(predictor.img2_arr,pr_flow)
-	print(flow)
 	result = flow.eval()[0].astype(np.uint8)
 	predictor.show_image(result,'warped_img_pr')
 

@@ -1,8 +1,6 @@
 import run_network
 import data_reader
 import multiprocessing
-import os
-os.environ['TF_CPP_MIN_VLOG_LEVEL']='3'
 # # read data
 # img1 = Image.open(os.path.join(examples_dir,'sculpture1.png'))
 # img2 = Image.open(os.path.join(examples_dir,'sculpture2.png'))
