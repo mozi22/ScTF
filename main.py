@@ -12,9 +12,9 @@ prefix = '../dataset_synthetic/'
 
 # # with tf.name_scope("datareader"):
 train_filenames = [
-				prefix+'driving_TRAIN.tfrecords'
-				# prefix+'flyingthings3d_TRAIN.tfrecords',
-				# prefix+'monkaa_TRAIN.tfrecords'
+				prefix+'driving_TRAIN.tfrecords',
+				prefix+'flying_TRAIN.tfrecords',
+				prefix+'monkaa_TRAIN.tfrecords'
 			]
 
 test_filenames = [

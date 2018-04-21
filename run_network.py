@@ -24,7 +24,7 @@ def get_available_gpus():
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/epe_pc_sigl_flow_only/',
+tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/epe_pc_sigl_all/',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 
@@ -37,7 +37,7 @@ tf.app.flags.DEFINE_boolean('DEBUG_MODE', False,
 tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_integer('MAX_STEPS', 100000,
+tf.app.flags.DEFINE_integer('MAX_STEPS', 200000,
                             """Number of batches to run.""")
 
 
@@ -86,11 +86,11 @@ tf.app.flags.DEFINE_integer('TEST_BATCH_SIZE', 16,
 
 # Polynomial Learning Rate
 
-tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.0001,
+tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.001,
                             """Where to start the learning.""")
 tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.000001,
                             """Where to end the learning.""")
-tf.app.flags.DEFINE_float('POWER', 7,
+tf.app.flags.DEFINE_float('POWER', 4,
                             """How fast the learning rate should go down.""")
 
 class DatasetReader:
