@@ -64,7 +64,7 @@ def endpoint_loss(gt_flow,predicted_flow,weight=500):
 
   with tf.variable_scope('epe_loss'):
 
-    gt_flow = tf.stop_gradient(gt_flow)
+    # gt_flow = tf.stop_gradient(gt_flow)
 
     # width * height
     total_num_of_pixels = gt_flow.get_shape().as_list()[1] * gt_flow.get_shape().as_list()[2]
@@ -208,8 +208,15 @@ def get_occulation_aware_image(img,warped_img):
 
 
 
+
+# factorU = reduces the optical flow U component by the factor with which we reduce the size of image
+# factorV = reduces the optical flow V component by the factor with which we reduce the size of image
+# factorW = reduces the optical flow W component by the factor with which we reduce the size of image
+# size = the size at which you want to resize your original image label.
+# gt_flow = ground truth flow label.
+
 # resize the gt_flow to the size of predict_flow4 for minimizing loss also after encoder ( before decoder )
-def downsample_label(gt_flow):
+def downsample_label(gt_flow,size=[224,384],factorU=0.5,factorV=0.5):
 
   gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
   gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
@@ -217,24 +224,22 @@ def downsample_label(gt_flow):
 
   # since we're reducing the size, we need to reduce the flow values by the same factor.
   # decreasing width from 224 to 5 means we decreased the image by a factor ( 384 * 0.022 )
-  gt_u = gt_u * 0.031
-
+  gt_u = gt_u * factorU
   # decreasing width from 384 to 10 means we decreased the image by a factor ( 384 * 0.026 )
-  gt_v = gt_v * 0.026
-
+  gt_v = gt_v * factorV
   # decreasing depth, in this case we'll just take the avg of factors of width and height ( 0.026 + 0.024 / 2 )
-  # gt_w = gt_w * 0.0285
+  # gt_w = gt_w * factorW
 
-  gt_u = tf.image.resize_images(gt_u,[7,12],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-  gt_v = tf.image.resize_images(gt_v,[7,12],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-  # gt_w = tf.image.resize_images(gt_w,[7,12],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_u = tf.image.resize_images(gt_u,size,method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_v = tf.image.resize_images(gt_v,size,method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  # gt_w = tf.image.resize_images(gt_w,size,method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
   return tf.concat([gt_u,gt_v],axis=-1)
   # return tf.concat([gt_u,gt_v,gt_w],axis=-1)
 
 
 def get_separate_rgb_images(img):
-  return img[:,:,:,0:3],img[:,:,:,3:6]
+  return img[:,:,:,0:3],img[:,:,:,4:7]
 
 def get_separate_depth_images(img):
   return img[:,:,:,3],img[:,:,:,7]

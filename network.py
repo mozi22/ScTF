@@ -58,7 +58,7 @@ def _upsample_prediction(inp, num_outputs):
         kernel_size=4,
         strides=2,
         padding='same',
-        activation=myLeakyRelu,
+        activation=None,
         name="upconv"
     )
     return output

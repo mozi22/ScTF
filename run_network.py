@@ -24,11 +24,15 @@ def get_available_gpus():
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/epe_pc_sigl_all/',
+tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/train_with_test/train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 
-tf.app.flags.DEFINE_boolean('LOAD_FROM_CKPT', True,
+tf.app.flags.DEFINE_string('TEST_DIR', './ckpt/driving/train_with_test/test',
+                           """Directory where to write event logs """
+                           """and checkpoint.""")
+
+tf.app.flags.DEFINE_boolean('LOAD_FROM_CKPT', False,
                             """Whether to log device placement.""")
 
 tf.app.flags.DEFINE_boolean('DEBUG_MODE', False,
@@ -37,18 +41,11 @@ tf.app.flags.DEFINE_boolean('DEBUG_MODE', False,
 tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_integer('MAX_STEPS', 200000,
+tf.app.flags.DEFINE_integer('MAX_STEPS', 10000,
                             """Number of batches to run.""")
-
 
 tf.app.flags.DEFINE_boolean('LOG_DEVICE_PLACEMENT', False,
                             """Whether to log device placement.""")
-
-tf.app.flags.DEFINE_integer('EXAMPLES_PER_EPOCH_TRAIN', 200,
-                            """How many samples are there in one epoch of training.""")
-
-tf.app.flags.DEFINE_integer('EXAMPLES_PER_EPOCH_TEST', 100,
-                            """How many samples are there in one epoch of testing.""")
 
 tf.app.flags.DEFINE_integer('BATCH_SIZE', 16,
                             """How many samples are there in one epoch of testing.""")
@@ -83,14 +80,17 @@ tf.app.flags.DEFINE_integer('TOTAL_TEST_EXAMPLES', 100,
 tf.app.flags.DEFINE_integer('TEST_BATCH_SIZE', 16,
                             """How many samples are there in one epoch of testing.""")
 
+tf.app.flags.DEFINE_integer('TEST_AFTER_EPOCHS', 4,
+                            """After how many epochs should the test phase start.""")
+
 
 # Polynomial Learning Rate
 
-tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.0001,
+tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.0009,
                             """Where to start the learning.""")
-tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.000001,
+tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.0000005,
                             """Where to end the learning.""")
-tf.app.flags.DEFINE_float('POWER', 4,
+tf.app.flags.DEFINE_float('POWER', 3,
                             """How fast the learning rate should go down.""")
 
 class DatasetReader:
@@ -100,8 +100,10 @@ class DatasetReader:
         self.X = tf.placeholder(dtype=tf.float32, shape=(FLAGS.TEST_BATCH_SIZE, 224, 384, 8))
         self.Y = tf.placeholder(dtype=tf.float32, shape=(FLAGS.TEST_BATCH_SIZE, 224, 384, 3))
 
+        # gives the # of steps required to complete 1 epoch
         self.TRAIN_EPOCH = math.ceil(FLAGS.TOTAL_TRAIN_EXAMPLES / FLAGS.BATCH_SIZE)
         self.TEST_EPOCH = math.ceil(FLAGS.TOTAL_TEST_EXAMPLES / FLAGS.TEST_BATCH_SIZE)
+
 
     def train(self,features_train,features_test):
 
@@ -109,8 +111,6 @@ class DatasetReader:
             'global_step', [],
             initializer=tf.constant_initializer(0), trainable=False)
 
-        # num_batches_per_epoch = (FLAGS.EXAMPLES_PER_EPOCH_TRAIN / FLAGS.BATCH_SIZE)
-        # decay_steps = int(num_batches_per_epoch * FLAGS.NUM_EPOCHS_PER_DECAY)
         decay_steps = FLAGS.MAX_STEPS
         start_learning_rate = FLAGS.START_LEARNING_RATE
         end_learning_rate = FLAGS.END_LEARNING_RATE
@@ -131,19 +131,19 @@ class DatasetReader:
                             min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
                             enqueue_many=False)
 
-        # self.images_test, self.labels_test = tf.train.shuffle_batch(
-        #                     [ features_test['input_n'] , features_test['label_n'] ],
-        #                     batch_size=FLAGS.TEST_BATCH_SIZE,
-        #                     capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY,
-        #                     num_threads=FLAGS.SHUFFLE_BATCH_THREADS,
-        #                     min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
-        #                     enqueue_many=False)
+        self.images_test, self.labels_test = tf.train.shuffle_batch(
+                            [ features_test['input_n'] , features_test['label_n'] ],
+                            batch_size=FLAGS.TEST_BATCH_SIZE,
+                            capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY,
+                            num_threads=FLAGS.SHUFFLE_BATCH_THREADS,
+                            min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
+                            enqueue_many=False)
         
         batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
             [images, labels], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
 
-        # self.batch_queue_test = tf.contrib.slim.prefetch_queue.prefetch_queue(
-        #     [self.images_test, self.labels_test], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
+        self.batch_queue_test = tf.contrib.slim.prefetch_queue.prefetch_queue(
+            [self.images_test, self.labels_test], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
         
         tower_grads = []
         with tf.variable_scope(tf.get_variable_scope()):
@@ -241,7 +241,7 @@ class DatasetReader:
         # for debugging
 
         summary_writer = tf.summary.FileWriter(FLAGS.TRAIN_DIR, sess.graph)
-        self.test_summary_writer = tf.summary.FileWriter(FLAGS.TRAIN_DIR + '/test')
+        self.test_summary_writer = tf.summary.FileWriter(FLAGS.TEST_DIR, sess.graph)
 
 
         # just to make sure we start from where we left, if load_from_ckpt = True
@@ -257,6 +257,9 @@ class DatasetReader:
         # first time or second time or third time and more
         test_loss_calculating_index = 1
 
+        test_image_batch, test_label_batch = self.batch_queue_test.dequeue()
+        self.test_image_batch, self.test_label_batch = self.get_network_input_forward(test_image_batch,test_label_batch)
+
         # main loop
         for step in range(loop_start,loop_stop):
 
@@ -270,8 +273,10 @@ class DatasetReader:
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
 
+
+            # ####################### Testing #######################
             # # after every 10 epochs. calculate test loss
-            # if step % (self.TRAIN_EPOCH * 10) == 0 and first_iteration==True:
+            # if step % (self.TRAIN_EPOCH * FLAGS.TEST_AFTER_EPOCHS) == 0 and first_iteration==False:
 
             #     message = 'Printing Test loss for '+str(test_loss_calculating_index)+' time'
 
@@ -283,7 +288,7 @@ class DatasetReader:
 
             #     # increment index to know how many times we've calculated the test loss
             #     test_loss_calculating_index = test_loss_calculating_index + 1
-
+            # ####################### Testing #######################
 
             if step % 10 == 0 or first_iteration==True:
                 num_examples_per_step = FLAGS.BATCH_SIZE * FLAGS.NUM_GPUS
@@ -292,14 +297,20 @@ class DatasetReader:
                 first_iteration = False
 
 
+
             format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
                           'sec/batch)')
             self.log(message=(format_str % (datetime.now(), step, np.log10(loss_value),
                                  examples_per_sec, sec_per_batch)))
 
-            if step % 100 == 0:
+            if step % 10 == 0:
                 summary_str = sess.run(self.summary_op)
                 summary_writer.add_summary(summary_str, step)
+
+                # testing summary writing
+                image,label = sess.run([self.test_image_batch, self.test_label_batch])
+                loss_value,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: image, self.Y: label})
+                self.test_summary_writer.add_summary(summary_str, step)
 
             # Save the model checkpoint periodically.
             if step % 1000 == 0 or (step + 1) == FLAGS.MAX_STEPS:
@@ -307,8 +318,6 @@ class DatasetReader:
                 saver.save(sess, checkpoint_path, global_step=step)
 
 
-            # if step == 4000:
-            #     break
 
         summary_writer.close()
 
@@ -323,15 +332,16 @@ class DatasetReader:
         """
 
         network_input_images, network_input_labels = self.get_network_input_forward(images,labels)
-        network_input_images_back, network_input_labels_back = self.get_network_input_backward(images,labels)
+        # network_input_images_back, network_input_labels_back = self.get_network_input_backward(images,labels)
 
         # FB = forward-backward
-        concatenated_FB_images = tf.concat([network_input_images,network_input_images_back],axis=0)
+        # concatenated_FB_images = tf.concat([network_input_images,network_input_images_back],axis=0)
 
         # backward_flow_images = losses_helper.forward_backward_loss()
 
         # Build inference Graph. - forward flow
-        predict_flow5, predict_flow2 = network.train_network(concatenated_FB_images)
+
+        predict_flow5, predict_flow2 = network.train_network(network_input_images)
 
 
         # Build inference Graph. - backward flow
@@ -344,36 +354,43 @@ class DatasetReader:
         batch_half = batch_size // 2
 
         # for other losses, we only consider forward flow
-        predict_flow2_forward = predict_flow2[0:batch_half,:,:,:]
-        predict_flow2_backward = predict_flow2[batch_half:batch_size,:,:,:]
+        # predict_flow2_forward = predict_flow2[0:batch_half,:,:,:]
+        # predict_flow2_backward = predict_flow2[batch_half:batch_size,:,:,:]
 
-        predict_flow5_forward = predict_flow5[0:batch_half,:,:,:]
-        predict_flow5_backward = predict_flow5[batch_half:batch_size,:,:,:]
+        # predict_flow5_forward = predict_flow5[0:batch_half,:,:,:]
+        # predict_flow5_backward = predict_flow5[batch_half:batch_size,:,:,:]
+        tf.summary.image('flow_u_1',network_input_labels[:,:,:,0:1])
+        tf.summary.image('flow_v_1',network_input_labels[:,:,:,1:2])
 
-        _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2_forward)
-        _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2_forward)
-        # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flow2_forward)
+        # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
+        _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2)
+        # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2_forward)
+        # # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flow2_forward)
 
-        scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
-                                                                                np.array([1,2,4,8,16]),
-                                                                                np.array([1,1,1,1,1]))
+        # scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
+        #                                                                         np.array([1,2,4,8,16]),
+        #                                                                         np.array([1,1,1,1,1]))
 
-        scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(predict_flow2_forward,
-                                                                                np.array([1,2,4,8,16]),
-                                                                                np.array([1,1,1,1,1]))
+        # scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(predict_flow2_forward,
+        #                                                                         np.array([1,2,4,8,16]),
+        #                                                                         np.array([1,1,1,1,1]))
 
-        _ = losses_helper.scale_invariant_gradient_loss(scale_invariant_gradient_image_pred,scale_invariant_gradient_image_gt,0.0001)
+        # _ = losses_helper.scale_invariant_gradient_loss(scale_invariant_gradient_image_pred,scale_invariant_gradient_image_gt,0.0001)
 
-        predict_flow5_label = losses_helper.downsample_label(network_input_labels)
-        _ = losses_helper.endpoint_loss(predict_flow5_label,predict_flow5_forward)
+        predict_flow5_label = losses_helper.downsample_label(network_input_labels,
+                                        size=[7,12],
+                                        factorU=0.031,
+                                        factorV=0.026)
+
+        _ = losses_helper.endpoint_loss(predict_flow5_label,predict_flow5)
         # _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
 
-        tf.summary.histogram('prediction_flow2_forward',predict_flow2_forward)
-        tf.summary.histogram('prediction_flow5_forward',predict_flow5_forward)
-        tf.summary.histogram('prediction_flow2_backward',predict_flow2_backward)
-        tf.summary.histogram('prediction_flow5_backward',predict_flow5_backward)
+        # tf.summary.histogram('prediction_flow2_forward',predict_flow2_forward)
+        # tf.summary.histogram('prediction_flow5_forward',predict_flow5_forward)
+        # tf.summary.histogram('prediction_flow2_backward',predict_flow2_backward)
+        # tf.summary.histogram('prediction_flow5_backward',predict_flow5_backward)
 
-        tf.summary.histogram('gt_flow2_forward',network_input_labels)
+        # tf.summary.histogram('gt_flow2_forward',network_input_labels)
 
 
         # Assemble all of the losses for the current tower only.
@@ -436,28 +453,6 @@ class DatasetReader:
         return average_grads
 
 
-    def perform_testing(self,sess,step):
-    
-
-        for step in range(step,step + self.TEST_EPOCH):
-
-            image_batch, label_batch = self.batch_queue_test.dequeue()
-            image_batch, label_batch = self.get_network_input(image_batch,label_batch)
-
-            image,label = sess.run([image_batch, label_batch])
-
-            loss_value,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: image, self.Y: label})
-
-            self.test_summary_writer.add_summary(summary_str, step)
-
-
-            format_str = ('%s: step %d, loss = %.15f')
-            self.log(message=(format_str % (datetime.now(), step, np.log10(loss_value))))
-
-
-        self.log()
-        self.log(message='Continue Training ...')
-        self.log()
 
 
     def log(self,message=' '):

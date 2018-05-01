@@ -21,19 +21,19 @@ tf.app.flags.DEFINE_boolean('SHOW_GT_DEPTH_CHANGE', False,
                             """Show Depth Images Ground Truth.""")
 
 
-tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', False,
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', True,
                             """Show both U and V Flow Values.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_GT_FLOWS', False,
                             """Show both U and V Flow Values Ground truths.""")
 
-tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', True,
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', False,
                             """Perform warping with predicted flow values.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_GT_WARPED_RESULT', False,
                             """Perform warping with ground truth flow values.""")
 
-tf.app.flags.DEFINE_boolean('SHOW_GT_IMGS', True,
+tf.app.flags.DEFINE_boolean('SHOW_GT_IMGS', False,
                             """Show the ground truth images.""")
 
 
@@ -60,12 +60,12 @@ tf.app.flags.DEFINE_string('DISPARITY_CHNG', 'disparity_change/35mm_focallength/
                            """The name of the tower """)
 
 
-tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe/',
+tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/train_with_test/',
                            """The name of the tower """)
 
 
-IMG1_NUMBER = '0001'
-IMG2_NUMBER = '0002'
+IMG1_NUMBER = '0151'
+IMG2_NUMBER = '0152'
 
 FLAGS.IMG1 = FLAGS.PARENT_FOLDER + FLAGS.IMG1 + IMG1_NUMBER + '.webp'
 FLAGS.IMG2 = FLAGS.PARENT_FOLDER + FLAGS.IMG2 + IMG2_NUMBER + '.webp'
@@ -86,8 +86,9 @@ class FlowPredictor:
 	def preprocess(self,img1,img2,disparity1,disparity2):
 
 
-		factor = 0.4
-		self.input_size = int(960 * factor), int(540 * factor)
+		self.u_factor = 0.414814815
+		self.v_factor = 0.4
+		self.input_size = math.floor(int(960 * self.v_factor)), math.floor(int(540 * self.u_factor))
 		# self.driving_disp_chng_max = 7.5552e+08
 		# self.driving_disp_max = 30.7278
 		self.max_depth_driving = 9.98134
@@ -122,10 +123,11 @@ class FlowPredictor:
 		rgbd2 = self.combine_depth_values(self.img2,self.depth2)
 
 		# # combine images to 8 channel rgbd-rgbd
-		img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
+		# img_pair = np.concatenate((self.img1,self.img2),axis=2)
+		self.img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
 
 		# # add padding to axis=0 to make the input image (224,384,8)
-		self.img_pair = np.pad(img_pair,((4,4),(0,0),(0,0)),'constant')
+		# self.img_pair = np.pad(self.img_pair,((4,4),(0,0),(0,0)),'constant')
 
 		# # change dimension from (224,384,8) to (1,224,384,8)
 		self.img_pair = np.expand_dims(self.img_pair,0)
@@ -205,7 +207,7 @@ class FlowPredictor:
 
 	def warp(self,img,flow):
 		x = list(range(0,self.input_size[0]))
-		y = list(range(0,self.input_size[1] + 8))
+		y = list(range(0,self.input_size[1]))
 		X, Y = tf.meshgrid(x, y)
 
 		X = tf.cast(X,np.float32) + flow[:,:,0]
@@ -227,11 +229,11 @@ class FlowPredictor:
 
 		u = flow[:,:,0] * self.input_size[0]
 		v = flow[:,:,1] * self.input_size[1]
-		w = flow[:,:,2] * self.max_depth_driving_chng
+		# w = flow[:,:,2] * self.max_depth_driving_chng
 		
 		flow = np.stack((u,v),axis=2)
 		
-		return flow, w
+		return flow, 'w'
 
 
 	def predict(self):
@@ -244,7 +246,9 @@ class FlowPredictor:
 		return self.denormalize_flow(v['prediction'][0])
 
 	def get_depth_from_disp(self,disparity):
-		focal_length = 35
+		disparity = disparity + 1e-6
+
+		focal_length = 1050
 		disp_to_depth = focal_length / disparity
 		return disp_to_depth
 
@@ -310,7 +314,7 @@ if FLAGS.SHOW_GT_IMGS == True:
 
 # show gt flows
 if FLAGS.SHOW_GT_FLOWS == True:
-	ij.setImage('gt_flow_u',gt_flow[:,:,0])
+	# ij.setImage('gt_flow_u',gt_flow[:,:,0])
 	ij.setImage('gt_flow_v',gt_flow[:,:,1])
 
 
@@ -328,7 +332,7 @@ if FLAGS.SHOW_GT_DEPTHS == True:
 
 # show predicted depth change
 if FLAGS.SHOW_PREDICTED_DEPTH_CHANGE == True:
-	ij.setImage('predicted_depth',pr_depth_change)
+	ij.setImage('predicted_depth_change',pr_depth_change)
 
 # show predicted flow values
 if FLAGS.SHOW_PREDICTED_FLOWS == True:
@@ -343,5 +347,4 @@ if FLAGS.SHOW_PREDICTED_WARPED_RESULT == True:
 
 # show inv depth values for both images
 if FLAGS.SHOW_GT_DEPTH_CHANGE == True:
-	gt_depth_change = 1 / gt_depth_change
-	ij.setImage('gt_inv_depth_change',gt_depth_change)
+	ij.setImage('gt_depth_change',gt_depth_change)
