@@ -248,7 +248,7 @@ class FlowPredictor:
 	def get_depth_from_disp(self,disparity):
 		disparity = disparity + 1e-6
 
-		focal_length = 1050
+		focal_length = 1500
 		disp_to_depth = focal_length / disparity
 		return disp_to_depth
 
