@@ -303,13 +303,13 @@ class DatasetReader:
             self.log(message=(format_str % (datetime.now(), step, np.log10(loss_value),
                                  examples_per_sec, sec_per_batch)))
 
-            if step % 10 == 0:
+            if step % 50 == 0:
                 summary_str = sess.run(self.summary_op)
                 summary_writer.add_summary(summary_str, step)
 
                 # testing summary writing
-                image,label = sess.run([self.test_image_batch, self.test_label_batch])
-                loss_value,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: image, self.Y: label})
+                test_image,test_label = sess.run([self.test_image_batch, self.test_label_batch])
+                loss_value,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: test_image, self.Y: test_label})
                 self.test_summary_writer.add_summary(summary_str, step)
 
             # Save the model checkpoint periodically.
