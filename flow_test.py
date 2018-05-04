@@ -24,10 +24,10 @@ tf.app.flags.DEFINE_boolean('SHOW_GT_DEPTH_CHANGE', False,
 tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', False,
                             """Show both U and V Flow Values.""")
 
-tf.app.flags.DEFINE_boolean('SHOW_GT_FLOWS', False,
+tf.app.flags.DEFINE_boolean('SHOW_GT_FLOWS', True,
                             """Show both U and V Flow Values Ground truths.""")
 
-tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', True,
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', False,
                             """Perform warping with predicted flow values.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_GT_WARPED_RESULT', False,
@@ -60,12 +60,12 @@ tf.app.flags.DEFINE_string('DISPARITY_CHNG', 'disparity_change/35mm_focallength/
                            """The name of the tower """)
 
 
-tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/train_with_test/train/',
+tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/with_depths_normalized/train/',
                            """The name of the tower """)
 
 
-IMG1_NUMBER = '0001'
-IMG2_NUMBER = '0002'
+IMG1_NUMBER = '0040'
+IMG2_NUMBER = '0041'
 
 FLAGS.IMG1 = FLAGS.PARENT_FOLDER + FLAGS.IMG1 + IMG1_NUMBER + '.webp'
 FLAGS.IMG2 = FLAGS.PARENT_FOLDER + FLAGS.IMG2 + IMG2_NUMBER + '.webp'
@@ -89,6 +89,7 @@ class FlowPredictor:
 		self.u_factor = 0.414814815
 		self.v_factor = 0.4
 		self.input_size = math.floor(int(960 * self.v_factor)), math.floor(int(540 * self.u_factor))
+		self.input_size = 256,160
 		# self.driving_disp_chng_max = 7.5552e+08
 		# self.driving_disp_max = 30.7278
 		self.max_depth_driving = 9.98134
@@ -119,6 +120,12 @@ class FlowPredictor:
 		self.depth1 = self.inv_depth1 / self.max_depth_driving
 		self.depth2 = self.inv_depth2 / self.max_depth_driving
 
+		self.depth1 = self.depth1 / np.max(self.depth1)
+		self.depth2 = self.depth2 / np.max(self.depth1)
+
+		# ij.setImage('depth1',self.depth1)
+		# ij.setImage('depth2',self.depth2)
+
 		rgbd1 = self.combine_depth_values(self.img1,self.depth1)
 		rgbd2 = self.combine_depth_values(self.img2,self.depth2)
 
@@ -148,7 +155,10 @@ class FlowPredictor:
 
 		opt_flow = self.downsample_opt_flow(opt_flow,self.input_size)
 
-		return opt_flow * 0.4, resized_inv_depth
+		opt_flow_u = opt_flow[:,:,0] * self.u_factor
+		opt_flow_v = opt_flow[:,:,1] * self.v_factor
+
+		return np.stack((opt_flow_u,opt_flow_v),axis=2), resized_inv_depth
 
 	# send in the disparity values, this will return the normalized inverse depth values.
 	def get_resized_inverse_depth(self,disparity,disparity2,disparity_change,input_size):
@@ -288,7 +298,7 @@ class FlowPredictor:
 
 		self.batch_size = 1
 
-		self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 224, 384, 8))
+		self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 160, 256, 8))
 
 		self.predict_flow5, self.predict_flow2 = network.train_network(self.X)
 
@@ -337,7 +347,7 @@ if FLAGS.SHOW_PREDICTED_DEPTH_CHANGE == True:
 # show predicted flow values
 if FLAGS.SHOW_PREDICTED_FLOWS == True:
 	ij.setImage('predicted_flow_u',pr_flow[:,:,0])
-	# ij.setImage('predicted_flow_v',pr_flow[:,:,1])
+	ij.setImage('predicted_flow_v',pr_flow[:,:,1])
 
 # show warped result with predicted flow values
 if FLAGS.SHOW_PREDICTED_WARPED_RESULT == True:

@@ -66,8 +66,6 @@ def endpoint_loss(gt_flow,predicted_flow,weight=500):
 
     # gt_flow = tf.stop_gradient(gt_flow)
 
-    # width * height
-    total_num_of_pixels = gt_flow.get_shape().as_list()[1] * gt_flow.get_shape().as_list()[2]
 
     # get u & v value for gt
     gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
@@ -82,9 +80,8 @@ def endpoint_loss(gt_flow,predicted_flow,weight=500):
     diff_v = sops.replace_nonfinite(gt_v - pred_v)
 
     epe_loss = tf.sqrt((diff_u**2) + (diff_v**2))
-    epe_loss = epe_loss / total_num_of_pixels 
 
-    epe_loss = tf.reduce_sum(epe_loss)
+    epe_loss = tf.reduce_mean(epe_loss)
     # epe_loss = tf.Print(epe_loss,[epe_loss],'epeloss ye hai ')
 
     tf.losses.compute_weighted_loss(epe_loss,weights=weight)

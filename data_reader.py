@@ -1,7 +1,6 @@
 import tensorflow as tf
 import numpy as np
 import lmbspecialops as sops
-import loadpfm
 from PIL import Image
 def tf_record_input_pipeline(filenames,version='1'):
 
@@ -191,11 +190,20 @@ def read_from_csv(datasets,version='1'):
 
 def train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow):
 
+
+
+    depth1 = depth1 / tf.reduce_max(depth1)
+    depth2 = depth2 / tf.reduce_max(depth1)
+
     image1 = combine_depth_values(image1,depth1,2)
     image2 = combine_depth_values(image2,depth2,2)
 
     img_pair_rgbd = tf.concat([image1,image2],axis=-1)
     img_pair_rgbd_swapped = tf.concat([image2,image1],axis=-1)
+
+
+    # optical_flow = optical_flow / 50
+
 
     # comment for optical flow. Uncomment for Sceneflow
     optical_flow_with_depth_change = combine_depth_values(optical_flow,depth_chng,2)

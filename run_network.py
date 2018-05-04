@@ -24,7 +24,7 @@ def get_available_gpus():
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/train_with_test/train',
+tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/latest/train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 
@@ -92,7 +92,7 @@ tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.001,
                             """Where to start the learning.""")
 tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.0000005,
                             """Where to end the learning.""")
-tf.app.flags.DEFINE_float('POWER', 3,
+tf.app.flags.DEFINE_float('POWER', 5,
                             """How fast the learning rate should go down.""")
 
 class DatasetReader:
@@ -309,7 +309,7 @@ class DatasetReader:
 
             format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
                           'sec/batch)')
-            self.log(message=(format_str % (datetime.now(), step, np.log10(loss_value),
+            self.log(message=(format_str % (datetime.now(), step, loss_value,
                                  examples_per_sec, sec_per_batch)))
 
             if step % 100 == 0 and step!=0:
@@ -365,6 +365,18 @@ class DatasetReader:
         """
 
         network_input_images, network_input_labels = self.get_network_input_forward(images,labels)
+
+        network_input_images = tf.image.resize_images(network_input_images,[160,256],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_labels = tf.image.resize_images(network_input_labels,[160,256],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+
+        network_input_labels_u = network_input_labels[:,:,:,0] * 0.714285714
+        network_input_labels_v = network_input_labels[:,:,:,1] * 0.666666667
+
+        network_input_labels_u = tf.expand_dims(network_input_labels_u,axis=-1)
+        network_input_labels_v = tf.expand_dims(network_input_labels_v,axis=-1)
+
+        network_input_labels = tf.concat([network_input_labels_u,network_input_labels_v],axis=3)
+
         # network_input_images_back, network_input_labels_back = self.get_network_input_backward(images,labels)
 
         # FB = forward-backward
@@ -375,6 +387,14 @@ class DatasetReader:
         # Build inference Graph. - forward flow
 
         predict_flow5, predict_flow2 = network.train_network(network_input_images)
+
+
+        
+        concated_flows_u = tf.concat([network_input_labels[:,:,:,0:1],predict_flow2[:,:,:,0:1]],axis=-2)
+        concated_flows_v = tf.concat([network_input_labels[:,:,:,1:2],predict_flow2[:,:,:,1:2]],axis=-2)
+
+        tf.summary.image('gt_predict_flow_u',concated_flows_u)
+        tf.summary.image('gt_predict_flow_v',concated_flows_v)
 
 
         # Build inference Graph. - backward flow
@@ -411,7 +431,7 @@ class DatasetReader:
         # _ = losses_helper.scale_invariant_gradient_loss(scale_invariant_gradient_image_pred,scale_invariant_gradient_image_gt,0.0001)
 
         predict_flow5_label = losses_helper.downsample_label(network_input_labels,
-                                        size=[7,12],
+                                        size=[5,8],
                                         factorU=0.031,
                                         factorV=0.026)
 

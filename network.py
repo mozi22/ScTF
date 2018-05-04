@@ -73,22 +73,28 @@ def _predict_flow(inp):
         The last two channels are the x and y flow confidence.
     """
 
-    tmp = convrelu2(
+    
+
+    tmp = tf.layers.conv2d(
         inputs=inp,
         filters=24,
         kernel_size=3,
-        stride=1,
-        activation=myLeakyRelu,
-        name="conv1_pred_flow"
+        strides=1,
+        padding='same',
+        name='conv1_pred_flow',
+        activation=myLeakyRelu
     )
-    
-    output = convrelu2(
+
+    output = tf.layers.conv2d(
         inputs=tmp,
         filters=2,
         kernel_size=3,
-        stride=1,
-        name="conv2_pred_flow"
+        strides=1,
+        padding='same',
+        name='conv2_pred_flow',
+        activation=None
     )
+
     
     return output
 
@@ -153,9 +159,10 @@ def train_network(image_pair):
         conv5 = convrelu2(name='conv5', inputs=conv4_1, filters=512, kernel_size=3, stride=2,activation=myLeakyRelu)
         conv5_1 = convrelu2(name='conv5_1', inputs=conv5, filters=512, kernel_size=3, stride=1,activation=myLeakyRelu)
 
+
     # predict flow
     with tf.variable_scope('predict_flow5'):
-        predict_flow4 = _predict_flow(conv5)
+        predict_flow4 = _predict_flow(conv5_1)
 
     with tf.variable_scope('upsample_flow4to3'):
         predict_flow4to3 = _upsample_prediction(predict_flow4, 3)
