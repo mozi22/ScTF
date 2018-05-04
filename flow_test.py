@@ -6,7 +6,7 @@ import network
 import math
 import matplotlib as plt
 import ijremote as ij
-
+import synthetic_tf_converter as stc
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -21,10 +21,10 @@ tf.app.flags.DEFINE_boolean('SHOW_GT_DEPTH_CHANGE', False,
                             """Show Depth Images Ground Truth.""")
 
 
-tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', False,
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', True,
                             """Show both U and V Flow Values.""")
 
-tf.app.flags.DEFINE_boolean('SHOW_GT_FLOWS', True,
+tf.app.flags.DEFINE_boolean('SHOW_GT_FLOWS', False,
                             """Show both U and V Flow Values Ground truths.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', False,
@@ -60,7 +60,7 @@ tf.app.flags.DEFINE_string('DISPARITY_CHNG', 'disparity_change/35mm_focallength/
                            """The name of the tower """)
 
 
-tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/with_depths_normalized/train/',
+tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/latest/train/',
                            """The name of the tower """)
 
 
@@ -83,48 +83,52 @@ class FlowPredictor:
 	# img2: path of img2
 	# depth1: path of depth pfm 1
 	# depth2: path of depth pfm 2
-	def preprocess(self,img1,img2,disparity1,disparity2):
+	def preprocess(self):
 
-
-		self.u_factor = 0.414814815
-		self.v_factor = 0.4
-		self.input_size = math.floor(int(960 * self.v_factor)), math.floor(int(540 * self.u_factor))
 		self.input_size = 256,160
-		# self.driving_disp_chng_max = 7.5552e+08
-		# self.driving_disp_max = 30.7278
-		self.max_depth_driving = 9.98134
-		self.max_depth_driving_chng = 6.75619
 
-		# read resized images to network standards
-		self.init_img1, self.init_img2 = self.read_image(img1,img2)
 
-		self.img1_arr = np.array(self.init_img1,dtype=np.float32)[:,:,0:3]
-		self.img2_arr = np.array(self.init_img2,dtype=np.float32)[:,:,0:3]
+		self.u_factor_1 = 0.714285714
+		self.v_factor_1 = 0.666666667
 
+		self.u_factor_2 = 0.414814815
+		self.v_factor_2 = 0.4
+
+
+		result = stc.convert_for_testing().from_paths_to_data(FLAGS.DISPARITY1,
+							   FLAGS.DISPARITY2,
+							   FLAGS.DISPARITY_CHNG,
+							   FLAGS.FLOW,
+							   FLAGS.IMG1,
+							   FLAGS.IMG2,
+							   'L')
+
+		img1 = Image.fromarray(result[0]['web_p'],'RGB')
+		img2 = Image.fromarray(result[0]['web_p2'],'RGB')
+
+		depth1 = Image.fromarray(result[0]['depth1'],mode='F')
+		depth2 = Image.fromarray(result[0]['depth2'],mode='F')
+
+		img1 = img1.resize(self.input_size,Image.NEAREST)
+		img2 = img2.resize(self.input_size,Image.NEAREST)
+
+		depth1 = depth1.resize(self.input_size,Image.NEAREST)
+		depth2 = depth2.resize(self.input_size,Image.NEAREST)
+
+
+		depth1 = np.array(depth1)
+		depth2 = np.array(depth2)
+
+		img1 = np.array(img1)
+		img2 = np.array(img2)
+
+		self.depth1 = depth1 / np.max(depth1)
+		self.depth2 = depth2 / np.max(depth1)
 
 		# normalize images
-		self.img1 = self.img1_arr / 255
-		self.img2 = self.img2_arr / 255
+		self.img1 = img1 / 255
+		self.img2 = img2 / 255
 
-		# read disparity values from matrices
-		disp1 = hpl.readPFM(disparity1)[0]
-		disp2 = hpl.readPFM(disparity2)[0]
-
-		disp1 = Image.fromarray(disp1)
-		disp2 = Image.fromarray(disp2)
-
-		self.inv_depth1, self.inv_depth2, _ = self.get_resized_inverse_depth(disp1,disp2,None,self.input_size)
-
-
-		# normalize disp values
-		self.depth1 = self.inv_depth1 / self.max_depth_driving
-		self.depth2 = self.inv_depth2 / self.max_depth_driving
-
-		self.depth1 = self.depth1 / np.max(self.depth1)
-		self.depth2 = self.depth2 / np.max(self.depth1)
-
-		# ij.setImage('depth1',self.depth1)
-		# ij.setImage('depth2',self.depth2)
 
 		rgbd1 = self.combine_depth_values(self.img1,self.depth1)
 		rgbd2 = self.combine_depth_values(self.img2,self.depth2)
@@ -155,8 +159,11 @@ class FlowPredictor:
 
 		opt_flow = self.downsample_opt_flow(opt_flow,self.input_size)
 
-		opt_flow_u = opt_flow[:,:,0] * self.u_factor
-		opt_flow_v = opt_flow[:,:,1] * self.v_factor
+		opt_flow_u = opt_flow[:,:,0] * self.u_factor_1
+		opt_flow_v = opt_flow[:,:,1] * self.v_factor_1
+
+		opt_flow_u = opt_flow[:,:,0] * self.u_factor_2
+		opt_flow_v = opt_flow[:,:,1] * self.v_factor_2
 
 		return np.stack((opt_flow_u,opt_flow_v),axis=2), resized_inv_depth
 
@@ -311,8 +318,12 @@ class FlowPredictor:
 
 ####### work part ######
 
+
+
+
+
 predictor = FlowPredictor()
-predictor.preprocess(FLAGS.IMG1,FLAGS.IMG2,FLAGS.DISPARITY1,FLAGS.DISPARITY2)
+predictor.preprocess()
 
 gt_flow, gt_depth_change = predictor.read_gt(FLAGS.FLOW,FLAGS.DISPARITY_CHNG)
 pr_flow, pr_depth_change = predictor.predict()

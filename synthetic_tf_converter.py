@@ -888,7 +888,6 @@ class SyntheticTFRecordsWriter:
 
 		disparity_change = self.readPFM(disparity_change)[0]
 
-
 		opt_flow = self.readPFM(optical_flow)[0]
 
 		# reduce optical flow size
@@ -1009,5 +1008,13 @@ class SyntheticTFRecordsWriter:
 	def init_tfrecord_writer(self,filename):
 		return tf.python_io.TFRecordWriter(filename)
 
-a = SyntheticTFRecordsWriter()
-a.convert()
+
+def convert_whole_dataset():
+	a = SyntheticTFRecordsWriter()
+	a.convert()
+
+
+def convert_for_testing():
+	return SyntheticTFRecordsWriter()
+
+
