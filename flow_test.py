@@ -21,13 +21,13 @@ tf.app.flags.DEFINE_boolean('SHOW_GT_DEPTH_CHANGE', False,
                             """Show Depth Images Ground Truth.""")
 
 
-tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', True,
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', False,
                             """Show both U and V Flow Values.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_GT_FLOWS', False,
                             """Show both U and V Flow Values Ground truths.""")
 
-tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', False,
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', True,
                             """Perform warping with predicted flow values.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_GT_WARPED_RESULT', False,
@@ -60,12 +60,12 @@ tf.app.flags.DEFINE_string('DISPARITY_CHNG', 'disparity_change/35mm_focallength/
                            """The name of the tower """)
 
 
-tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/train_with_test/',
+tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/train_with_test/train/',
                            """The name of the tower """)
 
 
-IMG1_NUMBER = '0151'
-IMG2_NUMBER = '0152'
+IMG1_NUMBER = '0001'
+IMG2_NUMBER = '0002'
 
 FLAGS.IMG1 = FLAGS.PARENT_FOLDER + FLAGS.IMG1 + IMG1_NUMBER + '.webp'
 FLAGS.IMG2 = FLAGS.PARENT_FOLDER + FLAGS.IMG2 + IMG2_NUMBER + '.webp'
@@ -248,7 +248,7 @@ class FlowPredictor:
 	def get_depth_from_disp(self,disparity):
 		disparity = disparity + 1e-6
 
-		focal_length = 1500
+		focal_length = 1050
 		disp_to_depth = focal_length / disparity
 		return disp_to_depth
 
@@ -314,7 +314,7 @@ if FLAGS.SHOW_GT_IMGS == True:
 
 # show gt flows
 if FLAGS.SHOW_GT_FLOWS == True:
-	# ij.setImage('gt_flow_u',gt_flow[:,:,0])
+	ij.setImage('gt_flow_u',gt_flow[:,:,0])
 	ij.setImage('gt_flow_v',gt_flow[:,:,1])
 
 
@@ -337,7 +337,7 @@ if FLAGS.SHOW_PREDICTED_DEPTH_CHANGE == True:
 # show predicted flow values
 if FLAGS.SHOW_PREDICTED_FLOWS == True:
 	ij.setImage('predicted_flow_u',pr_flow[:,:,0])
-	ij.setImage('predicted_flow_v',pr_flow[:,:,1])
+	# ij.setImage('predicted_flow_v',pr_flow[:,:,1])
 
 # show warped result with predicted flow values
 if FLAGS.SHOW_PREDICTED_WARPED_RESULT == True:

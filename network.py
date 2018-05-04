@@ -78,6 +78,7 @@ def _predict_flow(inp):
         filters=24,
         kernel_size=3,
         stride=1,
+        activation=myLeakyRelu,
         name="conv1_pred_flow"
     )
     

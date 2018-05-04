@@ -73,20 +73,22 @@ tf.app.flags.DEFINE_integer('TOTAL_TRAIN_EXAMPLES', 200,
 
 
 # Testing Variables
+tf.app.flags.DEFINE_boolean('TESTING_ENABLED', False,
+                            """Calculate test loss along with train.""")
 
 tf.app.flags.DEFINE_integer('TOTAL_TEST_EXAMPLES', 100,
                             """How many samples are there in one epoch of testing.""")
 
 tf.app.flags.DEFINE_integer('TEST_BATCH_SIZE', 16,
-                            """How many samples are there in one epoch of testing.""")
+                            """Batch size used for testing.""")
 
-tf.app.flags.DEFINE_integer('TEST_AFTER_EPOCHS', 4,
+tf.app.flags.DEFINE_integer('TEST_AFTER_EPOCHS', 10,
                             """After how many epochs should the test phase start.""")
 
 
 # Polynomial Learning Rate
 
-tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.0009,
+tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.001,
                             """Where to start the learning.""")
 tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.0000005,
                             """Where to end the learning.""")
@@ -131,19 +133,24 @@ class DatasetReader:
                             min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
                             enqueue_many=False)
 
-        self.images_test, self.labels_test = tf.train.shuffle_batch(
-                            [ features_test['input_n'] , features_test['label_n'] ],
-                            batch_size=FLAGS.TEST_BATCH_SIZE,
-                            capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY,
-                            num_threads=FLAGS.SHUFFLE_BATCH_THREADS,
-                            min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
-                            enqueue_many=False)
-        
         batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
             [images, labels], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
 
-        self.batch_queue_test = tf.contrib.slim.prefetch_queue.prefetch_queue(
-            [self.images_test, self.labels_test], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
+
+
+        if FLAGS.TESTING_ENABLED == True:
+            self.images_test, self.labels_test = tf.train.shuffle_batch(
+                                [ features_test['input_n'] , features_test['label_n'] ],
+                                batch_size=FLAGS.TEST_BATCH_SIZE,
+                                capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY,
+                                num_threads=FLAGS.SHUFFLE_BATCH_THREADS,
+                                min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
+                                enqueue_many=False)
+    
+            self.batch_queue_test = tf.contrib.slim.prefetch_queue.prefetch_queue(
+                [self.images_test, self.labels_test], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
+        
+
         
         tower_grads = []
         with tf.variable_scope(tf.get_variable_scope()):
@@ -257,8 +264,10 @@ class DatasetReader:
         # first time or second time or third time and more
         test_loss_calculating_index = 1
 
-        test_image_batch, test_label_batch = self.batch_queue_test.dequeue()
-        self.test_image_batch, self.test_label_batch = self.get_network_input_forward(test_image_batch,test_label_batch)
+
+        if FLAGS.TESTING_ENABLED == True:
+            test_image_batch, test_label_batch = self.batch_queue_test.dequeue()
+            self.test_image_batch, self.test_label_batch = self.get_network_input_forward(test_image_batch,test_label_batch)
 
         # main loop
         for step in range(loop_start,loop_stop):
@@ -303,23 +312,47 @@ class DatasetReader:
             self.log(message=(format_str % (datetime.now(), step, np.log10(loss_value),
                                  examples_per_sec, sec_per_batch)))
 
-            if step % 50 == 0:
+            if step % 100 == 0 and step!=0:
                 summary_str = sess.run(self.summary_op)
                 summary_writer.add_summary(summary_str, step)
 
-                # testing summary writing
-                test_image,test_label = sess.run([self.test_image_batch, self.test_label_batch])
-                loss_value,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: test_image, self.Y: test_label})
-                self.test_summary_writer.add_summary(summary_str, step)
+                if FLAGS.TESTING_ENABLED == True:
+                    self.print_test_epoch_loss(sess,step)
 
             # Save the model checkpoint periodically.
-            if step % 1000 == 0 or (step + 1) == FLAGS.MAX_STEPS:
+            if step % 500 == 0 or (step + 1) == FLAGS.MAX_STEPS:
                 checkpoint_path = os.path.join(FLAGS.TRAIN_DIR, 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=step)
 
 
 
         summary_writer.close()
+
+
+    def print_test_epoch_loss(self,sess,global_step):
+    
+        self.log()
+        self.log(message='Testing ...')
+        self.log()
+
+        for step in range(0,self.TEST_EPOCH):
+
+            image_batch, label_batch = self.batch_queue_test.dequeue()
+            image_batch, label_batch = self.get_network_input_forward(image_batch,label_batch)
+
+            image,label = sess.run([image_batch, label_batch])
+
+            loss_value,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: image, self.Y: label})
+
+            format_str = ('%s: step %d, loss = %.15f')
+            self.log(message=(format_str % (datetime.now(), step, np.log10(loss_value))))
+
+
+        self.test_summary_writer.add_summary(summary_str, global_step)
+
+        self.log()
+        self.log(message='Continue Training ...')
+        self.log()
 
     def tower_loss(self,scope, images, labels):
         """Calculate the total loss on a single tower running the CIFAR model.
