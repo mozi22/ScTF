@@ -24,7 +24,7 @@ def get_available_gpus():
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/testing/',
+tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/all_losses_all_datasets/',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 
@@ -41,7 +41,7 @@ tf.app.flags.DEFINE_boolean('DEBUG_MODE', False,
 tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_integer('MAX_STEPS', 10000,
+tf.app.flags.DEFINE_integer('MAX_STEPS', 200000,
                             """Number of batches to run.""")
 
 tf.app.flags.DEFINE_boolean('LOG_DEVICE_PLACEMENT', False,
@@ -68,12 +68,25 @@ tf.app.flags.DEFINE_integer('NUM_GPUS', len(get_available_gpus()),
 tf.app.flags.DEFINE_float('MOVING_AVERAGE_DECAY', 0.9999,
                             """How fast the learning rate should go down.""")
 
+# Total examples
+'''
+TRAINING:
+    driving = 200
+    flying = 22390
+    monkaa = 6050
+
+TESTING:
+    driving = 100
+    flying = 4370
+    monkaa = 2614
+
+'''
 tf.app.flags.DEFINE_integer('TOTAL_TRAIN_EXAMPLES', 200,
                             """How many samples are there in one epoch of testing.""")
 
 
 # Testing Variables
-tf.app.flags.DEFINE_boolean('TESTING_ENABLED', True,
+tf.app.flags.DEFINE_boolean('TESTING_ENABLED', False,
                             """Calculate test loss along with train.""")
 
 tf.app.flags.DEFINE_integer('TOTAL_TEST_EXAMPLES', 100,
@@ -406,10 +419,7 @@ class DatasetReader:
         _ = losses_helper.forward_backward_loss(predict_flow2)
 
 
-        predict_flow2_forward, 
-        predict_flow2_backward, 
-        predict_flow5_forward, 
-        predict_flow5_backward = self.get_predict_flow_forward_backward(predict_flow2,predict_flow5)
+        predict_flow2_forward, predict_flow2_backward,  predict_flow5_forward, predict_flow5_backward = self.get_predict_flow_forward_backward(predict_flow2,predict_flow5)
 
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
@@ -426,7 +436,11 @@ class DatasetReader:
                                                                                 np.array([1,2,4,8,16]),
                                                                                 np.array([1,1,1,1,1]))
 
-        _ = losses_helper.scale_invariant_gradient_loss(scale_invariant_gradient_image_pred,scale_invariant_gradient_image_gt,0.0001)
+        _ = losses_helper.scale_invariant_gradient_loss(
+                scale_invariant_gradient_image_pred,
+                scale_invariant_gradient_image_gt,
+                0.0001,
+                FLAGS.MAX_STEPS)
 
         predict_flow5_label = losses_helper.downsample_label(network_input_labels,
                                         size=[5,8],
@@ -467,6 +481,7 @@ class DatasetReader:
         predict_flow5_backward = predict_flow5[batch_half:batch_size,:,:,:]
         
         return predict_flow2_forward, predict_flow2_backward, predict_flow5_forward, predict_flow5_backward
+
     def write_flows_concatenated_side_by_side(self,concatenated_FB_images,predict_flow2):
         concated_flows_u = tf.concat([concatenated_FB_images[:,:,:,0:1],predict_flow2[:,:,:,0:1]],axis=-2)
         concated_flows_v = tf.concat([concatenated_FB_images[:,:,:,1:2],predict_flow2[:,:,:,1:2]],axis=-2)
