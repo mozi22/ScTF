@@ -65,9 +65,10 @@ def forward_backward_loss(predicted_flow,weight=100):
 
     # step 4
     fb_loss = sops.replace_nonfinite(flow_forward + B)
+    fb_loss = sops.replace_nonfinite(tf.reduce_mean(fb_loss))
 
     # tf.losses.compute_weighted_loss(fb_loss,weights=weight)
-    tf.summary.scalar('fb_loss',sops.replace_nonfinite(fb_loss))
+    tf.summary.scalar('fb_loss',fb_loss)
 
   # return fb_loss
 
@@ -117,6 +118,7 @@ def depth_consistency_loss(img,predicted_optflow_uv,weight=10):
 
     # loss = w - Z_1(x+u,y+v) + Z_0(x,y)
     dc_loss = predicted_optflow_uv[:,:,:,2] - warped_depth_img[:,:,:,0] + img1_depth
+    dc_loss = tf.reduce_mean(dc_loss)
 
 
     tf.summary.scalar('dc_loss',sops.replace_nonfinite(dc_loss))
@@ -157,7 +159,7 @@ def scale_invariant_gradient( inp, deltas, weights, epsilon=0.001):
 
 # loss value ranges around 80 to 100
 # taken from DEMON Network
-def scale_invariant_gradient_loss(inp, gt, epsilon,decay_steps,weight=100):
+def scale_invariant_gradient_loss(inp, gt, epsilon,decay_steps,global_step,weight=100):
   """Computes the scale invariant gradient loss
   inp: Tensor
       Tensor with the scale invariant gradient images computed on the prediction
@@ -181,15 +183,12 @@ def scale_invariant_gradient_loss(inp, gt, epsilon,decay_steps,weight=100):
     tmp = tf.add_n(tmp)
 
 
-    global_step = tf.get_variable(
-        'global_step', [],
-        initializer=tf.constant_initializer(0), trainable=False)
 
-    tf.summary.scalar('global_step_2',global_step)
     weight_increase_rate = tf.train.polynomial_decay(FLAGS.SIGL_START_LEARNING_RATE, global_step,
                                                     decay_steps, FLAGS.SIGL_END_LEARNING_RATE,
                                                     power=FLAGS.SIGL_POWER)
 
+    tf.summary.scalar('weight_increase_rate',weight_increase_rate)
 
     # tmp = tf.Print(tmp,[tmp],'sigl ye hai ')
     tf.losses.compute_weighted_loss(tmp,weights=weight_increase_rate)

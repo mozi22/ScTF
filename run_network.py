@@ -24,7 +24,7 @@ def get_available_gpus():
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/all_losses_all_datasets/',
+tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/all_losses_all_datasets/train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 
@@ -74,14 +74,18 @@ TRAINING:
     driving = 200
     flying = 22390
     monkaa = 6050
+    --------------
+            28640
 
 TESTING:
     driving = 100
     flying = 4370
     monkaa = 2614
+    --------------
+            7084
 
 '''
-tf.app.flags.DEFINE_integer('TOTAL_TRAIN_EXAMPLES', 200,
+tf.app.flags.DEFINE_integer('TOTAL_TRAIN_EXAMPLES', 28640,
                             """How many samples are there in one epoch of testing.""")
 
 
@@ -89,7 +93,7 @@ tf.app.flags.DEFINE_integer('TOTAL_TRAIN_EXAMPLES', 200,
 tf.app.flags.DEFINE_boolean('TESTING_ENABLED', False,
                             """Calculate test loss along with train.""")
 
-tf.app.flags.DEFINE_integer('TOTAL_TEST_EXAMPLES', 100,
+tf.app.flags.DEFINE_integer('TOTAL_TEST_EXAMPLES', 7084,
                             """How many samples are there in one epoch of testing.""")
 
 tf.app.flags.DEFINE_integer('TEST_BATCH_SIZE', 16,
@@ -122,7 +126,7 @@ class DatasetReader:
 
     def train(self,features_train,features_test):
 
-        global_step = tf.get_variable(
+        self.global_step = tf.get_variable(
             'global_step', [],
             initializer=tf.constant_initializer(0), trainable=False)
 
@@ -131,7 +135,7 @@ class DatasetReader:
         end_learning_rate = FLAGS.END_LEARNING_RATE
         power = FLAGS.POWER
 
-        learning_rate = tf.train.polynomial_decay(start_learning_rate, global_step,
+        learning_rate = tf.train.polynomial_decay(start_learning_rate, self.global_step,
                                                   decay_steps, end_learning_rate,
                                                   power=power)
 
@@ -208,7 +212,7 @@ class DatasetReader:
 
 
         # Apply the gradients to adjust the shared variables.
-        apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
+        apply_gradient_op = opt.apply_gradients(grads, global_step=self.global_step)
 
         # Add histograms for trainable variables.
         for var in tf.trainable_variables():
@@ -216,7 +220,7 @@ class DatasetReader:
 
         # Track the moving averages of all trainable variables.
         variable_averages = tf.train.ExponentialMovingAverage(
-            FLAGS.MOVING_AVERAGE_DECAY, global_step)
+            FLAGS.MOVING_AVERAGE_DECAY, self.global_step)
         variables_averages_op = variable_averages.apply(tf.trainable_variables())
 
         # Group all updates to into a single train op.
@@ -265,7 +269,7 @@ class DatasetReader:
 
 
         # just to make sure we start from where we left, if load_from_ckpt = True
-        loop_start = tf.train.global_step(sess, global_step)
+        loop_start = tf.train.global_step(sess, self.global_step)
         loop_stop = loop_start + FLAGS.MAX_STEPS
 
         if FLAGS.DEBUG_MODE:
@@ -330,7 +334,7 @@ class DatasetReader:
                 summary_writer.add_summary(summary_str, step)
 
                 if FLAGS.TESTING_ENABLED == True:
-                    self.print_test_epoch_loss(sess,step)
+                    self.print_test_epoch_loss(sess)
 
             # Save the model checkpoint periodically.
             if step % 500 == 0 or (step + 1) == FLAGS.MAX_STEPS:
@@ -340,7 +344,7 @@ class DatasetReader:
         summary_writer.close()
 
 
-    def print_test_epoch_loss(self,sess,global_step):
+    def print_test_epoch_loss(self,sess):
     
         self.log()
         self.log(message='Testing ...')
@@ -359,7 +363,7 @@ class DatasetReader:
             self.log(message=(format_str % (datetime.now(), step, np.log10(loss_value))))
 
 
-        self.test_summary_writer.add_summary(summary_str, global_step)
+        self.test_summary_writer.add_summary(summary_str, self.global_step)
 
         self.log()
         self.log(message='Continue Training ...')
@@ -440,7 +444,8 @@ class DatasetReader:
                 scale_invariant_gradient_image_pred,
                 scale_invariant_gradient_image_gt,
                 0.0001,
-                FLAGS.MAX_STEPS)
+                FLAGS.MAX_STEPS,
+                self.global_step)
 
         predict_flow5_label = losses_helper.downsample_label(network_input_labels,
                                         size=[5,8],
