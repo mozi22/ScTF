@@ -15,7 +15,8 @@ def photoconsistency_loss(img,predicted_flow, weight=10):
 
     pc_loss = tf.reduce_mean(tf.squared_difference(img1, warped_img))
     # pc_loss = tf.Print(pc_loss,[pc_loss],'pcloss ye hai ')
-    tf.losses.compute_weighted_loss(pc_loss,weights=weight)
+    # tf.losses.compute_weighted_loss(pc_loss,weights=weight)
+    tf.summary.scalar('pc_loss',sops.replace_nonfinite(pc_loss))
 
   return pc_loss
 
@@ -54,7 +55,8 @@ def forward_backward_loss(predicted_flow,weight=100):
     # step 4
     fb_loss = sops.replace_nonfinite(flow_forward + B)
 
-    tf.losses.compute_weighted_loss(fb_loss,weights=weight)
+    # tf.losses.compute_weighted_loss(fb_loss,weights=weight)
+    tf.summary.scalar('fb_loss',sops.replace_nonfinite(fb_loss))
 
   # return fb_loss
 
@@ -105,7 +107,9 @@ def depth_consistency_loss(img,predicted_optflow_uv,weight=10):
     # loss = w - Z_1(x+u,y+v) + Z_0(x,y)
     dc_loss = predicted_optflow_uv[:,:,:,2] - warped_depth_img[:,:,:,0] + img1_depth
 
-    tf.losses.compute_weighted_loss(dc_loss,weights=weight)
+
+    tf.summary.scalar('dc_loss',sops.replace_nonfinite(dc_loss))
+    # tf.losses.compute_weighted_loss(dc_loss,weights=weight)
 
     return dc_loss
 

@@ -50,7 +50,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 3
+		self.dataset_number = 1
 
 		# these are inverse depths
 		self.max_depth_driving = 0.232809

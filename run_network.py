@@ -24,7 +24,7 @@ def get_available_gpus():
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/latest_with_test/train',
+tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/testing/',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 
@@ -324,8 +324,6 @@ class DatasetReader:
                 checkpoint_path = os.path.join(FLAGS.TRAIN_DIR, 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=step)
 
-
-
         summary_writer.close()
 
 
@@ -354,6 +352,23 @@ class DatasetReader:
         self.log(message='Continue Training ...')
         self.log()
 
+    def further_resize_imgs_lbls(self,network_input_images,network_input_labels):
+
+        network_input_images = tf.image.resize_images(network_input_images,[160,256],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_labels = tf.image.resize_images(network_input_labels,[160,256],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+
+        network_input_labels_u = network_input_labels[:,:,:,0] * 0.714285714
+        network_input_labels_v = network_input_labels[:,:,:,1] * 0.666666667
+        network_input_labels_w = network_input_labels[:,:,:,2]
+
+        network_input_labels_u = tf.expand_dims(network_input_labels_u,axis=-1)
+        network_input_labels_v = tf.expand_dims(network_input_labels_v,axis=-1)
+        network_input_labels_w = tf.expand_dims(network_input_labels_w,axis=-1)
+
+        network_input_labels = tf.concat([network_input_labels_u,network_input_labels_v,network_input_labels_w],axis=3)
+
+        return network_input_images, network_input_labels
+
     def tower_loss(self,scope, images, labels):
         """Calculate the total loss on a single tower running the CIFAR model.
         Args:
@@ -363,79 +378,70 @@ class DatasetReader:
         Returns:
          Tensor of shape [] containing the total loss for a batch of data
         """
-
         network_input_images, network_input_labels = self.get_network_input_forward(images,labels)
+        network_input_images_back, network_input_labels_back = self.get_network_input_backward(images,labels)
 
-        network_input_images = tf.image.resize_images(network_input_images,[160,256],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        network_input_labels = tf.image.resize_images(network_input_labels,[160,256],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-
-        network_input_labels_u = network_input_labels[:,:,:,0] * 0.714285714
-        network_input_labels_v = network_input_labels[:,:,:,1] * 0.666666667
-
-        network_input_labels_u = tf.expand_dims(network_input_labels_u,axis=-1)
-        network_input_labels_v = tf.expand_dims(network_input_labels_v,axis=-1)
-
-        network_input_labels = tf.concat([network_input_labels_u,network_input_labels_v],axis=3)
-
-        # network_input_images_back, network_input_labels_back = self.get_network_input_backward(images,labels)
+        network_input_images, network_input_labels = self.further_resize_imgs_lbls(network_input_images,network_input_labels)
+        network_input_images_back, network_input_labels_back = self.further_resize_imgs_lbls(network_input_images_back,network_input_labels_back)
 
         # FB = forward-backward
-        # concatenated_FB_images = tf.concat([network_input_images,network_input_images_back],axis=0)
+        concatenated_FB_images = tf.concat([network_input_images,network_input_images_back],axis=0)
 
         # backward_flow_images = losses_helper.forward_backward_loss()
 
         # Build inference Graph. - forward flow
 
-        predict_flow5, predict_flow2 = network.train_network(network_input_images)
-
-
-        
-        concated_flows_u = tf.concat([network_input_labels[:,:,:,0:1],predict_flow2[:,:,:,0:1]],axis=-2)
-        concated_flows_v = tf.concat([network_input_labels[:,:,:,1:2],predict_flow2[:,:,:,1:2]],axis=-2)
-
-        tf.summary.image('gt_predict_flow_u',concated_flows_u)
-        tf.summary.image('gt_predict_flow_v',concated_flows_v)
+        predict_flow5, predict_flow2 = network.train_network(concatenated_FB_images)
 
 
         # Build inference Graph. - backward flow
         # Build the portion of the Graph calculating the losses. Note that we will
         # assemble the total_loss using a custom function below.
 
-        # _ = losses_helper.forward_backward_loss(predict_flow2)
+        _ = losses_helper.forward_backward_loss(predict_flow2)
+
 
         batch_size = predict_flow2.get_shape().as_list()[0]
         batch_half = batch_size // 2
 
         # for other losses, we only consider forward flow
-        # predict_flow2_forward = predict_flow2[0:batch_half,:,:,:]
-        # predict_flow2_backward = predict_flow2[batch_half:batch_size,:,:,:]
+        predict_flow2_forward = predict_flow2[0:batch_half,:,:,:]
+        predict_flow2_backward = predict_flow2[batch_half:batch_size,:,:,:]
 
-        # predict_flow5_forward = predict_flow5[0:batch_half,:,:,:]
-        # predict_flow5_backward = predict_flow5[batch_half:batch_size,:,:,:]
-        tf.summary.image('flow_u_1',network_input_labels[:,:,:,0:1])
-        tf.summary.image('flow_v_1',network_input_labels[:,:,:,1:2])
+        predict_flow5_forward = predict_flow5[0:batch_half,:,:,:]
+        predict_flow5_backward = predict_flow5[batch_half:batch_size,:,:,:]
+        
+        concated_flows_u = tf.concat([concatenated_FB_images[:,:,:,0:1],predict_flow2[:,:,:,0:1]],axis=-2)
+        concated_flows_v = tf.concat([concatenated_FB_images[:,:,:,1:2],predict_flow2[:,:,:,1:2]],axis=-2)
+
+        tf.summary.image('gt_predict_flow_u',concated_flows_u)
+        tf.summary.image('gt_predict_flow_v',concated_flows_v)
+
+        tf.summary.image('flow_u_1',concatenated_FB_images[:,:,:,0:1])
+        tf.summary.image('flow_v_1',concatenated_FB_images[:,:,:,1:2])
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
-        _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2)
-        # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2_forward)
-        # # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flow2_forward)
+        _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2_forward)
+        _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2_forward)
+        _ = losses_helper.depth_consistency_loss(network_input_images,predict_flow2_forward)
 
-        # scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
-        #                                                                         np.array([1,2,4,8,16]),
-        #                                                                         np.array([1,1,1,1,1]))
 
-        # scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(predict_flow2_forward,
-        #                                                                         np.array([1,2,4,8,16]),
-        #                                                                         np.array([1,1,1,1,1]))
+        scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
+                                                                                np.array([1,2,4,8,16]),
+                                                                                np.array([1,1,1,1,1]))
 
-        # _ = losses_helper.scale_invariant_gradient_loss(scale_invariant_gradient_image_pred,scale_invariant_gradient_image_gt,0.0001)
+        scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(predict_flow2_forward,
+                                                                                np.array([1,2,4,8,16]),
+                                                                                np.array([1,1,1,1,1]))
+
+        _ = losses_helper.scale_invariant_gradient_loss(scale_invariant_gradient_image_pred,scale_invariant_gradient_image_gt,0.0001)
 
         predict_flow5_label = losses_helper.downsample_label(network_input_labels,
                                         size=[5,8],
                                         factorU=0.031,
                                         factorV=0.026)
 
-        _ = losses_helper.endpoint_loss(predict_flow5_label,predict_flow5)
+        _ = losses_helper.endpoint_loss(predict_flow5_label,predict_flow5_forward,100)
         # _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
 
         # tf.summary.histogram('prediction_flow2_forward',predict_flow2_forward)

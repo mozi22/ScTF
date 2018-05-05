@@ -87,7 +87,7 @@ def _predict_flow(inp):
 
     output = tf.layers.conv2d(
         inputs=tmp,
-        filters=2,
+        filters=3,
         kernel_size=3,
         strides=1,
         padding='same',

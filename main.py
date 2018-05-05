@@ -8,23 +8,28 @@ import multiprocessing
 # input_data = prepare_input_data(img1,img2,data_format)
 
 # print(get_available_gpus())
-prefix = '../dataset_synthetic/recent_fixed/'
+prefix = '../dataset_synthetic/'
+
+# memory_folder = '/dev/shm/'
+
+filenames_train  = ['driving_TRAIN.tfrecords','flying_TRAIN.tfrecords','monkaa_TRAIN.tfrecords']
+filenames_test  = ['driving_TEST.tfrecords','flying_TEST.tfrecords','monkaa_TEST.tfrecords']
 
 # # with tf.name_scope("datareader"):
 train_filenames = [
-				prefix+'driving_TRAIN.tfrecords'
-				# prefix+'flying_TRAIN.tfrecords',
-				# prefix+'monkaa_TRAIN.tfrecords'
+				prefix+filenames_train[0]
+				# prefix+filenames_train[1],
+				# prefix+filenames_train[2]
 			]
 
 test_filenames = [
-				prefix+'driving_TEST.tfrecords'
-				# prefix+'flyingthings3d_TEST.tfrecords',
-				# prefix+'monkaa_TEST.tfrecords'
+				prefix+filenames_test[0]
+				# prefix+filenames_test[1],
+				# prefix+filenames_test[2]
 ]
 
-
-
+# from shutil import copyfile
+# copyfile(train_filenames[0], memory_folder + filenames_train[0])
 
 
 train_features = data_reader.tf_record_input_pipeline(train_filenames,version='1')
