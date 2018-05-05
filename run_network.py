@@ -436,13 +436,6 @@ class DatasetReader:
         _ = losses_helper.endpoint_loss(predict_flow5_label,predict_flow5_forward,100)
         # _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
 
-        # tf.summary.histogram('prediction_flow2_forward',predict_flow2_forward)
-        # tf.summary.histogram('prediction_flow5_forward',predict_flow5_forward)
-        # tf.summary.histogram('prediction_flow2_backward',predict_flow2_backward)
-        # tf.summary.histogram('prediction_flow5_backward',predict_flow5_backward)
-
-        # tf.summary.histogram('gt_flow2_forward',network_input_labels)
-
 
         # Assemble all of the losses for the current tower only.
         losses = tf.get_collection('losses', scope)
