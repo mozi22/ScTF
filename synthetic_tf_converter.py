@@ -50,7 +50,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 1
+		self.dataset_number = 3
 
 		# these are inverse depths
 		self.max_depth_driving = 0.232809
@@ -1013,8 +1013,7 @@ def convert_whole_dataset():
 	a = SyntheticTFRecordsWriter()
 	a.convert()
 
-
 def convert_for_testing():
 	return SyntheticTFRecordsWriter()
 
-
+# convert_whole_dataset()

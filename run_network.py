@@ -24,7 +24,7 @@ def get_available_gpus():
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/latest/train',
+tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/latest_with_test/train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 
@@ -73,7 +73,7 @@ tf.app.flags.DEFINE_integer('TOTAL_TRAIN_EXAMPLES', 200,
 
 
 # Testing Variables
-tf.app.flags.DEFINE_boolean('TESTING_ENABLED', False,
+tf.app.flags.DEFINE_boolean('TESTING_ENABLED', True,
                             """Calculate test loss along with train.""")
 
 tf.app.flags.DEFINE_integer('TOTAL_TEST_EXAMPLES', 100,

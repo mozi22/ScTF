@@ -21,13 +21,13 @@ tf.app.flags.DEFINE_boolean('SHOW_GT_DEPTH_CHANGE', False,
                             """Show Depth Images Ground Truth.""")
 
 
-tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', True,
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', False,
                             """Show both U and V Flow Values.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_GT_FLOWS', False,
                             """Show both U and V Flow Values Ground truths.""")
 
-tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', False,
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', True,
                             """Perform warping with predicted flow values.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_GT_WARPED_RESULT', False,
@@ -64,8 +64,8 @@ tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/latest/train/',
                            """The name of the tower """)
 
 
-IMG1_NUMBER = '0040'
-IMG2_NUMBER = '0041'
+IMG1_NUMBER = '0001'
+IMG2_NUMBER = '0002'
 
 FLAGS.IMG1 = FLAGS.PARENT_FOLDER + FLAGS.IMG1 + IMG1_NUMBER + '.webp'
 FLAGS.IMG2 = FLAGS.PARENT_FOLDER + FLAGS.IMG2 + IMG2_NUMBER + '.webp'
@@ -119,15 +119,15 @@ class FlowPredictor:
 		depth1 = np.array(depth1)
 		depth2 = np.array(depth2)
 
-		img1 = np.array(img1)
-		img2 = np.array(img2)
+		self.img1_arr = np.array(img1,dtype=np.float32)[:,:,0:3]
+		self.img2_arr = np.array(img2,dtype=np.float32)[:,:,0:3]
 
 		self.depth1 = depth1 / np.max(depth1)
 		self.depth2 = depth2 / np.max(depth1)
 
 		# normalize images
-		self.img1 = img1 / 255
-		self.img2 = img2 / 255
+		self.img1 = self.img1_arr / 255
+		self.img2 = self.img2_arr / 255
 
 
 		rgbd1 = self.combine_depth_values(self.img1,self.depth1)
@@ -270,16 +270,6 @@ class FlowPredictor:
 		return disp_to_depth
 
 
-	def read_image(self,img1,img2):
-
-		img1 = Image.open(img1)
-		img2 = Image.open(img2)
-
-
-		img1 = img1.resize(self.input_size, Image.BILINEAR)
-		img2 = img2.resize(self.input_size, Image.BILINEAR)
-
-		return img1, img2
 
 	def downsample_opt_flow(self,data,size):
 		data = np.delete(data,2,axis=2)
