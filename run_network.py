@@ -387,38 +387,30 @@ class DatasetReader:
         # FB = forward-backward
         concatenated_FB_images = tf.concat([network_input_images,network_input_images_back],axis=0)
 
+        tf.summary.image('flow_u_1',concatenated_FB_images[:,:,:,0:1])
+        tf.summary.image('flow_v_1',concatenated_FB_images[:,:,:,1:2])
+
         # backward_flow_images = losses_helper.forward_backward_loss()
 
         # Build inference Graph. - forward flow
 
         predict_flow5, predict_flow2 = network.train_network(concatenated_FB_images)
 
-
+        self.write_flows_concatenated_side_by_side(concatenated_FB_images,predict_flow2)
         # Build inference Graph. - backward flow
         # Build the portion of the Graph calculating the losses. Note that we will
         # assemble the total_loss using a custom function below.
 
+        # losses section
+
         _ = losses_helper.forward_backward_loss(predict_flow2)
 
 
-        batch_size = predict_flow2.get_shape().as_list()[0]
-        batch_half = batch_size // 2
+        predict_flow2_forward, 
+        predict_flow2_backward, 
+        predict_flow5_forward, 
+        predict_flow5_backward = self.get_predict_flow_forward_backward(predict_flow2,predict_flow5)
 
-        # for other losses, we only consider forward flow
-        predict_flow2_forward = predict_flow2[0:batch_half,:,:,:]
-        predict_flow2_backward = predict_flow2[batch_half:batch_size,:,:,:]
-
-        predict_flow5_forward = predict_flow5[0:batch_half,:,:,:]
-        predict_flow5_backward = predict_flow5[batch_half:batch_size,:,:,:]
-        
-        concated_flows_u = tf.concat([concatenated_FB_images[:,:,:,0:1],predict_flow2[:,:,:,0:1]],axis=-2)
-        concated_flows_v = tf.concat([concatenated_FB_images[:,:,:,1:2],predict_flow2[:,:,:,1:2]],axis=-2)
-
-        tf.summary.image('gt_predict_flow_u',concated_flows_u)
-        tf.summary.image('gt_predict_flow_v',concated_flows_v)
-
-        tf.summary.image('flow_u_1',concatenated_FB_images[:,:,:,0:1])
-        tf.summary.image('flow_v_1',concatenated_FB_images[:,:,:,1:2])
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
         _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2_forward)
@@ -469,6 +461,25 @@ class DatasetReader:
 
         return total_loss
 
+
+    def get_predict_flow_forward_backward(self,predict_flow2,predict_flow5):
+        batch_size = predict_flow2.get_shape().as_list()[0]
+        batch_half = batch_size // 2
+
+        # for other losses, we only consider forward flow
+        predict_flow2_forward = predict_flow2[0:batch_half,:,:,:]
+        predict_flow2_backward = predict_flow2[batch_half:batch_size,:,:,:]
+
+        predict_flow5_forward = predict_flow5[0:batch_half,:,:,:]
+        predict_flow5_backward = predict_flow5[batch_half:batch_size,:,:,:]
+        
+        return predict_flow2_forward, predict_flow2_backward, predict_flow5_forward, predict_flow5_backward
+    def write_flows_concatenated_side_by_side(self,concatenated_FB_images,predict_flow2):
+        concated_flows_u = tf.concat([concatenated_FB_images[:,:,:,0:1],predict_flow2[:,:,:,0:1]],axis=-2)
+        concated_flows_v = tf.concat([concatenated_FB_images[:,:,:,1:2],predict_flow2[:,:,:,1:2]],axis=-2)
+
+        tf.summary.image('gt_predict_flow_u',concated_flows_u)
+        tf.summary.image('gt_predict_flow_v',concated_flows_v)
 
     def get_network_input_forward(self,image_batch,label_batch):
         return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
