@@ -13,62 +13,8 @@ from tensorflow.python import debug as tf_debug
 from tensorflow.python.client import device_lib
 from datetime import datetime
 # import ijremote
+import configparser as configp
 
-def get_available_gpus():
-    local_device_protos = device_lib.list_local_devices()
-    return [x.name for x in local_device_protos if x.device_type == 'GPU']
-
-
-
-# Training Variables
-
-FLAGS = tf.app.flags.FLAGS
-
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/all_losses_driving_only/train',
-                           """Directory where to write event logs """
-                           """and checkpoint.""")
-
-tf.app.flags.DEFINE_string('TEST_DIR', './ckpt/driving/train_with_test/test',
-                           """Directory where to write event logs """
-                           """and checkpoint.""")
-
-tf.app.flags.DEFINE_boolean('LOAD_FROM_CKPT', False,
-                            """Whether to log device placement.""")
-
-tf.app.flags.DEFINE_boolean('DEBUG_MODE', False,
-                            """Run training in Debug Mode.""")
-
-tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
-                           """The name of the tower """)
-
-tf.app.flags.DEFINE_integer('MAX_STEPS', 10000,
-                            """Number of batches to run.""")
-
-tf.app.flags.DEFINE_boolean('LOG_DEVICE_PLACEMENT', False,
-                            """Whether to log device placement.""")
-
-tf.app.flags.DEFINE_integer('BATCH_SIZE', 16,
-                            """How many samples are there in one epoch of testing.""")
-
-tf.app.flags.DEFINE_integer('NUM_EPOCHS_PER_DECAY', 1,
-                            """How many epochs per decay.""")
-
-tf.app.flags.DEFINE_integer('SHUFFLE_BATCH_QUEUE_CAPACITY', 100,
-                            """How many elements will be there in the queue to be dequeued.""")
-
-tf.app.flags.DEFINE_integer('SHUFFLE_BATCH_THREADS', 48,
-                            """How many elements will be there in the queue to be dequeued.""")
-
-tf.app.flags.DEFINE_integer('SHUFFLE_BATCH_MIN_AFTER_DEQUEUE', 10,
-                            """How many elements will be there in the queue to be dequeued.""")
-
-tf.app.flags.DEFINE_integer('NUM_GPUS', len(get_available_gpus()),
-                            """How many GPUs to use.""")
-
-tf.app.flags.DEFINE_float('MOVING_AVERAGE_DECAY', 0.9999,
-                            """How fast the learning rate should go down.""")
-
-# Total examples
 '''
 TRAINING:
     driving = 200
@@ -85,43 +31,70 @@ TESTING:
             7084
 
 '''
-tf.app.flags.DEFINE_integer('TOTAL_TRAIN_EXAMPLES', 200,
-                            """How many samples are there in one epoch of testing.""")
-
-
-# Testing Variables
-tf.app.flags.DEFINE_boolean('TESTING_ENABLED', False,
-                            """Calculate test loss along with train.""")
-
-tf.app.flags.DEFINE_integer('TOTAL_TEST_EXAMPLES', 100,
-                            """How many samples are there in one epoch of testing.""")
-
-tf.app.flags.DEFINE_integer('TEST_BATCH_SIZE', 16,
-                            """Batch size used for testing.""")
-
-tf.app.flags.DEFINE_integer('TEST_AFTER_EPOCHS', 10,
-                            """After how many epochs should the test phase start.""")
-
-
-# Polynomial Learning Rate
-
-tf.app.flags.DEFINE_float('START_LEARNING_RATE', 0.001,
-                            """Where to start the learning.""")
-tf.app.flags.DEFINE_float('END_LEARNING_RATE', 0.0000005,
-                            """Where to end the learning.""")
-tf.app.flags.DEFINE_float('POWER', 5,
-                            """How fast the learning rate should go down.""")
 
 class DatasetReader:
 
-    def __init__(self):
+    def delete_files_in_directories(self,dir_path):
+        fileList = os.listdir(dir_path)
+        for fileName in fileList:
+            os.remove(dir_path+"/"+fileName)
+
+    def create_and_remove_directories(self,dir_path,clean_existing_files):
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path+'/train')
+            os.makedirs(dir_path+'/test')
+        else:
+            if clean_existing_files == True:
+                self.delete_files_in_directories(dir_path+'/train')
+                self.delete_files_in_directories(dir_path+'/test')
+
+
+    def __init__(self,file,section):
+
+        parser = configp.ConfigParser()
+        parser.read(file)
+
+        self.FLAGS = {
+            # TRAIN
+            'BATCH_SIZE': int(parser[section]['BATCH_SIZE']),
+            'TRAIN_DIR': parser[section]['TRAIN_DIR'],
+            'LOAD_FROM_CKPT': parser[section]['LOAD_FROM_CKPT'],
+            'DEBUG_MODE': parser[section].getboolean('DEBUG_MODE'),
+            'TOWER_NAME': parser[section]['TOWER_NAME'],
+            'MAX_STEPS': int(parser[section]['MAX_STEPS']),
+            'LOG_DEVICE_PLACEMENT': parser[section].getboolean('LOG_DEVICE_PLACEMENT'),
+            'NUM_EPOCHS_PER_DECAY': int(parser[section]['NUM_EPOCHS_PER_DECAY']),
+            'SHUFFLE_BATCH_QUEUE_CAPACITY': int(parser[section]['SHUFFLE_BATCH_QUEUE_CAPACITY']),
+            'SHUFFLE_BATCH_THREADS': int(parser[section]['SHUFFLE_BATCH_THREADS']),
+            'SHUFFLE_BATCH_MIN_AFTER_DEQUEUE': int(parser[section]['SHUFFLE_BATCH_MIN_AFTER_DEQUEUE']),
+            'NUM_GPUS': int(parser[section]['NUM_GPUS']),
+            'MOVING_AVERAGE_DECAY': float(parser[section]['MOVING_AVERAGE_DECAY']),
+            'TOTAL_TRAIN_EXAMPLES': int(parser[section]['TOTAL_TRAIN_EXAMPLES']),
+            'CLEAN_FILES': parser[section].getboolean('CLEAN_FILES'),
+
+            # TEST
+            'TESTING_ENABLED': parser[section].getboolean('TESTING_ENABLED'),
+            'TOTAL_TEST_EXAMPLES': int(parser[section]['TOTAL_TEST_EXAMPLES']),
+            'TEST_BATCH_SIZE': int(parser[section]['TEST_BATCH_SIZE']),
+            'TEST_AFTER_EPOCHS': int(parser[section]['TEST_AFTER_EPOCHS']),
+            'TOTAL_TRAIN_EXAMPLES': int(parser[section]['TOTAL_TRAIN_EXAMPLES']),
+
+            # LR
+            'START_LEARNING_RATE': float(parser[section]['START_LEARNING_RATE']),
+            'END_LEARNING_RATE': float(parser[section]['END_LEARNING_RATE']),
+            'POWER': int(parser[section]['POWER'])
+        }
+
+        self.create_and_remove_directories(self.FLAGS['TRAIN_DIR'],self.FLAGS['CLEAN_FILES'])
+
+
         # for testing
-        self.X = tf.placeholder(dtype=tf.float32, shape=(FLAGS.TEST_BATCH_SIZE, 224, 384, 8))
-        self.Y = tf.placeholder(dtype=tf.float32, shape=(FLAGS.TEST_BATCH_SIZE, 224, 384, 3))
+        self.X = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'], 224, 384, 8))
+        self.Y = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'], 224, 384, 3))
 
         # gives the # of steps required to complete 1 epoch
-        self.TRAIN_EPOCH = math.ceil(FLAGS.TOTAL_TRAIN_EXAMPLES / FLAGS.BATCH_SIZE)
-        self.TEST_EPOCH = math.ceil(FLAGS.TOTAL_TEST_EXAMPLES / FLAGS.TEST_BATCH_SIZE)
+        self.TRAIN_EPOCH = math.ceil(self.FLAGS['TOTAL_TRAIN_EXAMPLES'] / self.FLAGS['BATCH_SIZE'])
+        self.TEST_EPOCH = math.ceil(self.FLAGS['TOTAL_TEST_EXAMPLES'] / self.FLAGS['TEST_BATCH_SIZE'])
 
 
     def train(self,features_train,features_test):
@@ -130,10 +103,10 @@ class DatasetReader:
             'global_step', [],
             initializer=tf.constant_initializer(0), trainable=False)
 
-        decay_steps = FLAGS.MAX_STEPS
-        start_learning_rate = FLAGS.START_LEARNING_RATE
-        end_learning_rate = FLAGS.END_LEARNING_RATE
-        power = FLAGS.POWER
+        decay_steps = self.FLAGS['MAX_STEPS']
+        start_learning_rate = self.FLAGS['START_LEARNING_RATE']
+        end_learning_rate = self.FLAGS['END_LEARNING_RATE']
+        power = self.FLAGS['POWER']
 
         learning_rate = tf.train.polynomial_decay(start_learning_rate, self.global_step,
                                                   decay_steps, end_learning_rate,
@@ -144,34 +117,34 @@ class DatasetReader:
     
         images, labels = tf.train.shuffle_batch(
                             [ features_train['input_n'] , features_train['label_n'] ],
-                            batch_size=FLAGS.BATCH_SIZE,
-                            capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY,
-                            num_threads=FLAGS.SHUFFLE_BATCH_THREADS,
-                            min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
+                            batch_size=self.FLAGS['BATCH_SIZE'],
+                            capacity=self.FLAGS['SHUFFLE_BATCH_QUEUE_CAPACITY'],
+                            num_threads=self.FLAGS['SHUFFLE_BATCH_THREADS'],
+                            min_after_dequeue=self.FLAGS['SHUFFLE_BATCH_MIN_AFTER_DEQUEUE'],
                             enqueue_many=False)
 
         batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
-            [images, labels], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
+            [images, labels], capacity=self.FLAGS['SHUFFLE_BATCH_QUEUE_CAPACITY'] * self.FLAGS['NUM_GPUS'])
 
 
 
-        if FLAGS.TESTING_ENABLED == True:
+        if self.FLAGS['TESTING_ENABLED'] == True:
             self.images_test, self.labels_test = tf.train.shuffle_batch(
                                 [ features_test['input_n'] , features_test['label_n'] ],
-                                batch_size=FLAGS.TEST_BATCH_SIZE,
-                                capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY,
-                                num_threads=FLAGS.SHUFFLE_BATCH_THREADS,
-                                min_after_dequeue=FLAGS.SHUFFLE_BATCH_MIN_AFTER_DEQUEUE,
+                                batch_size=self.FLAGS['TEST_BATCH_SIZE'],
+                                capacity=self.FLAGS['SHUFFLE_BATCH_QUEUE_CAPACITY'],
+                                num_threads=self.FLAGS['SHUFFLE_BATCH_THREADS'],
+                                min_after_dequeue=self.FLAGS['SHUFFLE_BATCH_MIN_AFTER_DEQUEUE'],
                                 enqueue_many=False)
     
             self.batch_queue_test = tf.contrib.slim.prefetch_queue.prefetch_queue(
-                [self.images_test, self.labels_test], capacity=FLAGS.SHUFFLE_BATCH_QUEUE_CAPACITY * FLAGS.NUM_GPUS)
+                [self.images_test, self.labels_test], capacity=self.FLAGS['SHUFFLE_BATCH_QUEUE_CAPACITY'] * self.FLAGS['NUM_GPUS'])
         
 
         
         tower_grads = []
         with tf.variable_scope(tf.get_variable_scope()):
-          for i in xrange(FLAGS.NUM_GPUS):
+          for i in xrange(self.FLAGS['NUM_GPUS']):
             with tf.device('/gpu:%d' % i):
               with tf.name_scope('%s_%d' % ('tower', i)) as scope:
 
@@ -220,7 +193,7 @@ class DatasetReader:
 
         # Track the moving averages of all trainable variables.
         variable_averages = tf.train.ExponentialMovingAverage(
-            FLAGS.MOVING_AVERAGE_DECAY, self.global_step)
+            self.FLAGS['MOVING_AVERAGE_DECAY'], self.global_step)
         variables_averages_op = variable_averages.apply(tf.trainable_variables())
 
         # Group all updates to into a single train op.
@@ -240,7 +213,7 @@ class DatasetReader:
         # implementations.
 
         tf_config = tf.ConfigProto(allow_soft_placement=True,
-            log_device_placement=FLAGS.LOG_DEVICE_PLACEMENT)
+            log_device_placement=self.FLAGS['LOG_DEVICE_PLACEMENT'])
 
         if 'dacky' in os.uname()[1]:
             logging.info('Dacky: Running with memory usage limits')
@@ -255,8 +228,8 @@ class DatasetReader:
         sess.run(init)
 
 
-        if FLAGS.LOAD_FROM_CKPT == True:
-            saver.restore(sess,tf.train.latest_checkpoint(FLAGS.TRAIN_DIR))
+        if self.FLAGS['LOAD_FROM_CKPT'] == True:
+            saver.restore(sess,tf.train.latest_checkpoint(self.FLAGS['TRAIN_DIR']+'/train'))
 
 
         # Start the queue runners.
@@ -264,15 +237,15 @@ class DatasetReader:
 
         # for debugging
 
-        summary_writer = tf.summary.FileWriter(FLAGS.TRAIN_DIR, sess.graph)
-        self.test_summary_writer = tf.summary.FileWriter(FLAGS.TEST_DIR, sess.graph)
+        summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/train', sess.graph)
+        self.test_summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/test', sess.graph)
 
 
         # just to make sure we start from where we left, if load_from_ckpt = True
         loop_start = tf.train.global_step(sess, self.global_step)
-        loop_stop = loop_start + FLAGS.MAX_STEPS
+        loop_stop = loop_start + self.FLAGS['MAX_STEPS']
 
-        if FLAGS.DEBUG_MODE:
+        if self.FLAGS['DEBUG_MODE']:
             sess = tf_debug.LocalCLIDebugWrapperSession(sess)
 
         first_iteration = True
@@ -282,7 +255,7 @@ class DatasetReader:
         test_loss_calculating_index = 1
 
 
-        if FLAGS.TESTING_ENABLED == True:
+        if self.FLAGS['TESTING_ENABLED'] == True:
             test_image_batch, test_label_batch = self.batch_queue_test.dequeue()
             self.test_image_batch, self.test_label_batch = self.get_network_input_forward(test_image_batch,test_label_batch)
 
@@ -317,9 +290,9 @@ class DatasetReader:
             # ####################### Testing #######################
 
             if step % 10 == 0 or first_iteration==True:
-                num_examples_per_step = FLAGS.BATCH_SIZE * FLAGS.NUM_GPUS
+                num_examples_per_step = self.FLAGS['BATCH_SIZE'] * self.FLAGS['NUM_GPUS']
                 examples_per_sec = num_examples_per_step / duration
-                sec_per_batch = duration / FLAGS.NUM_GPUS
+                sec_per_batch = duration / self.FLAGS['NUM_GPUS']
                 first_iteration = False
 
 
@@ -333,12 +306,12 @@ class DatasetReader:
                 summary_str = sess.run(self.summary_op)
                 summary_writer.add_summary(summary_str, step)
 
-                if FLAGS.TESTING_ENABLED == True:
+                if self.FLAGS['TESTING_ENABLED'] == True:
                     self.print_test_epoch_loss(sess)
 
             # Save the model checkpoint periodically.
-            if step % 500 == 0 or (step + 1) == FLAGS.MAX_STEPS:
-                checkpoint_path = os.path.join(FLAGS.TRAIN_DIR, 'model.ckpt')
+            if step % 500 == 0 or (step + 1) == self.FLAGS['MAX_STEPS']:
+                checkpoint_path = os.path.join(self.FLAGS['TRAIN_DIR']+'/train', 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=step)
 
         summary_writer.close()

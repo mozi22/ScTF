@@ -1,11 +1,16 @@
 import run_network
 import data_reader
-import multiprocessing
+import configparser
 # # read data
 # img1 = Image.open(os.path.join(examples_dir,'sculpture1.png'))
 # img2 = Image.open(os.path.join(examples_dir,'sculpture2.png'))
 
 # input_data = prepare_input_data(img1,img2,data_format)
+
+configFile = './configs/driving_train.ini'
+section = 'DRIVING'
+
+
 
 # print(get_available_gpus())
 prefix = '../dataset_synthetic/'
@@ -35,7 +40,7 @@ test_filenames = [
 train_features = data_reader.tf_record_input_pipeline(train_filenames,version='1')
 test_features = data_reader.tf_record_input_pipeline(test_filenames,version='2')
 
-reader = run_network.DatasetReader()
+reader = run_network.DatasetReader(configFile,section)
 reader.train(train_features,test_features)
 # # reader.main(train_features,test_features)
 # # print(helpers.readPFM('0006.pfm'))
