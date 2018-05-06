@@ -17,15 +17,15 @@ filenames_test  = ['driving_TEST.tfrecords','flying_TEST.tfrecords','monkaa_TEST
 
 # # with tf.name_scope("datareader"):
 train_filenames = [
-				prefix+filenames_train[0],
-				prefix+filenames_train[1],
-				prefix+filenames_train[2]
+				prefix+filenames_train[0]
+				# prefix+filenames_train[1],
+				# prefix+filenames_train[2]
 			]
 
 test_filenames = [
-				prefix+filenames_test[0],
-				prefix+filenames_test[1],
-				prefix+filenames_test[2]
+				prefix+filenames_test[0]
+				# prefix+filenames_test[1],
+				# prefix+filenames_test[2]
 ]
 
 # from shutil import copyfile

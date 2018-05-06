@@ -24,7 +24,7 @@ def get_available_gpus():
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/all_losses_all_datasets/train',
+tf.app.flags.DEFINE_string('TRAIN_DIR', './ckpt/driving/all_losses_driving_only/train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 
@@ -41,7 +41,7 @@ tf.app.flags.DEFINE_boolean('DEBUG_MODE', False,
 tf.app.flags.DEFINE_string('TOWER_NAME', 'tower',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_integer('MAX_STEPS', 200000,
+tf.app.flags.DEFINE_integer('MAX_STEPS', 10000,
                             """Number of batches to run.""")
 
 tf.app.flags.DEFINE_boolean('LOG_DEVICE_PLACEMENT', False,
@@ -85,7 +85,7 @@ TESTING:
             7084
 
 '''
-tf.app.flags.DEFINE_integer('TOTAL_TRAIN_EXAMPLES', 28640,
+tf.app.flags.DEFINE_integer('TOTAL_TRAIN_EXAMPLES', 200,
                             """How many samples are there in one epoch of testing.""")
 
 
@@ -93,7 +93,7 @@ tf.app.flags.DEFINE_integer('TOTAL_TRAIN_EXAMPLES', 28640,
 tf.app.flags.DEFINE_boolean('TESTING_ENABLED', False,
                             """Calculate test loss along with train.""")
 
-tf.app.flags.DEFINE_integer('TOTAL_TEST_EXAMPLES', 7084,
+tf.app.flags.DEFINE_integer('TOTAL_TEST_EXAMPLES', 100,
                             """How many samples are there in one epoch of testing.""")
 
 tf.app.flags.DEFINE_integer('TEST_BATCH_SIZE', 16,
@@ -404,8 +404,8 @@ class DatasetReader:
         # FB = forward-backward
         concatenated_FB_images = tf.concat([network_input_images,network_input_images_back],axis=0)
 
-        tf.summary.image('flow_u_1',concatenated_FB_images[:,:,:,0:1])
-        tf.summary.image('flow_v_1',concatenated_FB_images[:,:,:,1:2])
+        tf.summary.image('flow_u_1',network_input_labels[:,:,:,0:1])
+        tf.summary.image('flow_v_1',network_input_labels[:,:,:,1:2])
 
         # backward_flow_images = losses_helper.forward_backward_loss()
 
@@ -413,39 +413,39 @@ class DatasetReader:
 
         predict_flow5, predict_flow2 = network.train_network(concatenated_FB_images)
 
-        self.write_flows_concatenated_side_by_side(concatenated_FB_images,predict_flow2)
         # Build inference Graph. - backward flow
         # Build the portion of the Graph calculating the losses. Note that we will
         # assemble the total_loss using a custom function below.
 
         # losses section
 
-        _ = losses_helper.forward_backward_loss(predict_flow2)
+        # _ = losses_helper.forward_backward_loss(predict_flow2)
 
 
         predict_flow2_forward, predict_flow2_backward,  predict_flow5_forward, predict_flow5_backward = self.get_predict_flow_forward_backward(predict_flow2,predict_flow5)
 
+        self.write_flows_concatenated_side_by_side(network_input_labels,predict_flow2_forward)
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
         _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2_forward)
-        _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2_forward)
-        _ = losses_helper.depth_consistency_loss(network_input_images,predict_flow2_forward)
+        # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2_forward)
+        # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flow2_forward)
 
 
-        scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
-                                                                                np.array([1,2,4,8,16]),
-                                                                                np.array([1,1,1,1,1]))
+        # scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
+        #                                                                         np.array([1,2,4,8,16]),
+        #                                                                         np.array([1,1,1,1,1]))
 
-        scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(predict_flow2_forward,
-                                                                                np.array([1,2,4,8,16]),
-                                                                                np.array([1,1,1,1,1]))
+        # scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(predict_flow2_forward,
+        #                                                                         np.array([1,2,4,8,16]),
+        #                                                                         np.array([1,1,1,1,1]))
 
-        _ = losses_helper.scale_invariant_gradient_loss(
-                scale_invariant_gradient_image_pred,
-                scale_invariant_gradient_image_gt,
-                0.0001,
-                FLAGS.MAX_STEPS,
-                self.global_step)
+        # _ = losses_helper.scale_invariant_gradient_loss(
+        #         scale_invariant_gradient_image_pred,
+        #         scale_invariant_gradient_image_gt,
+        #         0.0001,
+        #         FLAGS.MAX_STEPS,
+        #         self.global_step)
 
         predict_flow5_label = losses_helper.downsample_label(network_input_labels,
                                         size=[5,8],
@@ -487,9 +487,9 @@ class DatasetReader:
         
         return predict_flow2_forward, predict_flow2_backward, predict_flow5_forward, predict_flow5_backward
 
-    def write_flows_concatenated_side_by_side(self,concatenated_FB_images,predict_flow2):
-        concated_flows_u = tf.concat([concatenated_FB_images[:,:,:,0:1],predict_flow2[:,:,:,0:1]],axis=-2)
-        concated_flows_v = tf.concat([concatenated_FB_images[:,:,:,1:2],predict_flow2[:,:,:,1:2]],axis=-2)
+    def write_flows_concatenated_side_by_side(self,network_input_labels,predict_flow2):
+        concated_flows_u = tf.concat([network_input_labels[:,:,:,0:1],predict_flow2[:,:,:,0:1]],axis=-2)
+        concated_flows_v = tf.concat([network_input_labels[:,:,:,1:2],predict_flow2[:,:,:,1:2]],axis=-2)
 
         tf.summary.image('gt_predict_flow_u',concated_flows_u)
         tf.summary.image('gt_predict_flow_v',concated_flows_v)
