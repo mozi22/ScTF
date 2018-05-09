@@ -446,7 +446,7 @@ class DatasetReader:
 
         # losses sections[section_type]
 
-        # _ = losses_helper.forward_backward_loss(predict_flow)
+        _ = losses_helper.forward_backward_loss(predict_flows[0])
 
 
         flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images)
@@ -571,8 +571,8 @@ class DatasetReader:
         tf.summary.image('flow_u_1',network_input_labels[:,:,:,0:1])
         tf.summary.image('flow_v_1',network_input_labels[:,:,:,1:2])
 
-        tf.summary.image('input_image1',concatenated_FB_images[0:batch_half,:,:,0:3])
-        tf.summary.image('input_image2',concatenated_FB_images[batch_half:batch_size,:,:,4:7])
+        tf.summary.image('input_image1',concatenated_FB_images[:,:,:,0:3])
+        tf.summary.image('input_image2',concatenated_FB_images[:,:,:,4:7])
         tf.summary.image('depth_image1',tf.expand_dims(concatenated_FB_images[:,:,:,3],axis=-1))
         tf.summary.image('depth_image2',tf.expand_dims(concatenated_FB_images[:,:,:,7],axis=-1))
 

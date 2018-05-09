@@ -60,8 +60,13 @@ def forward_backward_loss(predicted_flow,weight=100):
     flow_forward = predicted_flow[0:forward_part,:,:,:]
     flow_backward = predicted_flow[forward_part:batch_size,:,:,:]
 
+    flow_forward = tf.check_numerics(flow_forward,'flow_forward Nan Value found')
+    flow_backward = tf.check_numerics(flow_backward,'flow_backward Nan Value found')
+    # flow_forward = tf.Print(flow_forward,[flow_forward],'forward ye hai ')
+    # flow_backward = tf.Print(flow_backward,[flow_backward],'backward ye hai ')
+
     # step 1,2,3
-    B = flow_warp(flow_backward,flow_forward)
+    B = sops.replace_nonfinite(flow_warp(flow_backward,flow_forward))
 
     # step 4
     fb_loss = sops.replace_nonfinite(flow_forward + B)

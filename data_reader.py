@@ -100,17 +100,23 @@ def _parse_function(example_proto):
 
 def read_with_dataset_api(filenames,version='1'):
 
+    # parallel cpu calls
+    num_parallel_calls = 16
+    buffer_size = 50
+    batch_size = 8
+
     dataset_driving = tf.data.TFRecordDataset(filenames[0])
     dataset_flying = tf.data.TFRecordDataset(filenames[1])
     dataset_monkaa = tf.data.TFRecordDataset(filenames[2])
 
-    dataset_driving = dataset_driving.map(_parse_function).shuffle(buffer_size=100)
-    dataset_flying = dataset_flying.map(_parse_function).shuffle(buffer_size=100)
-    dataset_monkaa = dataset_monkaa.map(_parse_function).shuffle(buffer_size=100)
+    dataset_driving = dataset_driving.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
+    dataset_flying = dataset_flying.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
+    dataset_monkaa = dataset_monkaa.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
 
     dataset = tf.data.Dataset.zip((dataset_driving,dataset_flying, dataset_monkaa))
 
-    dataset = dataset.repeat().apply(tf.contrib.data.batch_and_drop_remainder(4))
+    dataset = dataset.shuffle(buffer_size=50).repeat().apply(tf.contrib.data.batch_and_drop_remainder(8))
+    dataset = dataset.prefetch(batch_size)
 
     iterator = dataset.make_initializable_iterator()
 
