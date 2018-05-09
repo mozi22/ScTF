@@ -67,10 +67,9 @@ def forward_backward_loss(predicted_flow,weight=100):
     fb_loss = sops.replace_nonfinite(flow_forward + B)
     fb_loss = sops.replace_nonfinite(tf.reduce_mean(fb_loss))
 
-    # tf.losses.compute_weighted_loss(fb_loss,weights=weight)
-    tf.summary.scalar('fb_loss',fb_loss)
+    tf.losses.compute_weighted_loss(fb_loss,weights=weight)
 
-  # return fb_loss
+  return fb_loss
 
 # loss value ranges around 0.01 to 2.0
 # defined here :: https://arxiv.org/pdf/1702.02295.pdf
@@ -93,15 +92,21 @@ def endpoint_loss(gt_flow,predicted_flow,weight=500):
     diff_u = sops.replace_nonfinite(gt_u - pred_u)
     diff_v = sops.replace_nonfinite(gt_v - pred_v)
 
-    epe_loss = tf.sqrt((diff_u**2) + (diff_v**2))
+    epe_loss = tf.sqrt((diff_u**2) + (diff_v**2) + 1e-6)
+
+    # print('epe krdo')
+    # epe_loss = tf.reduce_mean(epe_loss[:,])
 
     epe_loss = tf.reduce_mean(epe_loss)
+
+    epe_loss = tf.check_numerics(epe_loss,'numeric checker')
     # epe_loss = tf.Print(epe_loss,[epe_loss],'epeloss ye hai ')
 
     tf.losses.compute_weighted_loss(epe_loss,weights=weight)
   
-
   return epe_loss
+
+
 
 def depth_consistency_loss(img,predicted_optflow_uv,weight=10):
 
@@ -184,14 +189,14 @@ def scale_invariant_gradient_loss(inp, gt, epsilon,decay_steps,global_step,weigh
 
 
 
-    weight_increase_rate = tf.train.polynomial_decay(FLAGS.SIGL_START_LEARNING_RATE, global_step,
-                                                    decay_steps, FLAGS.SIGL_END_LEARNING_RATE,
-                                                    power=FLAGS.SIGL_POWER)
+    # weight_increase_rate = tf.train.polynomial_decay(FLAGS.SIGL_START_LEARNING_RATE, global_step,
+    #                                                 decay_steps, FLAGS.SIGL_END_LEARNING_RATE,
+    #                                                 power=FLAGS.SIGL_POWER)
 
-    tf.summary.scalar('weight_increase_rate',weight_increase_rate)
+    # tf.summary.scalar('weight_increase_rate',weight)
 
     # tmp = tf.Print(tmp,[tmp],'sigl ye hai ')
-    tf.losses.compute_weighted_loss(tmp,weights=weight_increase_rate)
+    tf.losses.compute_weighted_loss(tmp,weights=weight)
 
     return tmp
 

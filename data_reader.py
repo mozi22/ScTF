@@ -54,6 +54,69 @@ def tf_record_input_pipeline(filenames,version='1'):
     # return train_for_opticalflow(image1,image2,optical_flow)
     return train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
 
+def _parse_function(example_proto):
+
+    features = tf.parse_single_example(example_proto, {
+        'depth1': tf.FixedLenFeature([], tf.string),
+        'depth2': tf.FixedLenFeature([], tf.string),
+        'depth_change': tf.FixedLenFeature([], tf.string),
+        'opt_flow': tf.FixedLenFeature([], tf.string),
+        'image1': tf.FixedLenFeature([], tf.string),
+        'image2': tf.FixedLenFeature([], tf.string)
+    },
+    name="ExampleParserV")
+    # Convert the image data from binary back to arrays(Tensors)
+    depth1 = tf.decode_raw(features['depth1'], tf.float32)
+    depth2 = tf.decode_raw(features['depth2'], tf.float32)
+    depth_chng = tf.decode_raw(features['depth_change'], tf.float32)
+
+    image1 = tf.decode_raw(features['image1'], tf.uint8)
+    image2 = tf.decode_raw(features['image2'], tf.uint8)
+    opt_flow = tf.decode_raw(features['opt_flow'], tf.float32)
+
+    input_pipeline_dimensions = [224, 384]
+    image1 = tf.to_float(image1)
+    image2 = tf.to_float(image2)
+
+
+    # reshape data to its original form
+    image1 = tf.reshape(image1, [input_pipeline_dimensions[0],input_pipeline_dimensions[1], 3],name="reshape_img1")
+    image2 = tf.reshape(image2, [input_pipeline_dimensions[0],input_pipeline_dimensions[1], 3],name="reshape_img2")
+
+    depth1 = tf.reshape(depth1, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp1")
+    depth2 = tf.reshape(depth2, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp2")
+
+    optical_flow = tf.reshape(opt_flow, [input_pipeline_dimensions[0],input_pipeline_dimensions[1],2],name="reshape_opt_flow")
+    depth_chng = tf.reshape(depth_chng,[input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_depth_change")
+
+
+    image1 = tf.divide(image1,[255])
+    image2 = tf.divide(image2,[255])
+
+    final_result = train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
+
+    return final_result["input_n"], final_result["label_n"]
+
+
+def read_with_dataset_api(filenames,version='1'):
+
+    dataset_driving = tf.data.TFRecordDataset(filenames[0])
+    dataset_flying = tf.data.TFRecordDataset(filenames[1])
+    dataset_monkaa = tf.data.TFRecordDataset(filenames[2])
+
+    dataset_driving = dataset_driving.map(_parse_function).shuffle(buffer_size=100)
+    dataset_flying = dataset_flying.map(_parse_function).shuffle(buffer_size=100)
+    dataset_monkaa = dataset_monkaa.map(_parse_function).shuffle(buffer_size=100)
+
+    dataset = tf.data.Dataset.zip((dataset_driving,dataset_flying, dataset_monkaa))
+
+    dataset = dataset.repeat().apply(tf.contrib.data.batch_and_drop_remainder(4))
+
+    iterator = dataset.make_initializable_iterator()
+
+    return iterator
+
+
 
 def train_for_opticalflow(image1,image2,optical_flow):
 

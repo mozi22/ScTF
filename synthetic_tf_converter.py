@@ -50,7 +50,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 1
+		self.dataset_number = 3
 
 		# these are inverse depths
 		self.max_depth_driving = 0.232809
@@ -117,7 +117,8 @@ class SyntheticTFRecordsWriter:
 
 
 		# for monkaa ( need to add the others here too for large dataset)
-		self.monkaa_scenes = ['a_rain_of_stones_x2','eating_camera2_x2','treeflight_x2','flower_storm_augmented1_x2',
+		self.monkaa_scenes = ['a_rain_of_stones_x2','eating_camera2_x2','treeflight_x2',
+		# 'flower_storm_augmented1_x2',
 		'eating_x2','lonetree_augmented1_x2','funnyworld_x2','family_x2',
 		'treeflight_augmented1_x2','funnyworld_augmented0_x2','eating_naked_camera2_x2','funnyworld_camera2_x2',
 		'lonetree_winter_x2','funnyworld_camera2_augmented1_x2','flower_storm_x2','treeflight_augmented0_x2',
@@ -1016,4 +1017,4 @@ def convert_whole_dataset():
 def convert_for_testing():
 	return SyntheticTFRecordsWriter()
 
-# convert_whole_dataset()
+convert_whole_dataset()

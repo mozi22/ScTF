@@ -61,25 +61,26 @@ class DatasetReader:
             train_filenames = [prefix+filenames_train[0]]
             test_filenames = [prefix+filenames_test[0]]
         elif sections[section_type] == sections[1]:
+            train_filenames = [prefix+filenames_train[0],prefix+filenames_train[1]]
+            test_filenames = [prefix+filenames_test[0],prefix+filenames_test[1]]
+        elif sections[section_type] == sections[2]:
             train_filenames = [prefix+filenames_train[0],prefix+filenames_train[1],prefix+filenames_train[2]]
             test_filenames = [prefix+filenames_test[0],prefix+filenames_test[1],prefix+filenames_test[2]]
 
-        train_features = data_reader.tf_record_input_pipeline(train_filenames,version='1')
-        test_features = data_reader.tf_record_input_pipeline(test_filenames,version='2')
+        train_iterator = data_reader.read_with_dataset_api(train_filenames,version='1')
+        test_iterator = data_reader.read_with_dataset_api(test_filenames,version='2')
 
-        return train_features, test_features
+        return train_iterator, test_iterator
 
 
     def preprocess(self):
         file = './configs/training.ini'
-        sections = ['DRIVING','ALL']
-        section_type = 0
 
+        section_type = 2
 
         parser = configp.ConfigParser()
         parser.read(file)
-
-        train_features, test_features = self.create_input_pipeline(sections,section_type,parser[sections[section_type]]['DATASET_FOLDER'])
+        sections = parser.sections()
 
         self.FLAGS = {
             # TRAIN
@@ -123,11 +124,13 @@ class DatasetReader:
         self.TRAIN_EPOCH = math.ceil(self.FLAGS['TOTAL_TRAIN_EXAMPLES'] / self.FLAGS['BATCH_SIZE'])
         self.TEST_EPOCH = math.ceil(self.FLAGS['TOTAL_TEST_EXAMPLES'] / self.FLAGS['TEST_BATCH_SIZE'])
 
-        return train_features, test_features
+        train_iterator, test_iterator = self.create_input_pipeline(sections,section_type,parser[sections[section_type]]['DATASET_FOLDER'])
+
+        return train_iterator, test_iterator
 
 
 
-    def train(self,features_train,features_test):
+    def train(self,iterator_train,iterator_test):
 
         self.global_step = tf.get_variable(
             'global_step', [],
@@ -145,30 +148,30 @@ class DatasetReader:
 
         opt = tf.train.AdamOptimizer(learning_rate)
     
-        images, labels = tf.train.shuffle_batch(
-                            [ features_train['input_n'] , features_train['label_n'] ],
-                            batch_size=self.FLAGS['BATCH_SIZE'],
-                            capacity=self.FLAGS['SHUFFLE_BATCH_QUEUE_CAPACITY'],
-                            num_threads=self.FLAGS['SHUFFLE_BATCH_THREADS'],
-                            min_after_dequeue=self.FLAGS['SHUFFLE_BATCH_MIN_AFTER_DEQUEUE'],
-                            enqueue_many=False)
+        # images, labels = tf.train.shuffle_batch(
+        #                     [ features_train['input_n'] , features_train['label_n'] ],
+        #                     batch_size=self.FLAGS['BATCH_SIZE'],
+        #                     capacity=self.FLAGS['SHUFFLE_BATCH_QUEUE_CAPACITY'],
+        #                     num_threads=self.FLAGS['SHUFFLE_BATCH_THREADS'],
+        #                     min_after_dequeue=self.FLAGS['SHUFFLE_BATCH_MIN_AFTER_DEQUEUE'],
+        #                     enqueue_many=False)
 
-        batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
-            [images, labels], capacity=self.FLAGS['SHUFFLE_BATCH_QUEUE_CAPACITY'] * self.FLAGS['NUM_GPUS'])
+        # batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
+        #     [images, labels], capacity=self.FLAGS['SHUFFLE_BATCH_QUEUE_CAPACITY'] * self.FLAGS['NUM_GPUS'])
 
 
 
-        if self.FLAGS['TESTING_ENABLED'] == True:
-            self.images_test, self.labels_test = tf.train.shuffle_batch(
-                                [ features_test['input_n'] , features_test['label_n'] ],
-                                batch_size=self.FLAGS['TEST_BATCH_SIZE'],
-                                capacity=self.FLAGS['SHUFFLE_BATCH_QUEUE_CAPACITY'],
-                                num_threads=self.FLAGS['SHUFFLE_BATCH_THREADS'],
-                                min_after_dequeue=self.FLAGS['SHUFFLE_BATCH_MIN_AFTER_DEQUEUE'],
-                                enqueue_many=False)
+        # if self.FLAGS['TESTING_ENABLED'] == True:
+        #     self.images_test, self.labels_test = tf.train.shuffle_batch(
+        #                         [ features_test['input_n'] , features_test['label_n'] ],
+        #                         batch_size=self.FLAGS['TEST_BATCH_SIZE'],
+        #                         capacity=self.FLAGS['SHUFFLE_BATCH_QUEUE_CAPACITY'],
+        #                         num_threads=self.FLAGS['SHUFFLE_BATCH_THREADS'],
+        #                         min_after_dequeue=self.FLAGS['SHUFFLE_BATCH_MIN_AFTER_DEQUEUE'],
+        #                         enqueue_many=False)
     
-            self.batch_queue_test = tf.contrib.slim.prefetch_queue.prefetch_queue(
-                [self.images_test, self.labels_test], capacity=self.FLAGS['SHUFFLE_BATCH_QUEUE_CAPACITY'] * self.FLAGS['NUM_GPUS'])
+            # self.batch_queue_test = tf.contrib.slim.prefetch_queue.prefetch_queue(
+            #     [self.images_test, self.labels_test], capacity=self.FLAGS['SHUFFLE_BATCH_QUEUE_CAPACITY'] * self.FLAGS['NUM_GPUS'])
         
 
         
@@ -179,7 +182,7 @@ class DatasetReader:
               with tf.name_scope('%s_%d' % ('tower', i)) as scope:
 
                 # Dequeues one batch for the GPU
-                image_batch, label_batch = batch_queue.dequeue()
+                image_batch, label_batch = self.combine_batches_from_datasets(iterator_train.get_next())
 
                 # Calculate the loss for one tower of the CIFAR model. This function
                 # constructs the entire CIFAR model but shares the variables across
@@ -195,6 +198,7 @@ class DatasetReader:
 
                 # Calculate the gradients for the batch of data on this CIFAR tower.
                 grads = opt.compute_gradients(self.loss)
+                # grads = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in grads]
 
                 # Keep track of the gradients across all towers.
                 tower_grads.append(grads)
@@ -288,6 +292,10 @@ class DatasetReader:
         if self.FLAGS['TESTING_ENABLED'] == True:
             test_image_batch, test_label_batch = self.batch_queue_test.dequeue()
             self.test_image_batch, self.test_label_batch = self.get_network_input_forward(test_image_batch,test_label_batch)
+            sess.run(test_iterator.initializer)
+
+
+        sess.run(train_iterator.initializer)
 
         # main loop
         for step in range(loop_start,loop_stop):
@@ -332,6 +340,10 @@ class DatasetReader:
             self.log(message=(format_str % (datetime.now(), step, loss_value,
                                  examples_per_sec, sec_per_batch)))
 
+            # if loss_value > 100:
+            #     summary_str = sess.run(self.summary_op)
+            #     summary_writer.add_summary(summary_str, step)
+
             if step % 100 == 0 and step!=0:
                 summary_str = sess.run(self.summary_op)
                 summary_writer.add_summary(summary_str, step)
@@ -345,6 +357,21 @@ class DatasetReader:
                 saver.save(sess, checkpoint_path, global_step=step)
 
         summary_writer.close()
+    
+    def combine_batches_from_datasets(self,batches):
+        driving_batch_img = batches[0][0]
+        driving_batch_lbl = batches[0][1]
+
+        flying_batch_img = batches[1][0]
+        flying_batch_lbl = batches[1][1]
+
+        monkaa_batch_img = batches[2][0]
+        monkaa_batch_lbl = batches[2][1]
+
+        final_img_batch = tf.concat((driving_batch_img,flying_batch_img,monkaa_batch_img),axis=0)
+        final_lbl_batch = tf.concat((driving_batch_lbl,flying_batch_lbl,monkaa_batch_lbl),axis=0)
+
+        return final_img_batch, final_lbl_batch
 
 
     def print_test_epoch_loss(self,sess):
@@ -407,55 +434,96 @@ class DatasetReader:
         # FB = forward-backward
         concatenated_FB_images = tf.concat([network_input_images,network_input_images_back],axis=0)
 
-        tf.summary.image('flow_u_1',network_input_labels[:,:,:,0:1])
-        tf.summary.image('flow_v_1',network_input_labels[:,:,:,1:2])
-
-        # backward_flow_images = losses_helper.forward_backward_loss()
 
         # Build inference Graph. - forward flow
 
-        predict_flow5, predict_flow2 = network.train_network(concatenated_FB_images)
+        predict_flows = network.train_network(concatenated_FB_images)
 
+        # backward_flow_images = losses_helper.forward_backward_loss(predict_flow)
         # Build inference Graph. - backward flow
         # Build the portion of the Graph calculating the losses. Note that we will
         # assemble the total_loss using a custom function below.
 
         # losses sections[section_type]
 
-        _ = losses_helper.forward_backward_loss(predict_flow2)
+        # _ = losses_helper.forward_backward_loss(predict_flow)
 
 
-        predict_flow2_forward, predict_flow2_backward,  predict_flow5_forward, predict_flow5_backward = self.get_predict_flow_forward_backward(predict_flow2,predict_flow5)
+        flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images)
 
-        self.write_flows_concatenated_side_by_side(network_input_labels,predict_flow2_forward)
+        self.write_flows_concatenated_side_by_side(network_input_labels,flows_dict['predict_flow'][0])
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
-        _ = losses_helper.endpoint_loss(network_input_labels,predict_flow2_forward)
-        _ = losses_helper.photoconsistency_loss(network_input_images,predict_flow2_forward)
-        _ = losses_helper.depth_consistency_loss(network_input_images,predict_flow2_forward)
+
+        # supervised
+
+        '''
+            Applying epe loss on full resolution
+        '''
+        _ = losses_helper.endpoint_loss(network_input_labels,flows_dict['predict_flow'][0])
+
+        '''
+            Applying epe loss on lower resolutions
+        '''
+
+        network_input_labels_refine3 = losses_helper.downsample_label(network_input_labels,
+                                        size=[20,32],factorU=0.125,factorV=0.125)
+        network_input_labels_refine2 = losses_helper.downsample_label(network_input_labels,
+                                        size=[40,64],factorU=0.25,factorV=0.25)
+        network_input_labels_refine1 = losses_helper.downsample_label(network_input_labels,
+                                        size=[80,128],factorU=0.5,factorV=0.5)
 
 
-        scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
-                                                                                np.array([1,2,4,8,16]),
-                                                                                np.array([1,1,1,1,1]))
 
-        scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(predict_flow2_forward,
-                                                                                np.array([1,2,4,8,16]),
-                                                                                np.array([1,1,1,1,1]))
+        with tf.variable_scope('epe_loss_refine_3'):
+            _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict['predict_flow_ref3'][0],100)
+        with tf.variable_scope('epe_loss_refine_3'):
+            _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict['predict_flow_ref2'][0],100)
+        with tf.variable_scope('epe_loss_refine_3'):
+            _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict['predict_flow_ref1'][0],100)
 
-        _ = losses_helper.scale_invariant_gradient_loss(
-                scale_invariant_gradient_image_pred,
-                scale_invariant_gradient_image_gt,
-                0.0001,
-                self.FLAGS['MAX_STEPS'],
-                self.global_step)
+        # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flows[0])
+        # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flows[0])
 
-        predict_flow5_label = losses_helper.downsample_label(network_input_labels,
-                                        size=[5,8],
-                                        factorU=0.031,
-                                        factorV=0.026)
 
-        _ = losses_helper.endpoint_loss(predict_flow5_label,predict_flow5_forward,100)
+        # scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
+        #                                                                         np.array([1,2,4,8,16]),
+        #                                                                         np.array([1,1,1,1,1]))
+
+        # scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(predict_flow2_forward,
+        #                                                                         np.array([1,2,4,8,16]),
+        #                                                                         np.array([1,1,1,1,1]))
+
+        # _ = losses_helper.scale_invariant_gradient_loss(
+        #         scale_invariant_gradient_image_pred,
+        #         scale_invariant_gradient_image_gt,
+        #         0.0001,
+        #         self.FLAGS['MAX_STEPS'],
+        #         self.global_step)
+
+        '''
+            Applying pc loss on lower resolutions
+        '''
+
+        concatenated_FB_images_refine3 = tf.image.resize_images(concatenated_FB_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        concatenated_FB_images_refine2 = tf.image.resize_images(concatenated_FB_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        concatenated_FB_images_refine1 = tf.image.resize_images(concatenated_FB_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+
+        predict_flow2_refine3 = losses_helper.downsample_label(predict_flows[1],
+                                        size=[20,32],factorU=0.125,factorV=0.125)
+        predict_flow2_refine2 = losses_helper.downsample_label(predict_flows[2],
+                                        size=[40,64],factorU=0.25,factorV=0.25)
+        predict_flow2_refine1 = losses_helper.downsample_label(predict_flows[3],
+                                        size=[80,128],factorU=0.5,factorV=0.5)
+
+
+        with tf.variable_scope('photoconsistency_loss_refine_3'):
+            _ = losses_helper.photoconsistency_loss(concatenated_FB_images_refine3,predict_flow2_refine3)
+        with tf.variable_scope('photoconsistency_loss_refine_2'):
+            _ = losses_helper.photoconsistency_loss(concatenated_FB_images_refine2,predict_flow2_refine2)
+        with tf.variable_scope('photoconsistency_loss_refine_1'):
+            _ = losses_helper.photoconsistency_loss(concatenated_FB_images_refine1,predict_flow2_refine1)
+
         # _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
 
 
@@ -477,18 +545,44 @@ class DatasetReader:
         return total_loss
 
 
-    def get_predict_flow_forward_backward(self,predict_flow2,predict_flow5):
-        batch_size = predict_flow2.get_shape().as_list()[0]
+    def get_predict_flow_forward_backward(self,predict_flows,network_input_labels,concatenated_FB_images):
+        batch_size = predict_flows[0].get_shape().as_list()[0]
         batch_half = batch_size // 2
 
-        # for other losses, we only consider forward flow
-        predict_flow2_forward = predict_flow2[0:batch_half,:,:,:]
-        predict_flow2_backward = predict_flow2[batch_half:batch_size,:,:,:]
+        predict_flow = predict_flows[0]
+        predict_flow_ref3 = predict_flows[1]
+        predict_flow_ref2 = predict_flows[2]
+        predict_flow_ref1 = predict_flows[3]
 
-        predict_flow5_forward = predict_flow5[0:batch_half,:,:,:]
-        predict_flow5_backward = predict_flow5[batch_half:batch_size,:,:,:]
-        
-        return predict_flow2_forward, predict_flow2_backward, predict_flow5_forward, predict_flow5_backward
+        # for other losses, we only consider forward flow
+        predict_flow_forward = predict_flow[0:batch_half,:,:,:]
+        predict_flow_backward = predict_flow[batch_half:batch_size,:,:,:]
+
+        predict_flow_forward_ref3 = predict_flow_ref3[0:batch_half,:,:,:]
+        predict_flow_backward_ref3 = predict_flow_ref3[batch_half:batch_size,:,:,:]
+
+        predict_flow_forward_ref2 = predict_flow_ref2[0:batch_half,:,:,:]
+        predict_flow_backward_ref2 = predict_flow_ref2[batch_half:batch_size,:,:,:]
+
+        predict_flow_forward_ref1 = predict_flow_ref1[0:batch_half,:,:,:]
+        predict_flow_backward_ref1 = predict_flow_ref1[batch_half:batch_size,:,:,:]
+
+
+        tf.summary.image('flow_u_1',network_input_labels[:,:,:,0:1])
+        tf.summary.image('flow_v_1',network_input_labels[:,:,:,1:2])
+
+        tf.summary.image('input_image1',concatenated_FB_images[0:batch_half,:,:,0:3])
+        tf.summary.image('input_image2',concatenated_FB_images[batch_half:batch_size,:,:,4:7])
+        tf.summary.image('depth_image1',tf.expand_dims(concatenated_FB_images[:,:,:,3],axis=-1))
+        tf.summary.image('depth_image2',tf.expand_dims(concatenated_FB_images[:,:,:,7],axis=-1))
+
+       
+        return {
+            'predict_flow': [predict_flow_forward, predict_flow_backward],
+            'predict_flow_ref3': [predict_flow_forward_ref3,predict_flow_backward_ref3],
+            'predict_flow_ref2': [predict_flow_forward_ref2, predict_flow_backward_ref2],
+            'predict_flow_ref1': [predict_flow_forward_ref1, predict_flow_backward_ref1]
+        }
 
     def write_flows_concatenated_side_by_side(self,network_input_labels,predict_flow2):
         concated_flows_u = tf.concat([network_input_labels[:,:,:,0:1],predict_flow2[:,:,:,0:1]],axis=-2)
@@ -551,5 +645,5 @@ class DatasetReader:
 ################################# MAIN ######################################
 
 reader = DatasetReader()
-train_features,test_features = reader.preprocess()
-reader.train(train_features,test_features)
+train_iterator,test_iterator = reader.preprocess()
+reader.train(train_iterator,test_iterator)

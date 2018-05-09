@@ -180,6 +180,7 @@ def train_network(image_pair):
         )
 
 
+    # shape=(8, 20, 32, 384)
     with tf.variable_scope('refine3'):
         concat3 = _refine(
             inp=concat4, 
@@ -187,19 +188,25 @@ def train_network(image_pair):
             features_direct=conv3_1
         )
 
+        predict_flow_ref3 = _predict_flow(concat3)
+
+    # shape=(8, 40, 64, 192)
     with tf.variable_scope('refine2'):
         concat2 = _refine(
             inp=concat3, 
             num_outputs=128,
             features_direct=conv2
         )
+        predict_flow_ref2 = _predict_flow(concat2)
 
+    # shape=(8, 80, 128, 96)
     with tf.variable_scope('refine1'):
         concat1 = _refine(
             inp=concat2,
             num_outputs=64, 
             features_direct=conv1
         )
+        predict_flow_ref1 = _predict_flow(concat1)
 
 
     with tf.variable_scope('refine0'):
@@ -209,10 +216,13 @@ def train_network(image_pair):
             features_direct=conv0
         )
 
+
     with tf.variable_scope('predict_flow2'):
 
-        predict_flow2 = _predict_flow(concat0)
+        predict_flow = _predict_flow(concat0)
     
-    predict_flow2 = change_nans_to_zeros(predict_flow2)
+    # predict_flow = change_nans_to_zeros(predict_flow2)
 
-    return predict_flow4, predict_flow2
+
+
+    return [predict_flow, predict_flow_ref3, predict_flow_ref2, predict_flow_ref1]
