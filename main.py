@@ -2,6 +2,7 @@ import os
 import re
 import time
 import math
+import sys
 import network
 import logging
 import numpy as np
@@ -274,8 +275,10 @@ class DatasetReader:
 
         # for debugging
 
-        summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/train', sess.graph)
-        self.test_summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/test', sess.graph)
+        if self.FLAGS['TESTING_ENABLED'] == False:
+            summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/train', sess.graph)
+        else:
+            self.test_summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/test', sess.graph)
 
 
         # just to make sure we start from where we left, if load_from_ckpt = True
@@ -293,9 +296,8 @@ class DatasetReader:
 
 
         if self.FLAGS['TESTING_ENABLED'] == True:
-            test_image_batch, test_label_batch = self.batch_queue_test.dequeue()
-            self.test_image_batch, self.test_label_batch = self.get_network_input_forward(test_image_batch,test_label_batch)
-            sess.run(test_iterator.initializer)
+            self.print_test_epoch_loss(sess,iterator_test)
+            sys.exit('testing finished...')
 
 
 
@@ -350,8 +352,6 @@ class DatasetReader:
                 summary_str = sess.run(self.summary_op)
                 summary_writer.add_summary(summary_str, step)
 
-                if self.FLAGS['TESTING_ENABLED'] == True:
-                    self.print_test_epoch_loss(sess)
 
             # Save the model checkpoint periodically.
             if step % 500 == 0 or (step + 1) == self.FLAGS['MAX_STEPS']:
@@ -382,10 +382,10 @@ class DatasetReader:
         self.log(message='Testing ...')
         self.log()
 
+        image_batch, label_batch = self.combine_batches_from_datasets(iterator_train.get_next())
+        image_batch, label_batch = self.get_network_input_forward(image_batch,label_batch)
         for step in range(0,self.TEST_EPOCH):
 
-            image_batch, label_batch = self.batch_queue_test.dequeue()
-            image_batch, label_batch = self.get_network_input_forward(image_batch,label_batch)
 
             image,label = sess.run([image_batch, label_batch])
 
