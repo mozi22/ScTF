@@ -48,27 +48,27 @@ class DatasetReader:
                 self.delete_files_in_directories(dir_path+'/train')
                 self.delete_files_in_directories(dir_path+'/test')
 
-    def create_input_pipeline(self,sections,section_type,dataset_folder):
+    def create_input_pipeline(self,sections,section_type,dataset_folder,train_batch,test_batch):
         
         prefix = dataset_folder
 
         # memory_folder = '/dev/shm/'
 
-        filenames_train  = ['driving_TRAIN.tfrecords','flying_TRAIN.tfrecords','monkaa_TRAIN.tfrecords']
-        filenames_test  = ['driving_TEST.tfrecords','flying_TEST.tfrecords','monkaa_TEST.tfrecords']
+        self.filenames_train  = ['driving_TRAIN.tfrecords','flying_TRAIN.tfrecords','monkaa_TRAIN.tfrecords']
+        self.filenames_test  = ['driving_TEST.tfrecords','flying_TEST.tfrecords','monkaa_TEST.tfrecords']
 
         if sections[section_type] == sections[0]:
-            train_filenames = [prefix+filenames_train[0]]
-            test_filenames = [prefix+filenames_test[0]]
+            train_filenames = [prefix+self.filenames_train[0]]
+            test_filenames = [prefix+self.filenames_test[0]]
         elif sections[section_type] == sections[1]:
-            train_filenames = [prefix+filenames_train[0],prefix+filenames_train[1]]
-            test_filenames = [prefix+filenames_test[0],prefix+filenames_test[1]]
+            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1]]
+            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1]]
         elif sections[section_type] == sections[2]:
-            train_filenames = [prefix+filenames_train[0],prefix+filenames_train[1],prefix+filenames_train[2]]
-            test_filenames = [prefix+filenames_test[0],prefix+filenames_test[1],prefix+filenames_test[2]]
+            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2]]
+            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
 
-        train_iterator = data_reader.read_with_dataset_api(train_filenames,version='1')
-        test_iterator = data_reader.read_with_dataset_api(test_filenames,version='2')
+        train_iterator = data_reader.read_with_dataset_api(train_batch,train_filenames,version='1')
+        test_iterator = data_reader.read_with_dataset_api(test_batch,test_filenames,version='2')
 
         return train_iterator, test_iterator
 
@@ -116,15 +116,16 @@ class DatasetReader:
         self.create_and_remove_directories(self.FLAGS['TRAIN_DIR'],self.FLAGS['CLEAN_FILES'],self.FLAGS['LOAD_FROM_CKPT'])
 
 
-        # for testing
-        self.X = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'], 224, 384, 8))
-        self.Y = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'], 224, 384, 3))
 
         # gives the # of steps required to complete 1 epoch
         self.TRAIN_EPOCH = math.ceil(self.FLAGS['TOTAL_TRAIN_EXAMPLES'] / self.FLAGS['BATCH_SIZE'])
         self.TEST_EPOCH = math.ceil(self.FLAGS['TOTAL_TEST_EXAMPLES'] / self.FLAGS['TEST_BATCH_SIZE'])
 
         train_iterator, test_iterator = self.create_input_pipeline(sections,section_type,parser[sections[section_type]]['DATASET_FOLDER'])
+
+        # for testing
+        self.X = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'] * len(self.filenames_test), 224, 384, 8))
+        self.Y = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'] * len(self.filenames_test), 224, 384, 3))
 
         return train_iterator, test_iterator
 
