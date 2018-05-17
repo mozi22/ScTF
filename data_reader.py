@@ -118,12 +118,11 @@ def read_with_dataset_api_for_test(batch_size,filenames,version='1'):
     return iterator
 
 
-def read_with_dataset_api(filenames,version='1'):
+def read_with_dataset_api(batch_size,filenames,version='1'):
 
     # parallel cpu calls
     num_parallel_calls = 16
     buffer_size = 50
-    batch_size = 8
 
     dataset_driving = tf.data.TFRecordDataset(filenames[0])
     dataset_flying = tf.data.TFRecordDataset(filenames[1])
@@ -135,12 +134,11 @@ def read_with_dataset_api(filenames,version='1'):
 
     dataset = tf.data.Dataset.zip((dataset_driving,dataset_flying, dataset_monkaa))
 
-    dataset = dataset.shuffle(buffer_size=50).repeat().apply(tf.contrib.data.batch_and_drop_remainder(8))
+    dataset = dataset.shuffle(buffer_size=50).repeat().apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
     dataset = dataset.prefetch(batch_size)
 
-    iterator = dataset.make_initializable_iterator()
 
-    return iterator
+    return dataset
 
 
 

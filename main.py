@@ -68,8 +68,12 @@ class DatasetReader:
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
 
-        train_iterator = data_reader.read_with_dataset_api(train_batch,train_filenames,version='1')
-        test_iterator = data_reader.read_with_dataset_api(test_batch,test_filenames,version='2')
+        train_dataset = data_reader.read_with_dataset_api(train_batch,train_filenames,version='1')
+        test_dataset = data_reader.read_with_dataset_api(test_batch,test_filenames,version='2')
+
+        train_iterator = train_dataset.make_initializable_iterator()
+        test_iterator = test_dataset.make_one_shot_iterator()
+
 
         return train_iterator, test_iterator
 
@@ -122,7 +126,7 @@ class DatasetReader:
         self.TRAIN_EPOCH = math.ceil(self.FLAGS['TOTAL_TRAIN_EXAMPLES'] / self.FLAGS['BATCH_SIZE'])
         self.TEST_EPOCH = math.ceil(self.FLAGS['TOTAL_TEST_EXAMPLES'] / self.FLAGS['TEST_BATCH_SIZE'])
 
-        train_iterator, test_iterator = self.create_input_pipeline(sections,section_type,parser[sections[section_type]]['DATASET_FOLDER'])
+        train_iterator, test_iterator = self.create_input_pipeline(sections,section_type,parser[sections[section_type]]['DATASET_FOLDER'],self.FLAGS['BATCH_SIZE'],self.FLAGS['TEST_BATCH_SIZE'])
 
         # for testing
         self.X = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'] * len(self.filenames_test), 224, 384, 8))
@@ -376,13 +380,14 @@ class DatasetReader:
         return final_img_batch, final_lbl_batch
 
 
-    def print_test_epoch_loss(self,sess):
+    def print_test_epoch_loss(self,sess,iterator_test):
     
         self.log()
         self.log(message='Testing ...')
         self.log()
 
-        image_batch, label_batch = self.combine_batches_from_datasets(iterator_train.get_next())
+        # iterator_test = sess.run(iterator_test)
+        image_batch, label_batch = self.combine_batches_from_datasets(iterator_test.get_next())
         image_batch, label_batch = self.get_network_input_forward(image_batch,label_batch)
         for step in range(0,self.TEST_EPOCH):
 
