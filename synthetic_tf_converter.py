@@ -50,7 +50,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 3
+		self.dataset_number = 4
 
 		# these are inverse depths
 		self.max_depth_driving = 0.232809
@@ -87,7 +87,7 @@ class SyntheticTFRecordsWriter:
 		self.dataset_root = '../dataset_synthetic/'
 
 		self.dataset_ptb_root = '../dataset_ptb/'
-		self.ptb_folders = ['EvaluationSet']
+		self.ptb_folders = ['ValidationSet']
 
 
 		self.datasets = ['driving','flyingthings3d','monkaa','ptb']
@@ -188,19 +188,24 @@ class SyntheticTFRecordsWriter:
 
 		print('Converting '+ dataset + '...')
 
-		test_writer = self.init_tfrecord_writer(self.dataset_save+'ktp_TEST.tfrecords')
-		train_writer = self.init_tfrecord_writer(self.dataset_save+'ktp_TRAIN.tfrecords')
+		self.u_factor = 0.414814815
+		self.v_factor = 0.4
 
-		dataset_max_values = [36277,31452,29610,65168,34026,65168,65168,65168,39217,65168,
-							  65168,65168,65168,65168,65168,65168,65168,18042,65168,65168,
-							  65168,65168,35176,65168,30839,65168,17389,65168,65168,65168,
-							  32025,32947,65168,17216,65168,65168,47879,65168,55008,38168,
-							  65168,64405,65168,53785,65168,65168,65168,65168,65168,54029,
-							  65133,65168,56201,55684,65168,65168,65168,65168,65168,65168,
-							  18111,65168,65168,17323,54060,65168,28986,65168,65168,31325,
-							  65168,65168,42126,65168,65168,65168,59395,44633,65168,65036,
-							  65168,37144,65168,63516,17847,65168,22517,65168,65168,65168,
-							  65168,49099,65168,65168,65168]
+		input_size = math.floor(int(960 * self.v_factor)), math.floor(int(540 * self.u_factor))
+
+		test_writer = self.init_tfrecord_writer(self.dataset_save+'ktp_TEST.tfrecords')
+		# train_writer = self.init_tfrecord_writer(self.dataset_save+'ktp_TRAIN.tfrecords')
+
+		# dataset_max_values = [36277,31452,29610,65168,34026,65168,65168,65168,39217,65168,
+		# 					  65168,65168,65168,65168,65168,65168,65168,18042,65168,65168,
+		# 					  65168,65168,35176,65168,30839,65168,17389,65168,65168,65168,
+		# 					  32025,32947,65168,17216,65168,65168,47879,65168,55008,38168,
+		# 					  65168,64405,65168,53785,65168,65168,65168,65168,65168,54029,
+		# 					  65133,65168,56201,55684,65168,65168,65168,65168,65168,65168,
+		# 					  18111,65168,65168,17323,54060,65168,28986,65168,65168,31325,
+		# 					  65168,65168,42126,65168,65168,65168,59395,44633,65168,65036,
+		# 					  65168,37144,65168,63516,17847,65168,22517,65168,65168,65168,
+		# 					  65168,49099,65168,65168,65168]
 
 
 		for set_type,dirss in enumerate(self.ptb_folders):
@@ -215,7 +220,7 @@ class SyntheticTFRecordsWriter:
 
 			for i,item in enumerate(evaluation_dirs):
 
-				max_value = dataset_max_values[i]
+				# max_value = dataset_max_values[i]
 
 				new_path = path + item
 
@@ -254,11 +259,11 @@ class SyntheticTFRecordsWriter:
 					depth1 = Image.open(depth1)
 					depth2 = Image.open(depth2)
 
-					img1 = img1.resize((384,216), Image.BILINEAR)
-					img2 = img2.resize((384,216), Image.BILINEAR)
+					img1 = img1.resize(input_size, Image.BILINEAR)
+					img2 = img2.resize(input_size, Image.BILINEAR)
 
-					depth1 = depth1.resize((384,216), Image.BILINEAR)
-					depth2 = depth2.resize((384,216), Image.BILINEAR)
+					depth1 = depth1.resize(input_size, Image.NEAREST)
+					depth2 = depth2.resize(input_size, Image.NEAREST)
 
 					# depth1 = self.visualize_ptb_image(depth1,True)
 					# depth2 = self.visualize_ptb_image(depth2)
@@ -268,16 +273,17 @@ class SyntheticTFRecordsWriter:
 
 
 					# normalize depth values
-					depth1 = depth1 / max_value
-					depth2 = depth2 / max_value
+					# depth1 = depth1 / max_value
+					# depth2 = depth2 / max_value
 
+					# self.check_max_depth(depth1,depth2,0)
 
-					self.check_max_depth(depth1,depth2,0)
+					img1 = np.array(img1) / 255
+					img2 = np.array(img2) / 255
 
-					
 					patches = [{
-						'web_p': np.array(img1),
-						'web_p2': np.array(img2),
+						'web_p': img1,
+						'web_p2': img2,
 						'depth1': np.array(depth1),
 						'depth2': np.array(depth2),
 						'depth_change': np.array([]),
@@ -285,19 +291,20 @@ class SyntheticTFRecordsWriter:
 						'path': ''
 					}]
 
-					if set_type == 0:
-						self.create_tf_example(patches,
-							'',
-							train_writer,
-							'')
-					else:
-						print('train finished')
-						self.create_tf_example(patches,
-							'',
-							test_writer,
-							'')
 
-		self.close_writer(train_writer)
+					# if set_type == 0:
+					# 	self.create_tf_example(patches,
+					# 		'',
+					# 		train_writer,
+					# 		'')
+					# else:
+					# print('train finished')
+					self.create_tf_example(patches,
+						'',
+						test_writer,
+						'')
+
+		# self.close_writer(train_writer)
 		self.close_writer(test_writer)
 
 
@@ -512,8 +519,6 @@ class SyntheticTFRecordsWriter:
 											camera_L_R,
 											test_writer,
 											time)
-
-
 
 				# 					if self.global_check == self.break_mode:
 				# 						break

@@ -69,20 +69,19 @@ def forward_backward_loss(predicted_flow,weight=100):
     B = sops.replace_nonfinite(flow_warp(flow_backward,flow_forward))
 
     # step 4
-    fb_loss = sops.replace_nonfinite(flow_forward + B)
-    fb_loss = sops.replace_nonfinite(tf.reduce_mean(fb_loss))
+    fb_loss = sops.replace_nonfinite(endpoint_loss(flow_forward,-B,weight,'fb_loss'))
 
-    tf.losses.compute_weighted_loss(fb_loss,weights=weight)
+    # tf.losses.compute_weighted_loss(fb_loss,weights=weight)
 
   return fb_loss
 
 # loss value ranges around 0.01 to 2.0
 # defined here :: https://arxiv.org/pdf/1702.02295.pdf
-def endpoint_loss(gt_flow,predicted_flow,weight=500):
+def endpoint_loss(gt_flow,predicted_flow,weight=500,scope='epe_loss'):
 
-  with tf.variable_scope('epe_loss'):
+  with tf.variable_scope(scope):
 
-    # gt_flow = tf.stop_gradient(gt_flow)
+    gt_flow = tf.stop_gradient(gt_flow)
 
 
     # get u & v value for gt

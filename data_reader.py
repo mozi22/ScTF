@@ -98,6 +98,27 @@ def _parse_function(example_proto):
     return final_result["input_n"], final_result["label_n"]
 
 
+def read_with_dataset_api_for_test(filenames,version='1'):
+    num_parallel_calls = 16
+    buffer_size = 50
+    batch_size = 8
+
+    mapped_handles = []
+    for file in filenames:
+        records_handle = tf.data.TFRecordDataset(file)
+        mapped = records_handle.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
+        mapped_handles.append(mapped)
+
+    dataset = tf.data.Dataset.zip(tuple(mapped_handles))
+
+    dataset = dataset.shuffle(buffer_size=50).repeat().apply(tf.contrib.data.batch_and_drop_remainder(8))
+    dataset = dataset.prefetch(batch_size)
+
+    iterator = dataset.make_initializable_iterator()
+
+    return iterator
+
+
 def read_with_dataset_api(filenames,version='1'):
 
     # parallel cpu calls
@@ -332,8 +353,6 @@ def test(img_pair,img_pair2):
     threads = tf.train.start_queue_runners(sess=sess,coord=coord)
 
     # print(sess.run(images[0,0,:,:,0:3]))
-
-
     coord.request_stop()
     coord.join(threads)
 # combines the depth value in the image RGB values to make it an RGBD tensor.

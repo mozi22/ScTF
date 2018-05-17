@@ -39,12 +39,12 @@ class DatasetReader:
         for fileName in fileList:
             os.remove(dir_path+"/"+fileName)
 
-    def create_and_remove_directories(self,dir_path,clean_existing_files):
+    def create_and_remove_directories(self,dir_path,clean_existing_files,load_from_ckpt):
         if not os.path.exists(dir_path):
             os.makedirs(dir_path+'/train')
             os.makedirs(dir_path+'/test')
         else:
-            if clean_existing_files == True:
+            if clean_existing_files == True and load_from_ckpt == False:
                 self.delete_files_in_directories(dir_path+'/train')
                 self.delete_files_in_directories(dir_path+'/test')
 
@@ -86,7 +86,7 @@ class DatasetReader:
             # TRAIN
             'BATCH_SIZE': int(parser[sections[section_type]]['BATCH_SIZE']),
             'TRAIN_DIR': parser[sections[section_type]]['TRAIN_DIR'],
-            'LOAD_FROM_CKPT': parser[sections[section_type]]['LOAD_FROM_CKPT'],
+            'LOAD_FROM_CKPT': parser[sections[section_type]].getboolean('LOAD_FROM_CKPT'),
             'DEBUG_MODE': parser[sections[section_type]].getboolean('DEBUG_MODE'),
             'TOWER_NAME': parser[sections[section_type]]['TOWER_NAME'],
             'MAX_STEPS': int(parser[sections[section_type]]['MAX_STEPS']),
@@ -113,7 +113,7 @@ class DatasetReader:
             'POWER': int(parser[sections[section_type]]['POWER'])
         }
 
-        self.create_and_remove_directories(self.FLAGS['TRAIN_DIR'],self.FLAGS['CLEAN_FILES'])
+        self.create_and_remove_directories(self.FLAGS['TRAIN_DIR'],self.FLAGS['CLEAN_FILES'],self.FLAGS['LOAD_FROM_CKPT'])
 
 
         # for testing
@@ -260,10 +260,12 @@ class DatasetReader:
 
         sess = tf.Session(config=tf_config)
         sess.run(init)
+        sess.run(train_iterator.initializer)
 
 
         if self.FLAGS['LOAD_FROM_CKPT'] == True:
-            saver.restore(sess,tf.train.latest_checkpoint(self.FLAGS['TRAIN_DIR']+'/train'))
+            print('loading from ckpt...')
+            saver.restore(sess,tf.train.latest_checkpoint(self.FLAGS['TRAIN_DIR']+'/train/'))
 
 
         # Start the queue runners.
@@ -295,7 +297,6 @@ class DatasetReader:
             sess.run(test_iterator.initializer)
 
 
-        sess.run(train_iterator.initializer)
 
         # main loop
         for step in range(loop_start,loop_stop):
@@ -446,7 +447,12 @@ class DatasetReader:
 
         # losses sections[section_type]
 
-        _ = losses_helper.forward_backward_loss(predict_flows[0])
+        # with tf.variable_scope('fb_loss_refine_3'):
+        #     _ = losses_helper.forward_backward_loss(predict_flows[1])
+        # with tf.variable_scope('fb_loss_refine_3'):
+        #     _ = losses_helper.forward_backward_loss(predict_flows[2])
+        # with tf.variable_scope('fb_loss_refine_3'):
+        #     _ = losses_helper.forward_backward_loss(predict_flows[3])
 
 
         flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images)
@@ -517,12 +523,12 @@ class DatasetReader:
                                         size=[80,128],factorU=0.5,factorV=0.5)
 
 
-        with tf.variable_scope('photoconsistency_loss_refine_3'):
-            _ = losses_helper.photoconsistency_loss(concatenated_FB_images_refine3,predict_flow2_refine3)
-        with tf.variable_scope('photoconsistency_loss_refine_2'):
-            _ = losses_helper.photoconsistency_loss(concatenated_FB_images_refine2,predict_flow2_refine2)
-        with tf.variable_scope('photoconsistency_loss_refine_1'):
-            _ = losses_helper.photoconsistency_loss(concatenated_FB_images_refine1,predict_flow2_refine1)
+        # with tf.variable_scope('photoconsistency_loss_refine_3'):
+        #     _ = losses_helper.photoconsistency_loss(concatenated_FB_images_refine3,predict_flow2_refine3)
+        # with tf.variable_scope('photoconsistency_loss_refine_2'):
+        #     _ = losses_helper.photoconsistency_loss(concatenated_FB_images_refine2,predict_flow2_refine2)
+        # with tf.variable_scope('photoconsistency_loss_refine_1'):
+        #     _ = losses_helper.photoconsistency_loss(concatenated_FB_images_refine1,predict_flow2_refine1)
 
         # _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
 
