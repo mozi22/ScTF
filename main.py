@@ -484,9 +484,77 @@ class DatasetReader:
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
 
+       # predict_flow2_refine3 = losses_helper.downsample_label(predict_flows[1],
+       #                                  size=[20,32],factorU=0.125,factorV=0.125)
+       #  predict_flow2_refine2 = losses_helper.downsample_label(predict_flows[2],
+       #                                  size=[40,64],factorU=0.25,factorV=0.25)
+       #  predict_flow2_refine1 = losses_helper.downsample_label(predict_flows[3],
+       #                                  size=[80,128],factorU=0.5,factorV=0.5)
+
+        '''
+            Applying pc loss on lower resolutions
+        '''
+
+        network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+
+        with tf.variable_scope('photoconsistency_loss_refine_3'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
+        with tf.variable_scope('photoconsistency_loss_refine_2'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
+        with tf.variable_scope('photoconsistency_loss_refine_1'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
 
 
 
+        # supervised loss
+        tf.cond(tf.equals(network_input_labels,0),lambda: self.calculate_end_point_loss(network_input_labels,flows_dict), network_input_labels)
+
+
+        # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flows[0])
+        # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flows[0])
+
+
+        # scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
+        #                                                                         np.array([1,2,4,8,16]),
+        #                                                                         np.array([1,1,1,1,1]))
+
+        # scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(predict_flow2_forward,
+        #                                                                         np.array([1,2,4,8,16]),
+        #                                                                         np.array([1,1,1,1,1]))
+
+        # _ = losses_helper.scale_invariant_gradient_loss(
+        #         scale_invariant_gradient_image_pred,
+        #         scale_invariant_gradient_image_gt,
+        #         0.0001,
+        #         self.FLAGS['MAX_STEPS'],
+        #         self.global_step)
+
+
+ 
+        # _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
+
+
+        # Assemble all of the losses for the current tower only.
+        losses = tf.get_collection('losses', scope)
+
+        # Calculate the total loss for the current tower.
+        total_loss = tf.add_n(losses, name='total_loss')
+
+        # Attach a scalar summary to all individual losses and the total loss; do the
+        # same for the averaged version of the losses.
+        for l in losses + [total_loss]:
+            # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
+            # session. This helps the clarity of presentation on tensorboard.
+
+            loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)
+            tf.summary.scalar(loss_name, l)
+
+        return total_loss
+
+
+    def calculate_end_point_loss(self,network_input_labels,flows_dict):
         # supervised
 
         '''
@@ -515,67 +583,6 @@ class DatasetReader:
         with tf.variable_scope('epe_loss_refine_1'):
             _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict['predict_flow_ref1'][0],100)
 
-        # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flows[0])
-        # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flows[0])
-
-
-        # scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
-        #                                                                         np.array([1,2,4,8,16]),
-        #                                                                         np.array([1,1,1,1,1]))
-
-        # scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(predict_flow2_forward,
-        #                                                                         np.array([1,2,4,8,16]),
-        #                                                                         np.array([1,1,1,1,1]))
-
-        # _ = losses_helper.scale_invariant_gradient_loss(
-        #         scale_invariant_gradient_image_pred,
-        #         scale_invariant_gradient_image_gt,
-        #         0.0001,
-        #         self.FLAGS['MAX_STEPS'],
-        #         self.global_step)
-
-        '''
-            Applying pc loss on lower resolutions
-        '''
-
-        network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-
-        predict_flow2_refine3 = losses_helper.downsample_label(predict_flows[1],
-                                        size=[20,32],factorU=0.125,factorV=0.125)
-        predict_flow2_refine2 = losses_helper.downsample_label(predict_flows[2],
-                                        size=[40,64],factorU=0.25,factorV=0.25)
-        predict_flow2_refine1 = losses_helper.downsample_label(predict_flows[3],
-                                        size=[80,128],factorU=0.5,factorV=0.5)
-
-
-        with tf.variable_scope('photoconsistency_loss_refine_3'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
-        with tf.variable_scope('photoconsistency_loss_refine_2'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
-        with tf.variable_scope('photoconsistency_loss_refine_1'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
-
-        # _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
-
-
-        # Assemble all of the losses for the current tower only.
-        losses = tf.get_collection('losses', scope)
-
-        # Calculate the total loss for the current tower.
-        total_loss = tf.add_n(losses, name='total_loss')
-
-        # Attach a scalar summary to all individual losses and the total loss; do the
-        # same for the averaged version of the losses.
-        for l in losses + [total_loss]:
-            # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
-            # session. This helps the clarity of presentation on tensorboard.
-
-            loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)
-            tf.summary.scalar(loss_name, l)
-
-        return total_loss
 
 
     def get_predict_flow_forward_backward(self,predict_flows,network_input_labels,concatenated_FB_images):
