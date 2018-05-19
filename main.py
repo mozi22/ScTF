@@ -104,7 +104,7 @@ class DatasetReader:
             'MOVING_AVERAGE_DECAY': float(parser[sections[section_type]]['MOVING_AVERAGE_DECAY']),
             'TOTAL_TRAIN_EXAMPLES': int(parser[sections[section_type]]['TOTAL_TRAIN_EXAMPLES']),
             'CLEAN_FILES': parser[sections[section_type]].getboolean('CLEAN_FILES'),
-            'TRAIN_WITH_PTB' : parser[sections[section_type]].getboolean('TRAIN_WITH_PTB')
+            'TRAIN_WITH_PTB' : parser[sections[section_type]].getboolean('TRAIN_WITH_PTB'),
 
             # TEST
             'TESTING_ENABLED': parser[sections[section_type]].getboolean('TESTING_ENABLED'),
@@ -703,4 +703,4 @@ class DatasetReader:
 
 reader = DatasetReader()
 train_iterator,test_iterator = reader.preprocess()
-# reader.train(train_iterator,test_iterator)
+reader.train(train_iterator,test_iterator)
