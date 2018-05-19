@@ -49,7 +49,7 @@ class DatasetReader:
                 self.delete_files_in_directories(dir_path+'/train')
                 self.delete_files_in_directories(dir_path+'/test')
 
-    def create_input_pipeline(self,sections,section_type,dataset_folder,train_batch,test_batch):
+    def create_input_pipeline(self,sections,section_type,dataset_folder,train_batch,test_batch,TRAIN_WITH_PTB):
         
         prefix = dataset_folder
 
@@ -68,8 +68,8 @@ class DatasetReader:
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
 
-        train_dataset = data_reader.read_with_dataset_api(train_batch,train_filenames,version='1')
-        test_dataset = data_reader.read_with_dataset_api(test_batch,test_filenames,version='2')
+        train_dataset = data_reader.read_with_dataset_api(train_batch,train_filenames,TRAIN_WITH_PTB,version='1')
+        test_dataset = data_reader.read_with_dataset_api(test_batch,test_filenames,TRAIN_WITH_PTB,version='2')
 
         train_iterator = train_dataset.make_initializable_iterator()
         test_iterator = test_dataset.make_initializable_iterator()
@@ -104,6 +104,7 @@ class DatasetReader:
             'MOVING_AVERAGE_DECAY': float(parser[sections[section_type]]['MOVING_AVERAGE_DECAY']),
             'TOTAL_TRAIN_EXAMPLES': int(parser[sections[section_type]]['TOTAL_TRAIN_EXAMPLES']),
             'CLEAN_FILES': parser[sections[section_type]].getboolean('CLEAN_FILES'),
+            'TRAIN_WITH_PTB' : parser[sections[section_type]].getboolean('TRAIN_WITH_PTB')
 
             # TEST
             'TESTING_ENABLED': parser[sections[section_type]].getboolean('TESTING_ENABLED'),
@@ -128,7 +129,7 @@ class DatasetReader:
 
         self.TEST_EPOCH = math.ceil(self.FLAGS['TOTAL_TEST_EXAMPLES'] / self.FLAGS['TEST_BATCH_SIZE'])
 
-        train_iterator, test_iterator = self.create_input_pipeline(sections,section_type,parser[sections[section_type]]['DATASET_FOLDER'],self.FLAGS['BATCH_SIZE'],self.FLAGS['TEST_BATCH_SIZE'])
+        train_iterator, test_iterator = self.create_input_pipeline(sections,section_type,parser[sections[section_type]]['DATASET_FOLDER'],self.FLAGS['BATCH_SIZE'],self.FLAGS['TEST_BATCH_SIZE'],self.FLAGS['TRAIN_WITH_PTB'])
 
         # for testing
         self.X = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'] * len(self.filenames_test), 224, 384, 8))
@@ -392,8 +393,16 @@ class DatasetReader:
         monkaa_batch_img = batches[2][0]
         monkaa_batch_lbl = batches[2][1]
 
-        final_img_batch = tf.concat((driving_batch_img,flying_batch_img,monkaa_batch_img),axis=0)
-        final_lbl_batch = tf.concat((driving_batch_lbl,flying_batch_lbl,monkaa_batch_lbl),axis=0)
+
+        if self.FLAGS['TRAIN_WITH_PTB'] == True:
+            ptb_batch_img = batches[3][0]
+            ptb_batch_lbl = batches[3][1]
+
+            final_img_batch = tf.concat((driving_batch_img,flying_batch_img,monkaa_batch_img,ptb_batch_img),axis=0)
+            final_lbl_batch = tf.concat((driving_batch_lbl,flying_batch_lbl,monkaa_batch_lbl,ptb_batch_lbl),axis=0)
+        else:
+            final_img_batch = tf.concat((driving_batch_img,flying_batch_img,monkaa_batch_img),axis=0)
+            final_lbl_batch = tf.concat((driving_batch_lbl,flying_batch_lbl,monkaa_batch_lbl),axis=0)
 
         return final_img_batch, final_lbl_batch
 
@@ -440,6 +449,11 @@ class DatasetReader:
         network_input_labels = tf.concat([network_input_labels_u,network_input_labels_v,network_input_labels_w],axis=3)
 
         return network_input_images, network_input_labels
+
+
+    def remove_ptb_records(network_input_images,network_input_labels):
+        return network_input_images[0:12,:,:,:], network_input_labels[0:12,:,:,:]
+
 
     def tower_loss(self,scope, images, labels):
         """Calculate the total loss on a single tower running the CIFAR model.
@@ -508,8 +522,40 @@ class DatasetReader:
 
 
 
-        # supervised loss
-        tf.cond(tf.equals(network_input_labels,0),lambda: self.calculate_end_point_loss(network_input_labels,flows_dict), network_input_labels)
+        # unsupervised losses done. Now remove ptb. Since it doesn't have ground truth.
+        if self.FLAGS['TRAIN_WITH_PTB'] == True:
+            network_input_images, network_input_labels = self.remove_ptb_records(network_input_images, network_input_labels)
+
+
+        # supervised
+
+        '''
+            Applying epe loss on full resolution
+        '''
+        _ = losses_helper.endpoint_loss(network_input_labels,flows_dict['predict_flow'][0])
+
+        '''
+            Applying epe loss on lower resolutions
+        '''
+
+        network_input_labels_refine3 = losses_helper.downsample_label(network_input_labels,
+                                        size=[20,32],factorU=0.125,factorV=0.125)
+        network_input_labels_refine2 = losses_helper.downsample_label(network_input_labels,
+                                        size=[40,64],factorU=0.25,factorV=0.25)
+        network_input_labels_refine1 = losses_helper.downsample_label(network_input_labels,
+                                        size=[80,128],factorU=0.5,factorV=0.5)
+
+
+
+
+        with tf.variable_scope('epe_loss_refine_3'):
+            _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict['predict_flow_ref3'][0],100)
+        with tf.variable_scope('epe_loss_refine_2'):
+            _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict['predict_flow_ref2'][0],100)
+        with tf.variable_scope('epe_loss_refine_1'):
+            _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict['predict_flow_ref1'][0],100)
+
+
 
 
         # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flows[0])
@@ -553,35 +599,6 @@ class DatasetReader:
 
         return total_loss
 
-
-    def calculate_end_point_loss(self,network_input_labels,flows_dict):
-        # supervised
-
-        '''
-            Applying epe loss on full resolution
-        '''
-        _ = losses_helper.endpoint_loss(network_input_labels,flows_dict['predict_flow'][0])
-
-        '''
-            Applying epe loss on lower resolutions
-        '''
-
-        network_input_labels_refine3 = losses_helper.downsample_label(network_input_labels,
-                                        size=[20,32],factorU=0.125,factorV=0.125)
-        network_input_labels_refine2 = losses_helper.downsample_label(network_input_labels,
-                                        size=[40,64],factorU=0.25,factorV=0.25)
-        network_input_labels_refine1 = losses_helper.downsample_label(network_input_labels,
-                                        size=[80,128],factorU=0.5,factorV=0.5)
-
-
-
-
-        with tf.variable_scope('epe_loss_refine_3'):
-            _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict['predict_flow_ref3'][0],100)
-        with tf.variable_scope('epe_loss_refine_2'):
-            _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict['predict_flow_ref2'][0],100)
-        with tf.variable_scope('epe_loss_refine_1'):
-            _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict['predict_flow_ref1'][0],100)
 
 
 
@@ -686,4 +703,4 @@ class DatasetReader:
 
 reader = DatasetReader()
 train_iterator,test_iterator = reader.preprocess()
-reader.train(train_iterator,test_iterator)
+# reader.train(train_iterator,test_iterator)
