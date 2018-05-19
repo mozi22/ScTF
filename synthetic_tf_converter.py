@@ -50,7 +50,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 1
+		self.dataset_number = 4
 
 		# these are inverse depths
 		self.max_depth_driving = 0.232809
@@ -83,7 +83,7 @@ class SyntheticTFRecordsWriter:
 		# self.flyingdata_FILES_IDS = [6,8]
 
 		# self.dataset_root = '../dataset_synthetic_sm50/'
-		self.dataset_save = '../dataset_synthetic/128x128/'
+		self.dataset_save = '../dataset_synthetic/'
 		self.dataset_root = '../dataset_synthetic/'
 
 		self.dataset_ptb_root = '../dataset_ptb/'
@@ -191,7 +191,7 @@ class SyntheticTFRecordsWriter:
 		self.u_factor = 0.414814815
 		self.v_factor = 0.4
 
-		input_size = math.floor(int(960 * self.v_factor)), math.floor(int(540 * self.u_factor))
+		input_size = math.ceil(960 * self.v_factor), math.floor(540 * self.u_factor)
 
 		test_writer = self.init_tfrecord_writer(self.dataset_save+'ktp_TEST.tfrecords')
 		# train_writer = self.init_tfrecord_writer(self.dataset_save+'ktp_TRAIN.tfrecords')
@@ -281,13 +281,16 @@ class SyntheticTFRecordsWriter:
 					img1 = np.array(img1) / 255
 					img2 = np.array(img2) / 255
 
+					optical_flow = np.zeros_like(img1)
+					depth_change = np.zeros_like(img1)
+
 					patches = [{
 						'web_p': img1,
 						'web_p2': img2,
 						'depth1': np.array(depth1),
 						'depth2': np.array(depth2),
-						'depth_change': np.array([]),
-						'optical_flow': np.array([]),
+						'depth_change': depth_change,
+						'optical_flow': optical_flow,
 						'path': ''
 					}]
 
@@ -1027,4 +1030,4 @@ def convert_whole_dataset():
 def convert_for_testing():
 	return SyntheticTFRecordsWriter()
 
-# convert_whole_dataset()
+convert_whole_dataset()

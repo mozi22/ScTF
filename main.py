@@ -359,7 +359,7 @@ class DatasetReader:
             #     summary_str = sess.run(self.summary_op)
             #     summary_writer.add_summary(summary_str, step)
 
-            if step % 5 == 0 and step!=0:
+            if step % 100 == 0 and step!=0:
                 summary_str = sess.run(self.summary_op)
                 summary_writer.add_summary(summary_str, step)
 
@@ -470,12 +470,12 @@ class DatasetReader:
 
         # losses sections[section_type]
 
-        # with tf.variable_scope('fb_loss_refine_3'):
-        #     _ = losses_helper.forward_backward_loss(predict_flows[1])
-        # with tf.variable_scope('fb_loss_refine_3'):
-        #     _ = losses_helper.forward_backward_loss(predict_flows[2])
-        # with tf.variable_scope('fb_loss_refine_3'):
-        #     _ = losses_helper.forward_backward_loss(predict_flows[3])
+        with tf.variable_scope('fb_loss_refine_3'):
+            _ = losses_helper.forward_backward_loss(predict_flows[1])
+        with tf.variable_scope('fb_loss_refine_3'):
+            _ = losses_helper.forward_backward_loss(predict_flows[2])
+        with tf.variable_scope('fb_loss_refine_3'):
+            _ = losses_helper.forward_backward_loss(predict_flows[3])
 
 
         flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images)
@@ -483,6 +483,9 @@ class DatasetReader:
         self.write_flows_concatenated_side_by_side(network_input_labels,flows_dict['predict_flow'][0])
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
+
+
+
 
         # supervised
 
@@ -547,12 +550,12 @@ class DatasetReader:
                                         size=[80,128],factorU=0.5,factorV=0.5)
 
 
-        # with tf.variable_scope('photoconsistency_loss_refine_3'):
-        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine3,network_input_labels_refine3)
-        # with tf.variable_scope('photoconsistency_loss_refine_2'):
-        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine2,network_input_labels_refine2)
-        # with tf.variable_scope('photoconsistency_loss_refine_1'):
-        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine1,network_input_labels_refine1)
+        with tf.variable_scope('photoconsistency_loss_refine_3'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
+        with tf.variable_scope('photoconsistency_loss_refine_2'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
+        with tf.variable_scope('photoconsistency_loss_refine_1'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
 
         # _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
 
