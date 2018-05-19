@@ -21,13 +21,19 @@ def photoconsistency_loss(img,predicted_flow, weight=10):
 
     img1, img2 = get_separate_rgb_images(img)
 
-    warped_img = flow_warp(img2,predicted_flow)
-    img1 = get_occulation_aware_image(img1,warped_img)
-
-    pc_loss = tf.reduce_mean(tf.squared_difference(img1, warped_img))
+    warped_img = flow_warp(img1,predicted_flow)
+    warped_img = sops.replace_nonfinite(warped_img)
+    tf.summary.image('img1_pc',img1)
+    tf.summary.image('img2_pc',img2)
+    tf.summary.image('img_warp_pc',warped_img)
+    tf.summary.image('predicted_flow_u',tf.expand_dims(predicted_flow[:,:,:,0],axis=-1))
+    tf.summary.image('predicted_flow_v',tf.expand_dims(predicted_flow[:,:,:,1],axis=-1))
+    # img1 = get_occulation_aware_image(img1,warped_img)
+    # img1 = tf.stop_gradient(img1)
+    pc_loss = endpoint_loss(img2, warped_img,weight,'pc_loss')
     # pc_loss = tf.Print(pc_loss,[pc_loss],'pcloss ye hai ')
     # tf.losses.compute_weighted_loss(pc_loss,weights=weight)
-    tf.summary.scalar('pc_loss',sops.replace_nonfinite(pc_loss))
+    # tf.summary.scalar('pc_loss',sops.replace_nonfinite(pc_loss))
 
   return pc_loss
 
@@ -285,15 +291,14 @@ def flow_warp(img,flow):
 
   X, Y = tf.meshgrid(x, y)
 
-  X = tf.expand_dims(X,0)
-  Y = tf.expand_dims(Y,0)
+  # X = tf.expand_dims(X,0)
+  # Y = tf.expand_dims(Y,0)
 
   X = tf.cast(X,np.float32)
   Y = tf.cast(Y,np.float32)
 
-  X = X[0,:,:] + flow[:,:,:,0]
-  Y = Y[0,:,:] + flow[:,:,:,1]
-
+  Y = Y + flow[:,:,:,0]
+  X = X + flow[:,:,:,1]
 
   con = tf.stack([X,Y])
 

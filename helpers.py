@@ -41,19 +41,20 @@ def readPFM(file):
 
 
 # warp the flow values to the image.
-def warp(img,flow):
-    x = list(range(0,self.input_size[0]))
-    y = list(range(0,self.input_size[1] + 8))
+def flow_warp(img,flow):
+    input_size = img.get_shape().as_list()
+
+    x = list(range(0,input_size[2]))
+    y = list(range(0,input_size[1]))
     X, Y = tf.meshgrid(x, y)
 
-    X = tf.cast(X,np.float32) + flow[:,:,0]
-    Y = tf.cast(Y,np.float32) + flow[:,:,1]
+    X = tf.cast(X,np.float32) + flow[:,:,:,0]
+    Y = tf.cast(Y,np.float32) + flow[:,:,:,1]
 
     con = tf.stack([X,Y])
-    result = tf.transpose(con,[1,2,0])
-    result = tf.expand_dims(result,0)
-    return tf.contrib.resampler.resampler(img[np.newaxis,:,:,:],result)
+    result = tf.transpose(con,[1,2,3,0])
 
+    return tf.contrib.resampler.resampler(img,result)
 
 
 def swap_images_for_back_flow(images):

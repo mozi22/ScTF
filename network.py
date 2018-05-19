@@ -224,5 +224,4 @@ def train_network(image_pair):
     # predict_flow = change_nans_to_zeros(predict_flow2)
 
 
-
     return [predict_flow, predict_flow_ref3, predict_flow_ref2, predict_flow_ref1]

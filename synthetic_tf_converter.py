@@ -50,7 +50,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 4
+		self.dataset_number = 1
 
 		# these are inverse depths
 		self.max_depth_driving = 0.232809
@@ -83,7 +83,7 @@ class SyntheticTFRecordsWriter:
 		# self.flyingdata_FILES_IDS = [6,8]
 
 		# self.dataset_root = '../dataset_synthetic_sm50/'
-		self.dataset_save = '../dataset_synthetic/'
+		self.dataset_save = '../dataset_synthetic/128x128/'
 		self.dataset_root = '../dataset_synthetic/'
 
 		self.dataset_ptb_root = '../dataset_ptb/'
@@ -867,7 +867,7 @@ class SyntheticTFRecordsWriter:
 		# opt_flow = opt_flow * self.factor
 
 		# normalize flow values between 0 - 1
-		opt_flow = self.normalizeOptFlow(opt_flow,size)
+		# opt_flow = self.normalizeOptFlow(opt_flow,size)
 
 		return opt_flow
 
@@ -881,12 +881,17 @@ class SyntheticTFRecordsWriter:
 						   focal_length):
 
 		# reduce the sizes of images and flow values by this factor
-		self.factor = 0.4
+
+		# for size 128x128
+		# self.u_factor = 0.237037037
+		# self.v_factor = 0.133333333
+
+
 
 		self.u_factor = 0.414814815
 		self.v_factor = 0.4
 
-		input_size = math.floor(int(960 * self.v_factor)), math.floor(int(540 * self.u_factor))
+		input_size = math.ceil(960 * self.v_factor), math.floor(540 * self.u_factor)
 
 		# parse pfm files for disparities
 		disparity  = self.readPFM(disparity)[0]
@@ -1022,4 +1027,4 @@ def convert_whole_dataset():
 def convert_for_testing():
 	return SyntheticTFRecordsWriter()
 
-convert_whole_dataset()
+# convert_whole_dataset()

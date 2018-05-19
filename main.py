@@ -40,12 +40,12 @@ class DatasetReader:
         for fileName in fileList:
             os.remove(dir_path+"/"+fileName)
 
-    def create_and_remove_directories(self,dir_path,clean_existing_files,load_from_ckpt):
+    def create_and_remove_directories(self,dir_path,clean_existing_files,load_from_ckpt,testing_enabled):
         if not os.path.exists(dir_path):
             os.makedirs(dir_path+'/train')
             os.makedirs(dir_path+'/test')
         else:
-            if clean_existing_files == True and load_from_ckpt == False:
+            if clean_existing_files == True and load_from_ckpt == False and testing_enabled == False:
                 self.delete_files_in_directories(dir_path+'/train')
                 self.delete_files_in_directories(dir_path+'/test')
 
@@ -72,7 +72,7 @@ class DatasetReader:
         test_dataset = data_reader.read_with_dataset_api(test_batch,test_filenames,version='2')
 
         train_iterator = train_dataset.make_initializable_iterator()
-        test_iterator = test_dataset.make_one_shot_iterator()
+        test_iterator = test_dataset.make_initializable_iterator()
 
 
         return train_iterator, test_iterator
@@ -118,12 +118,14 @@ class DatasetReader:
             'POWER': int(parser[sections[section_type]]['POWER'])
         }
 
-        self.create_and_remove_directories(self.FLAGS['TRAIN_DIR'],self.FLAGS['CLEAN_FILES'],self.FLAGS['LOAD_FROM_CKPT'])
+        self.create_and_remove_directories(self.FLAGS['TRAIN_DIR'],self.FLAGS['CLEAN_FILES'],self.FLAGS['LOAD_FROM_CKPT'],self.FLAGS['TESTING_ENABLED'])
 
-
+        self.TRAIN_DIR_LIST = self.FLAGS['TRAIN_DIR'].split('/')
 
         # gives the # of steps required to complete 1 epoch
         self.TRAIN_EPOCH = math.ceil(self.FLAGS['TOTAL_TRAIN_EXAMPLES'] / self.FLAGS['BATCH_SIZE'])
+
+
         self.TEST_EPOCH = math.ceil(self.FLAGS['TOTAL_TEST_EXAMPLES'] / self.FLAGS['TEST_BATCH_SIZE'])
 
         train_iterator, test_iterator = self.create_input_pipeline(sections,section_type,parser[sections[section_type]]['DATASET_FOLDER'],self.FLAGS['BATCH_SIZE'],self.FLAGS['TEST_BATCH_SIZE'])
@@ -242,6 +244,16 @@ class DatasetReader:
         # Create a saver.
         saver = tf.train.Saver(tf.global_variables())
 
+
+
+        tf.summary.image('test_flow_u_1',self.Y[:,:,:,0:1])
+        tf.summary.image('test_flow_v_1',self.Y[:,:,:,1:2])
+
+        tf.summary.image('test_input_image1',self.X[:,:,:,0:3])
+        tf.summary.image('test_input_image2',self.X[:,:,:,4:7])
+        tf.summary.image('test_depth_image1',tf.expand_dims(self.X[:,:,:,3],axis=-1))
+        tf.summary.image('test_depth_image2',tf.expand_dims(self.X[:,:,:,7],axis=-1))
+
         # Build the summary operation from the last tower summaries.
         self.summary_op = tf.summary.merge(summaries)
 
@@ -267,6 +279,7 @@ class DatasetReader:
         sess = tf.Session(config=tf_config)
         sess.run(init)
         sess.run(train_iterator.initializer)
+        sess.run(iterator_test.initializer)
 
 
         if self.FLAGS['LOAD_FROM_CKPT'] == True:
@@ -279,10 +292,8 @@ class DatasetReader:
 
         # for debugging
 
-        if self.FLAGS['TESTING_ENABLED'] == False:
-            summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/train', sess.graph)
-        else:
-            self.test_summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/test', sess.graph)
+        summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/train', sess.graph)
+        self.test_summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/test', sess.graph)
 
 
         # just to make sure we start from where we left, if load_from_ckpt = True
@@ -299,10 +310,8 @@ class DatasetReader:
         test_loss_calculating_index = 1
 
 
-        if self.FLAGS['TESTING_ENABLED'] == True:
-            self.print_test_epoch_loss(sess,iterator_test)
-            sys.exit('testing finished...')
-
+        # if self.FLAGS['TESTING_ENABLED'] == True:
+            # self.print_test_epoch_loss(sess,iterator_test)
 
 
         # main loop
@@ -333,29 +342,38 @@ class DatasetReader:
 
             #     # increment index to know how many times we've calculated the test loss
             #     test_loss_calculating_index = test_loss_calculating_index + 1
-            # ####################### Testing #######################
 
+            # ####################### Testing #######################
             if step % 10 == 0 or first_iteration==True:
                 num_examples_per_step = self.FLAGS['BATCH_SIZE'] * self.FLAGS['NUM_GPUS']
                 examples_per_sec = num_examples_per_step / duration
                 sec_per_batch = duration / self.FLAGS['NUM_GPUS']
                 first_iteration = False
 
-
-
-            format_str = ('%s: step %d, loss = %.15f (%.1f examples/sec; %.3f '
+            format_str = ('%s: step %d, DIR: %s, loss = %.15f (%.1f examples/sec; %.3f '
                           'sec/batch)')
-            self.log(message=(format_str % (datetime.now(), step, loss_value,
+            self.log(message=(format_str % (datetime.now(),step,self.TRAIN_DIR_LIST[-1], loss_value,
                                  examples_per_sec, sec_per_batch)))
 
             # if loss_value > 100:
             #     summary_str = sess.run(self.summary_op)
             #     summary_writer.add_summary(summary_str, step)
 
-            if step % 100 == 0 and step!=0:
+            if step % 5 == 0 and step!=0:
                 summary_str = sess.run(self.summary_op)
                 summary_writer.add_summary(summary_str, step)
 
+                # write a summary for test
+                test_image_batch, test_label_batch = self.combine_batches_from_datasets(iterator_test.get_next())
+                test_image_batch, test_label_batch = self.get_network_input_forward(test_image_batch,test_label_batch)
+                test_image_batch, test_label_batch = sess.run([test_image_batch, test_label_batch])
+
+                loss_value, summary_str_test = sess.run([self.loss,self.summary_op],feed_dict={ 
+                            self.X: test_image_batch, 
+                            self.Y: test_label_batch
+                })
+
+                self.test_summary_writer.add_summary(summary_str_test, step)
 
             # Save the model checkpoint periodically.
             if step % 500 == 0 or (step + 1) == self.FLAGS['MAX_STEPS']:
@@ -383,24 +401,24 @@ class DatasetReader:
     def print_test_epoch_loss(self,sess,iterator_test):
     
         self.log()
-        self.log(message='Testing ...')
+        self.log(message='Testing ..., Total Test Epochs = ' + str(self.TEST_EPOCH))
         self.log()
 
         # iterator_test = sess.run(iterator_test)
         image_batch, label_batch = self.combine_batches_from_datasets(iterator_test.get_next())
         image_batch, label_batch = self.get_network_input_forward(image_batch,label_batch)
-        for step in range(0,self.TEST_EPOCH):
+        for step in range(0,self.TEST_EPOCH + 1000):
 
 
             image,label = sess.run([image_batch, label_batch])
 
             loss_value,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: image, self.Y: label})
 
-            format_str = ('%s: step %d, loss = %.15f')
+            format_str = ('%s: Testing step %d, loss = %.15f')
             self.log(message=(format_str % (datetime.now(), step, np.log10(loss_value))))
 
-
-        self.test_summary_writer.add_summary(summary_str, self.global_step)
+            if step % 100 == 0:
+                self.test_summary_writer.add_summary(summary_str, step)
 
         self.log()
         self.log(message='Continue Training ...')
@@ -443,7 +461,6 @@ class DatasetReader:
 
 
         # Build inference Graph. - forward flow
-
         predict_flows = network.train_network(concatenated_FB_images)
 
         # backward_flow_images = losses_helper.forward_backward_loss(predict_flow)
@@ -487,11 +504,12 @@ class DatasetReader:
 
 
 
+
         with tf.variable_scope('epe_loss_refine_3'):
             _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict['predict_flow_ref3'][0],100)
-        with tf.variable_scope('epe_loss_refine_3'):
+        with tf.variable_scope('epe_loss_refine_2'):
             _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict['predict_flow_ref2'][0],100)
-        with tf.variable_scope('epe_loss_refine_3'):
+        with tf.variable_scope('epe_loss_refine_1'):
             _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict['predict_flow_ref1'][0],100)
 
         # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flows[0])
@@ -517,9 +535,9 @@ class DatasetReader:
             Applying pc loss on lower resolutions
         '''
 
-        concatenated_FB_images_refine3 = tf.image.resize_images(concatenated_FB_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        concatenated_FB_images_refine2 = tf.image.resize_images(concatenated_FB_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        concatenated_FB_images_refine1 = tf.image.resize_images(concatenated_FB_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
         predict_flow2_refine3 = losses_helper.downsample_label(predict_flows[1],
                                         size=[20,32],factorU=0.125,factorV=0.125)
@@ -530,11 +548,11 @@ class DatasetReader:
 
 
         # with tf.variable_scope('photoconsistency_loss_refine_3'):
-        #     _ = losses_helper.photoconsistency_loss(concatenated_FB_images_refine3,predict_flow2_refine3)
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine3,network_input_labels_refine3)
         # with tf.variable_scope('photoconsistency_loss_refine_2'):
-        #     _ = losses_helper.photoconsistency_loss(concatenated_FB_images_refine2,predict_flow2_refine2)
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine2,network_input_labels_refine2)
         # with tf.variable_scope('photoconsistency_loss_refine_1'):
-        #     _ = losses_helper.photoconsistency_loss(concatenated_FB_images_refine1,predict_flow2_refine1)
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine1,network_input_labels_refine1)
 
         # _ = losses_helper.depth_loss(predict_flow5_label,predict_flow5)
 

@@ -1,5 +1,5 @@
 
-import flow_test as ft
+# import flow_test as ft
 import helpers as hpl
 import numpy as np
 from   PIL import Image
@@ -9,17 +9,18 @@ import matplotlib as plt
 import tensorflow as tf
 import data_reader as dr
 # import matplotlib.mlab as mlab
-# import ijremote as ij
-# import losses_helper as lhpl
+import ijremote as ij
+import losses_helper as lhpl
 folder = '../dataset_synthetic/driving/'
 # folder = '/misc/lmbraid19/muazzama/dataset_synthetic/driving/'
+import synthetic_tf_converter as stc
 
-img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0076.webp'
-img2 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0077.webp'
-disparity1 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0076.pfm'
-disparity2 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0077.pfm'
-opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0076_L.pfm'
-disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0076.pfm'
+img1 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0001.webp'
+img2 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0002.webp'
+disparity1 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0001.pfm'
+disparity2 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0002.pfm'
+opt_flow = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0001_L.pfm'
+disp_change = folder + 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/0001.pfm'
 
 img3 = folder + 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/0107.webp'
 opt_flow3 = folder + 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/OpticalFlowIntoFuture_0106_L.pfm'
@@ -104,8 +105,8 @@ disparity3 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0107
 ''' ********************************************* from file example ********************************************* '''
 ''' ********************************************* from file example ********************************************* '''
 
-predictor = ft.FlowPredictor()
-predictor.preprocess(img1,img2,disparity1,disparity2)
+# predictor = ft.FlowPredictor()
+# predictor.preprocess(img1,img2,disparity1,disparity2)
 
 # denormu = Image.open('flow_u1.tiff')
 # denormv = Image.open('flow_v1.tiff')
@@ -113,8 +114,8 @@ predictor.preprocess(img1,img2,disparity1,disparity2)
 # # data = np.dstack((denormu,denormv),dtype=np.float32)
 
 # flow_gt = hpl.readPFM(opt_flow)[0]
-factor = 0.4
-input_size = int(960 * factor), int(540 * factor)
+# factor = 0.4
+# input_size = int(960 * factor), int(540 * factor)
 
 # converter = converter.SyntheticTFRecordsWriter()
 # flow_gt = converter.downsample_opt_flow(flow_gt,input_size)
@@ -133,198 +134,29 @@ input_size = int(960 * factor), int(540 * factor)
 ''' ********************************************* this is the writing part ********************************************* '''
 ''' ********************************************* this is the writing part ********************************************* '''
 
-# def create_tf_example(self,patches,writer):
-
-# 	for item in patches:
-
-# 		# downsampled_opt_flow = self.downsample_labels(np.array(item['opt_fl']),2)
-# 		# downsampled_disp_chng = self.downsample_labels(np.array(item['disp_chng']),0)
-
-# 		width , height = item['depth'].shape[0] , item['depth'].shape[1]
-# 		depth = item['depth'].tostring()
-# 		depth2 = item['depth2'].tostring()
-
-# 		opt_flow = item['optical_flow'].tostring()
-# 		depth_chng = item['disp_change'].tostring()
-# 		frames_finalpass_webp = item['web_p'].tostring()
-# 		frames_finalpass_webp2 = item['web_p2'].tostring()
+sess = tf.InteractiveSession()
+results = stc.convert_for_testing().from_paths_to_data(disparity1,disparity2,disp_change,opt_flow,img1,img2,'L')
 
 
+img1 = np.array(Image.open(img1))
+img2 = np.array(Image.open(img2))
+
+opt_flow = hpl.readPFM(opt_flow)[0]
+opt_flow = opt_flow[:,:,0:2]
+
+# opt_flow = tf.convert_to_tensor(opt_flow,dtype=tf.float32)
+# opt_flow = tf.image.resize_images(opt_flow,[224,384])
+
+img2 = tf.expand_dims(tf.convert_to_tensor(results[0]['web_p2'],dtype=tf.float32),axis=0)
+# flow = tf.expand_dims(opt_flow,axis=0)
+# img2 = tf.expand_dims(tf.convert_to_tensor(img2,dtype=tf.float32),axis=0)
+flow = tf.expand_dims(tf.convert_to_tensor(results[0]['optical_flow'],dtype=tf.float32)[:,:,0:2],axis=0)
+
+warped_img = lhpl.flow_warp(img2,flow)
+warped_img = sess.run(warped_img)
+
+warped_img = np.squeeze(warped_img)
+
+Image.fromarray(np.uint8(warped_img)).show()
 
 
-# 		example = tf.train.Example(features=tf.train.Features(
-# 			feature={
-# 				'width': self._int64_feature(width),
-# 				'height': self._int64_feature(height),
-# 				'depth1': self._bytes_feature(depth),
-# 				'depth2': self._bytes_feature(depth2),
-# 				'disp_chng': self._bytes_feature(depth_chng),
-# 				'opt_flow': self._bytes_feature(opt_flow),
-# 				'image1': self._bytes_feature(frames_finalpass_webp),
-# 				'image2': self._bytes_feature(frames_finalpass_webp2)
-# 		    }),
-# 		)
-
-# 		writer.write(example.SerializeToString())
-# 		writer.close()
-
-
-# converter = converter.SyntheticTFRecordsWriter()
-# result = converter.from_paths_to_data(disparity1,
-# 									  disparity2,
-# 									  disp_change,
-# 									  opt_flow,
-# 									  img1,
-# 									  img2,
-# 									  1)
-
-
-
-# train_writer = tf.python_io.TFRecordWriter('./one_record.tfrecords')
-# create_tf_example(converter,result,train_writer)
-
-
-# from here
-
-# disp_change = hpl.readPFM(disp_change)[0]
-# disp1 = hpl.readPFM(disparity1)[0]
-# disp2 = hpl.readPFM(disparity2)[0]
-# np.set_printoptions(threshold=np.nan)
-
-# predictor = ft.FlowPredictor()
-# predictor.preprocess(img1,img2,disparity1,disparity2)
-# disp1 = hpl.readPFM(disparity1)[0]
-# disp2 = hpl.readPFM(disparity2)[0]
-# disp3 = hpl.readPFM(disparity3)[0]
-
-# disp1 = Image.fromarray(disp1)
-# disp2 = Image.fromarray(disp2)
-# disp3 = Image.fromarray(disp3)
-
-
-# # resize disparity values
-# disp1 = disp1.resize(input_size,Image.NEAREST)
-# disp2 = disp2.resize(input_size,Image.NEAREST)
-# disp3 = disp2.resize(input_size,Image.NEAREST)
-
-
-# lbl = predictor.read_gt(opt_flow,disp_change)
-# lbl3 = predictor.read_gt(opt_flow3,disp_change)
-# opt_flow = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
-# opt_flow3 = np.pad(lbl3,((4,4),(0,0),(0,0)),'constant')
-
-# disp2 = np.array(disp2)
-# disp2 = np.pad(disp2,((4,4),(0,0)),'constant')
-
-# disp3 = np.array(disp3)
-# disp3 = np.pad(disp3,((4,4),(0,0)),'constant')
-
-# opt_flow = tf.expand_dims(tf.convert_to_tensor(opt_flow,dtype=tf.float32),axis=0)
-# opt_flow3 = tf.expand_dims(tf.convert_to_tensor(opt_flow3,dtype=tf.float32),axis=0)
-# disp2 = tf.expand_dims(tf.convert_to_tensor(disp2,dtype=tf.float32),axis=0)
-# disp2 = tf.expand_dims(tf.convert_to_tensor(disp2,dtype=tf.float32),axis=3)
-
-# disp3 = tf.expand_dims(tf.convert_to_tensor(disp3,dtype=tf.float32),axis=0)
-# disp3 = tf.expand_dims(tf.convert_to_tensor(disp3,dtype=tf.float32),axis=3)
-
-# disp = tf.concat([disp2,disp3],axis=0)
-# opt_flow = tf.concat([opt_flow,opt_flow3],axis=0)
-
-# result = lhpl.flow_warp(disp,opt_flow)
-# result = tf.squeeze(result)
-
-# print(result)
-# ij.setImage('depth',result[0].eval())
-# ij.setImage('depth_change',disp_change)
-# ij.setImage('depth1',disp1)
-# ij.setImage('depth2',disp2)
-predictor.predict()
-
-
-# for testing with ground truth
-
-
-
-# opt = hpl.readPFM(opt_flow3)[0]
-# lbl = predictor.read_gt(opt_flow3,disp_change3)
-# opt_flow3 = np.pad(lbl,((4,4),(0,0),(0,0)),'constant')
-# predictor.postprocess(flow=opt_flow,show_flow=True,gt=True)
-
-# print(opt_flow[:,:,0].shape)
-
-
-
-
-
-# import losses_helper as lhpl
-
-# img1 = Image.open(img1)
-# img2 = Image.open(img2)
-# img3 = Image.open(img3)
-# img1 = img1.resize(input_size, Image.BILINEAR)
-# img2 = img2.resize(input_size, Image.BILINEAR)
-# img3 = img3.resize(input_size, Image.BILINEAR)
-
-# img1 = np.array(img1,dtype=np.float32)
-# img1 = np.pad(img1,((4,4),(0,0),(0,0)),'constant')
-
-# img2 = np.array(img2,dtype=np.float32)
-# img2 = np.pad(img2,((4,4),(0,0),(0,0)),'constant')
-
-# img3 = np.array(img3,dtype=np.float32)
-# img3 = np.pad(img3,((4,4),(0,0),(0,0)),'constant')
-
-# opt_flow = tf.expand_dims(tf.convert_to_tensor(opt_flow,dtype=tf.float32),axis=0)
-# opt_flow3 = tf.expand_dims(tf.convert_to_tensor(opt_flow3,dtype=tf.float32),axis=0)
-# img1 = tf.expand_dims(tf.convert_to_tensor(np.array(img1),dtype=tf.float32),axis=0)
-# img2 = tf.expand_dims(tf.convert_to_tensor(np.array(img2),dtype=tf.float32),axis=0)
-# img3 = tf.expand_dims(tf.convert_to_tensor(np.array(img3),dtype=tf.float32),axis=0)
-
-
-# img = tf.concat([img2,img3],axis=0)
-# opt_flow = tf.concat([opt_flow,opt_flow3],axis=0)
-
-
-# predictor.show_image(img2.eval()[0].astype(np.uint8),'normal_img')
-# print(opt_flow)
-# ij.setImage('flow',opt_flow.eval()[0,:,:,1])
-
-# result = lhpl.flow_warp(img,opt_flow)
-
-
-
-# resultt = lhpl.get_occulation_aware_image(img1,result)
-# print(resultt)
-
-# print(img1)
-# # print(result.eval())
-# predictor.show_image(img1.eval()[0].astype(np.uint8),'warped_img')
-# predictor.show_image(resultt.eval()[0].astype(np.uint8),'warped_img')
-
-
-# for testing
-
-# Image.fromarray(opt.astype(np.uint8)).show()
-# dispar1 = hpl.readPFM(disparity1)[0]
-# dispar2 = hpl.readPFM(disparity2)[0]
-# opt_flow = hpl.readPFM(opt_flow)[0]
-
-
-
-# dispar_chng = hpl.readPFM(disp_change)[0]
-# result1 = predictor.get_depth_from_disp(dispar1)
-# result2 = predictor.get_depth_from_disp(dispar2)
-# result3 = predictor.get_depth_from_disp(dispar_chng)
-# result3 = predictor.get_depth_chng_from_disp_chng(dispar1,dispar_chng)
-# Image.open(img1).show()
-# Image.open(img2).show()
-# Image.fromarray(result1).show()
-# Image.fromarray(result2).show()
-# Image.fromarray(result3).show()
-# Image.fromarray(opt_flow[:,:,0]).show()
-# Image.fromarray(opt_flow[:,:,1]).show()
-# print(opt_flow[:,:,1])
-
-# plt.hist(opt_flow[:,:,1], bins='auto')  # arguments are passed to np.histogram
-# plt.title("Histogram with 'auto' bins")
-# plt.show()
