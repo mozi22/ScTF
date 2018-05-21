@@ -21,15 +21,17 @@ TRAINING:
     driving = 200
     flying = 22390
     monkaa = 6050
+    ptb    = 20332
     --------------
-            28640
+            48972
 
 TESTING:
     driving = 100
     flying = 4370
     monkaa = 2614
+    ptb    = 1210
     --------------
-            7084
+            8294
 
 '''
 
@@ -49,38 +51,43 @@ class DatasetReader:
                 self.delete_files_in_directories(dir_path+'/train')
                 self.delete_files_in_directories(dir_path+'/test')
 
-    def create_input_pipeline(self,sections,section_type,dataset_folder,train_batch,test_batch):
+    def create_input_pipeline(self,sections):
         
-        prefix = dataset_folder
+        prefix = self.FLAGS['DATASET_FOLDER']
 
         # memory_folder = '/dev/shm/'
 
         self.filenames_train  = ['driving_TRAIN.tfrecords','flying_TRAIN.tfrecords','monkaa_TRAIN.tfrecords','ptb_TRAIN.tfrecords']
         self.filenames_test  = ['driving_TEST.tfrecords','flying_TEST.tfrecords','monkaa_TEST.tfrecords','ptb_TEST.tfrecords']
 
-        if sections[section_type] == sections[0]:
+        # driving
+        if sections[self.section_type] == sections[0]:
             train_filenames = [prefix+self.filenames_train[0]]
             test_filenames = [prefix+self.filenames_test[0]]
-        elif sections[section_type] == sections[1]:
+
+        # driving, flying
+        elif sections[self.section_type] == sections[1]:
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1]]
-        elif sections[section_type] == sections[2]:
+
+        # driving, flying, monkaa
+        elif sections[self.section_type] == sections[2]:
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
-        elif sections[section_type] == sections[2]:
-            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2]]
-            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
-        elif sections[section_type] == sections[3]:
+
+        # driving, flying, monkaa, ptb
+        elif sections[self.section_type] == sections[3]:
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2],prefix+self.filenames_train[3]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2],prefix+self.filenames_test[3]]
+
         # only testing with ptb
-        elif sections[section_type] == sections[4]:
+        elif sections[self.section_type] == sections[4]:
             train_filenames = [prefix+self.filenames_train[3]]
             test_filenames = [prefix+self.filenames_test[3]]
 
 
-        train_dataset = data_reader.read_with_dataset_api(train_batch,train_filenames,TRAIN_WITH_PTB,version='1')
-        test_dataset = data_reader.read_with_dataset_api(test_batch,test_filenames,TRAIN_WITH_PTB,version='2')
+        train_dataset = data_reader.read_with_dataset_api(self.FLAGS['BATCH_SIZE'],train_filenames,version='1')
+        test_dataset = data_reader.read_with_dataset_api(self.FLAGS['TEST_BATCH_SIZE'],test_filenames,version='2')
 
         train_iterator = train_dataset.make_initializable_iterator()
         test_iterator = test_dataset.make_initializable_iterator()
@@ -92,7 +99,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        section_type = 2
+        self.section_type = 2
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -100,35 +107,36 @@ class DatasetReader:
 
         self.FLAGS = {
             # TRAIN
-            'BATCH_SIZE': int(parser[sections[section_type]]['BATCH_SIZE']),
-            'TRAIN_DIR': parser[sections[section_type]]['TRAIN_DIR'],
-            'LOAD_FROM_CKPT': parser[sections[section_type]].getboolean('LOAD_FROM_CKPT'),
-            'DEBUG_MODE': parser[sections[section_type]].getboolean('DEBUG_MODE'),
-            'TOWER_NAME': parser[sections[section_type]]['TOWER_NAME'],
-            'MAX_STEPS': int(parser[sections[section_type]]['MAX_STEPS']),
-            'LOG_DEVICE_PLACEMENT': parser[sections[section_type]].getboolean('LOG_DEVICE_PLACEMENT'),
-            'NUM_EPOCHS_PER_DECAY': int(parser[sections[section_type]]['NUM_EPOCHS_PER_DECAY']),
-            'SHUFFLE_BATCH_QUEUE_CAPACITY': int(parser[sections[section_type]]['SHUFFLE_BATCH_QUEUE_CAPACITY']),
-            'SHUFFLE_BATCH_THREADS': int(parser[sections[section_type]]['SHUFFLE_BATCH_THREADS']),
-            'SHUFFLE_BATCH_MIN_AFTER_DEQUEUE': int(parser[sections[section_type]]['SHUFFLE_BATCH_MIN_AFTER_DEQUEUE']),
-            'NUM_GPUS': int(parser[sections[section_type]]['NUM_GPUS']),
-            'MOVING_AVERAGE_DECAY': float(parser[sections[section_type]]['MOVING_AVERAGE_DECAY']),
-            'TOTAL_TRAIN_EXAMPLES': int(parser[sections[section_type]]['TOTAL_TRAIN_EXAMPLES']),
-            'CLEAN_FILES': parser[sections[section_type]].getboolean('CLEAN_FILES'),
-            'TRAIN_WITH_PTB' : parser[sections[section_type]].getboolean('TRAIN_WITH_PTB'),
+            'BATCH_SIZE': int(parser[sections[self.section_type]]['BATCH_SIZE']),
+            'TRAIN_DIR': parser[sections[self.section_type]]['TRAIN_DIR'],
+            'LOAD_FROM_CKPT': parser[sections[self.section_type]].getboolean('LOAD_FROM_CKPT'),
+            'DEBUG_MODE': parser[sections[self.section_type]].getboolean('DEBUG_MODE'),
+            'TOWER_NAME': parser[sections[self.section_type]]['TOWER_NAME'],
+            'MAX_STEPS': int(parser[sections[self.section_type]]['MAX_STEPS']),
+            'LOG_DEVICE_PLACEMENT': parser[sections[self.section_type]].getboolean('LOG_DEVICE_PLACEMENT'),
+            'NUM_EPOCHS_PER_DECAY': int(parser[sections[self.section_type]]['NUM_EPOCHS_PER_DECAY']),
+            'SHUFFLE_BATCH_QUEUE_CAPACITY': int(parser[sections[self.section_type]]['SHUFFLE_BATCH_QUEUE_CAPACITY']),
+            'SHUFFLE_BATCH_THREADS': int(parser[sections[self.section_type]]['SHUFFLE_BATCH_THREADS']),
+            'SHUFFLE_BATCH_MIN_AFTER_DEQUEUE': int(parser[sections[self.section_type]]['SHUFFLE_BATCH_MIN_AFTER_DEQUEUE']),
+            'NUM_GPUS': int(parser[sections[self.section_type]]['NUM_GPUS']),
+            'MOVING_AVERAGE_DECAY': float(parser[sections[self.section_type]]['MOVING_AVERAGE_DECAY']),
+            'TOTAL_TRAIN_EXAMPLES': int(parser[sections[self.section_type]]['TOTAL_TRAIN_EXAMPLES']),
+            'CLEAN_FILES': parser[sections[self.section_type]].getboolean('CLEAN_FILES'),
+            'TRAIN_WITH_PTB' : parser[sections[self.section_type]].getboolean('TRAIN_WITH_PTB'),
+            'DATASET_FOLDER': parser[sections[self.section_type]]['DATASET_FOLDER'],
 
             # TEST
-            'TESTING_ENABLED': parser[sections[section_type]].getboolean('TESTING_ENABLED'),
-            'TOTAL_TEST_EXAMPLES': int(parser[sections[section_type]]['TOTAL_TEST_EXAMPLES']),
-            'TEST_BATCH_SIZE': int(parser[sections[section_type]]['TEST_BATCH_SIZE']),
-            'TEST_AFTER_EPOCHS': int(parser[sections[section_type]]['TEST_AFTER_EPOCHS']),
-            'TOTAL_TRAIN_EXAMPLES': int(parser[sections[section_type]]['TOTAL_TRAIN_EXAMPLES']),
-            'TEST_ON_PTB_ONLY': parser[sections[section_type]].getboolean('TEST_ON_PTB_ONLY'),
+            'TESTING_ENABLED': parser[sections[self.section_type]].getboolean('TESTING_ENABLED'),
+            'TOTAL_TEST_EXAMPLES': int(parser[sections[self.section_type]]['TOTAL_TEST_EXAMPLES']),
+            'TEST_BATCH_SIZE': int(parser[sections[self.section_type]]['TEST_BATCH_SIZE']),
+            'TEST_AFTER_EPOCHS': int(parser[sections[self.section_type]]['TEST_AFTER_EPOCHS']),
+            'TOTAL_TRAIN_EXAMPLES': int(parser[sections[self.section_type]]['TOTAL_TRAIN_EXAMPLES']),
+            'TEST_ON_PTB_ONLY': parser[sections[self.section_type]].getboolean('TEST_ON_PTB_ONLY'),
 
             # LR
-            'START_LEARNING_RATE': float(parser[sections[section_type]]['START_LEARNING_RATE']),
-            'END_LEARNING_RATE': float(parser[sections[section_type]]['END_LEARNING_RATE']),
-            'POWER': int(parser[sections[section_type]]['POWER'])
+            'START_LEARNING_RATE': float(parser[sections[self.section_type]]['START_LEARNING_RATE']),
+            'END_LEARNING_RATE': float(parser[sections[self.section_type]]['END_LEARNING_RATE']),
+            'POWER': int(parser[sections[self.section_type]]['POWER'])
         }
 
         self.create_and_remove_directories(self.FLAGS['TRAIN_DIR'],
@@ -145,8 +153,6 @@ class DatasetReader:
         self.TEST_EPOCH = math.ceil(self.FLAGS['TOTAL_TEST_EXAMPLES'] / self.FLAGS['TEST_BATCH_SIZE'])
 
         train_iterator, test_iterator = self.create_input_pipeline(sections,
-                                                                   section_type,
-                                                                   parser[sections[section_type]]['DATASET_FOLDER'],
                                                                    self.FLAGS['BATCH_SIZE'],
                                                                    self.FLAGS['TEST_BATCH_SIZE'])
 
@@ -294,7 +300,7 @@ class DatasetReader:
         sess.run(iterator_test.initializer)
 
 
-        if self.FLAGS['LOAD_FROM_CKPT'] == True:
+        if self.FLAGS['LOAD_FROM_CKPT'] == True or self.section_type == 4:
             print('loading from ckpt...')
             saver.restore(sess,tf.train.latest_checkpoint(self.FLAGS['TRAIN_DIR']+'/train/'))
 
@@ -304,8 +310,14 @@ class DatasetReader:
 
         # for debugging
 
-        summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/train', sess.graph)
-        self.test_summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/test', sess.graph)
+
+        if self.section_type == 4:
+            os.remove(self.FLAGS['TRAIN_DIR'] +'/ptb_test')
+            os.makedirs(self.FLAGS['TRAIN_DIR'] +'/ptb_test')                
+            self.test_summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/ptb_test', sess.graph)
+        else: 
+            summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/train', sess.graph)
+            self.test_summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/test', sess.graph)
 
 
         # just to make sure we start from where we left, if load_from_ckpt = True
@@ -323,8 +335,9 @@ class DatasetReader:
 
 
         # this will not train and only test the model on ptb dataset.
-        if self.FLAGS['TEST_ON_PTB_ONLY'] == True:
+        if self.section_type == 4:
             self.test_model_on_ptb(sess,iterator_test)
+            sys.exit('Done Testing')
 
 
         # main loop
@@ -395,7 +408,7 @@ class DatasetReader:
 
         summary_writer.close()
     
-    def test_model_on_ptb(sess):
+    def test_model_on_ptb(sess,iterator_test):
         self.log()
         self.log(message='Testing ..., Total Test Epochs = ' + str(self.TEST_EPOCH))
         self.log()
@@ -554,7 +567,7 @@ class DatasetReader:
         # Build the portion of the Graph calculating the losses. Note that we will
         # assemble the total_loss using a custom function below.
 
-        # losses sections[section_type]
+        # losses sections[self.section_type]
 
         # with tf.variable_scope('fb_loss_refine_3'):
         #     _ = losses_helper.forward_backward_loss(predict_flows[1])

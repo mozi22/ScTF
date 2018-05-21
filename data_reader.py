@@ -118,7 +118,7 @@ def read_with_dataset_api_for_test(batch_size,filenames,version='1'):
     return iterator
 
 
-def read_with_dataset_api(batch_size,filenames,TRAIN_WITH_PTB,version='1'):
+def read_with_dataset_api(batch_size,filenames,version='1'):
 
     # parallel cpu calls
     num_parallel_calls = 16
