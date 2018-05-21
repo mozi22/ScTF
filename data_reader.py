@@ -124,21 +124,31 @@ def read_with_dataset_api(batch_size,filenames,TRAIN_WITH_PTB,version='1'):
     num_parallel_calls = 16
     buffer_size = 50
 
-    dataset_driving = tf.data.TFRecordDataset(filenames[0])
-    dataset_flying = tf.data.TFRecordDataset(filenames[1])
-    dataset_monkaa = tf.data.TFRecordDataset(filenames[2])
+    mapped_data = []
+
+    for name in filenames:
+        data = tf.data.TFRecordDataset(name)
+        data = data.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
+        mapped_data.append(data)
+
+    data = tuple(mapped_data)
+    dataset = tf.data.Dataset.zip(data)
+
+    # dataset_driving = tf.data.TFRecordDataset(filenames[0])
+    # dataset_flying = tf.data.TFRecordDataset(filenames[1])
+    # dataset_monkaa = tf.data.TFRecordDataset(filenames[2])
 
 
-    dataset_driving = dataset_driving.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
-    dataset_flying = dataset_flying.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
-    dataset_monkaa = dataset_monkaa.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
+    # dataset_driving = dataset_driving.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
+    # dataset_flying = dataset_flying.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
+    # dataset_monkaa = dataset_monkaa.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
 
-    if TRAIN_WITH_PTB == True:
-        dataset_ptb = tf.data.TFRecordDataset(filenames[3])
-        dataset_ptb = dataset_ptb.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
-        dataset = tf.data.Dataset.zip((dataset_driving,dataset_flying, dataset_monkaa,dataset_ptb))
-    else:
-        dataset = tf.data.Dataset.zip((dataset_driving,dataset_flying, dataset_monkaa))
+    # if TRAIN_WITH_PTB == True:
+    #     dataset_ptb = tf.data.TFRecordDataset(filenames[3])
+    #     dataset_ptb = dataset_ptb.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
+    #     dataset = tf.data.Dataset.zip((dataset_driving,dataset_flying, dataset_monkaa,dataset_ptb))
+    # else:
+    #     dataset = tf.data.Dataset.zip((dataset_driving,dataset_flying, dataset_monkaa))
 
     dataset = dataset.shuffle(buffer_size=50).repeat().apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
     dataset = dataset.prefetch(batch_size)

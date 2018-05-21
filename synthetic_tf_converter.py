@@ -194,7 +194,7 @@ class SyntheticTFRecordsWriter:
 		input_size = math.ceil(960 * self.v_factor), math.floor(540 * self.u_factor)
 
 		# test_writer = self.init_tfrecord_writer(self.dataset_save+'ptb_TEST.tfrecords')
-		train_writer = self.init_tfrecord_writer(self.dataset_save+'ktp_TRAIN.tfrecords')
+		train_writer = self.init_tfrecord_writer(self.dataset_save+'ptb_TRAIN.tfrecords')
 
 		# dataset_max_values = [36277,31452,29610,65168,34026,65168,65168,65168,39217,65168,
 		# 					  65168,65168,65168,65168,65168,65168,65168,18042,65168,65168,

@@ -49,14 +49,14 @@ class DatasetReader:
                 self.delete_files_in_directories(dir_path+'/train')
                 self.delete_files_in_directories(dir_path+'/test')
 
-    def create_input_pipeline(self,sections,section_type,dataset_folder,train_batch,test_batch,TRAIN_WITH_PTB):
+    def create_input_pipeline(self,sections,section_type,dataset_folder,train_batch,test_batch):
         
         prefix = dataset_folder
 
         # memory_folder = '/dev/shm/'
 
-        self.filenames_train  = ['driving_TRAIN.tfrecords','flying_TRAIN.tfrecords','monkaa_TRAIN.tfrecords']
-        self.filenames_test  = ['driving_TEST.tfrecords','flying_TEST.tfrecords','monkaa_TEST.tfrecords']
+        self.filenames_train  = ['driving_TRAIN.tfrecords','flying_TRAIN.tfrecords','monkaa_TRAIN.tfrecords','ptb_TRAIN.tfrecords']
+        self.filenames_test  = ['driving_TEST.tfrecords','flying_TEST.tfrecords','monkaa_TEST.tfrecords','ptb_TEST.tfrecords']
 
         if sections[section_type] == sections[0]:
             train_filenames = [prefix+self.filenames_train[0]]
@@ -67,6 +67,17 @@ class DatasetReader:
         elif sections[section_type] == sections[2]:
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
+        elif sections[section_type] == sections[2]:
+            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2]]
+            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
+        elif sections[section_type] == sections[3]:
+            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2],prefix+self.filenames_train[3]]
+            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2],prefix+self.filenames_test[3]]
+        # only testing with ptb
+        elif sections[section_type] == sections[4]:
+            train_filenames = [prefix+self.filenames_train[3]]
+            test_filenames = [prefix+self.filenames_test[3]]
+
 
         train_dataset = data_reader.read_with_dataset_api(train_batch,train_filenames,TRAIN_WITH_PTB,version='1')
         test_dataset = data_reader.read_with_dataset_api(test_batch,test_filenames,TRAIN_WITH_PTB,version='2')
@@ -112,6 +123,7 @@ class DatasetReader:
             'TEST_BATCH_SIZE': int(parser[sections[section_type]]['TEST_BATCH_SIZE']),
             'TEST_AFTER_EPOCHS': int(parser[sections[section_type]]['TEST_AFTER_EPOCHS']),
             'TOTAL_TRAIN_EXAMPLES': int(parser[sections[section_type]]['TOTAL_TRAIN_EXAMPLES']),
+            'TEST_ON_PTB_ONLY': parser[sections[section_type]].getboolean('TEST_ON_PTB_ONLY'),
 
             # LR
             'START_LEARNING_RATE': float(parser[sections[section_type]]['START_LEARNING_RATE']),
@@ -119,7 +131,10 @@ class DatasetReader:
             'POWER': int(parser[sections[section_type]]['POWER'])
         }
 
-        self.create_and_remove_directories(self.FLAGS['TRAIN_DIR'],self.FLAGS['CLEAN_FILES'],self.FLAGS['LOAD_FROM_CKPT'],self.FLAGS['TESTING_ENABLED'])
+        self.create_and_remove_directories(self.FLAGS['TRAIN_DIR'],
+                                           self.FLAGS['CLEAN_FILES'],
+                                           self.FLAGS['LOAD_FROM_CKPT'],
+                                           self.FLAGS['TESTING_ENABLED'])
 
         self.TRAIN_DIR_LIST = self.FLAGS['TRAIN_DIR'].split('/')
 
@@ -129,7 +144,11 @@ class DatasetReader:
 
         self.TEST_EPOCH = math.ceil(self.FLAGS['TOTAL_TEST_EXAMPLES'] / self.FLAGS['TEST_BATCH_SIZE'])
 
-        train_iterator, test_iterator = self.create_input_pipeline(sections,section_type,parser[sections[section_type]]['DATASET_FOLDER'],self.FLAGS['BATCH_SIZE'],self.FLAGS['TEST_BATCH_SIZE'],self.FLAGS['TRAIN_WITH_PTB'])
+        train_iterator, test_iterator = self.create_input_pipeline(sections,
+                                                                   section_type,
+                                                                   parser[sections[section_type]]['DATASET_FOLDER'],
+                                                                   self.FLAGS['BATCH_SIZE'],
+                                                                   self.FLAGS['TEST_BATCH_SIZE'])
 
         # for testing
         self.X = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'] * len(self.filenames_test), 224, 384, 8))
@@ -246,25 +265,17 @@ class DatasetReader:
         saver = tf.train.Saver(tf.global_variables())
 
 
-
-        tf.summary.image('test_flow_u_1',self.Y[:,:,:,0:1])
-        tf.summary.image('test_flow_v_1',self.Y[:,:,:,1:2])
-
-        tf.summary.image('test_input_image1',self.X[:,:,:,0:3])
-        tf.summary.image('test_input_image2',self.X[:,:,:,4:7])
-        tf.summary.image('test_depth_image1',tf.expand_dims(self.X[:,:,:,3],axis=-1))
-        tf.summary.image('test_depth_image2',tf.expand_dims(self.X[:,:,:,7],axis=-1))
-
         # Build the summary operation from the last tower summaries.
         self.summary_op = tf.summary.merge(summaries)
 
         # Build an initialization operation to run below.
         init = tf.global_variables_initializer()
 
+        self.update_test_datasets_image_summaries()
+
         # Start running operations on the Graph. allow_soft_placement must be set to
         # True to build towers on GPU, as some of the ops do not have GPU
         # implementations.
-
         tf_config = tf.ConfigProto(allow_soft_placement=True,
             log_device_placement=self.FLAGS['LOG_DEVICE_PLACEMENT'])
 
@@ -311,8 +322,9 @@ class DatasetReader:
         test_loss_calculating_index = 1
 
 
-        # if self.FLAGS['TESTING_ENABLED'] == True:
-            # self.print_test_epoch_loss(sess,iterator_test)
+        # this will not train and only test the model on ptb dataset.
+        if self.FLAGS['TEST_ON_PTB_ONLY'] == True:
+            self.test_model_on_ptb(sess,iterator_test)
 
 
         # main loop
@@ -383,32 +395,7 @@ class DatasetReader:
 
         summary_writer.close()
     
-    def combine_batches_from_datasets(self,batches):
-        driving_batch_img = batches[0][0]
-        driving_batch_lbl = batches[0][1]
-
-        flying_batch_img = batches[1][0]
-        flying_batch_lbl = batches[1][1]
-
-        monkaa_batch_img = batches[2][0]
-        monkaa_batch_lbl = batches[2][1]
-
-
-        if self.FLAGS['TRAIN_WITH_PTB'] == True:
-            ptb_batch_img = batches[3][0]
-            ptb_batch_lbl = batches[3][1]
-
-            final_img_batch = tf.concat((driving_batch_img,flying_batch_img,monkaa_batch_img,ptb_batch_img),axis=0)
-            final_lbl_batch = tf.concat((driving_batch_lbl,flying_batch_lbl,monkaa_batch_lbl,ptb_batch_lbl),axis=0)
-        else:
-            final_img_batch = tf.concat((driving_batch_img,flying_batch_img,monkaa_batch_img),axis=0)
-            final_lbl_batch = tf.concat((driving_batch_lbl,flying_batch_lbl,monkaa_batch_lbl),axis=0)
-
-        return final_img_batch, final_lbl_batch
-
-
-    def print_test_epoch_loss(self,sess,iterator_test):
-    
+    def test_model_on_ptb(sess):
         self.log()
         self.log(message='Testing ..., Total Test Epochs = ' + str(self.TEST_EPOCH))
         self.log()
@@ -432,6 +419,91 @@ class DatasetReader:
         self.log()
         self.log(message='Continue Training ...')
         self.log()
+
+
+    def update_test_datasets_image_summaries():
+
+        # if TEST_ON_PTB_ONLY = True, than we'll only have 4 values in the dataset i.e [4,:,:,:]. Hence we only use
+        # the first part and the rest is left out in the summary.
+        if self.FLAGS['TEST_ON_PTB_ONLY'] == False:
+            flow_u_1 = 'test_flow_u_1_driving'
+            flow_v_1 = 'test_flow_v_1_driving'
+            input_image1 = 'test_input_image1_driving'
+            input_image2 = 'test_input_image2_driving'
+            depth_image1 = 'test_depth_image1_driving'
+            depth_image2 = 'test_depth_image2_driving'
+        else:
+            flow_u_1 = 'test_flow_u_1_ptb'
+            flow_v_1 = 'test_flow_v_1_ptb'
+            input_image1 = 'test_input_ptb'
+            input_image2 = 'test_input_ptb'
+            depth_image1 = 'test_depth_ptb'
+            depth_image2 = 'test_depth_ptb'
+
+
+        # driving or ptb in case of TEST_ON_PTB_ONLY = True
+        tf.summary.image(flow_u_1,self.Y[0:self.FLAGS['BATCH_SIZE'],:,:,0:1])
+        tf.summary.image(flow_v_1,self.Y[0:self.FLAGS['BATCH_SIZE'],:,:,1:2])
+        tf.summary.image(input_image1,self.X[0:self.FLAGS['BATCH_SIZE'],:,:,0:3])
+        tf.summary.image(input_image2,self.X[0:self.FLAGS['BATCH_SIZE'],:,:,4:7])
+        tf.summary.image(depth_image1,tf.expand_dims(self.X[0:self.FLAGS['BATCH_SIZE'],:,:,3],axis=-1))
+        tf.summary.image(depth_image2,tf.expand_dims(self.X[0:self.FLAGS['BATCH_SIZE'],:,:,7],axis=-1))
+
+
+        if self.FLAGS['TEST_ON_PTB_ONLY'] == False:
+            # flying
+            tf.summary.image('test_flow_u_1_flying',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,0:1])
+            tf.summary.image('test_flow_v_1_flying',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,1:2])
+            tf.summary.image('test_input_image1_flying',self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,0:3])
+            tf.summary.image('test_input_image2_flying',self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,4:7])
+            tf.summary.image('test_depth_image1_flying',tf.expand_dims(self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,3],axis=-1))
+            tf.summary.image('test_depth_image2_flying',tf.expand_dims(self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,7],axis=-1))
+
+            # monkaa
+            tf.summary.image('test_flow_u_1_monkaa',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,0:1])
+            tf.summary.image('test_flow_v_1_monkaa',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,1:2])
+            tf.summary.image('test_input_image1_monkaa',self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,0:3])
+            tf.summary.image('test_input_image2_monkaa',self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,4:7])
+            tf.summary.image('test_depth_image1_monkaa',tf.expand_dims(self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,3],axis=-1))
+            tf.summary.image('test_depth_image2_monkaa',tf.expand_dims(self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,7],axis=-1))
+
+
+            if self.FLAGS['TRAIN_WITH_PTB'] == True:
+                # ptb
+                tf.summary.image('test_flow_u_1_ptb',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*4),:,:,0:1])
+                tf.summary.image('test_flow_v_1_ptb',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*4),:,:,1:2])
+                tf.summary.image('test_input_image1_ptb',self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*4),:,:,0:3])
+                tf.summary.image('test_input_image2_ptb',self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*4),:,:,4:7])
+                tf.summary.image('test_depth_image1_ptb',tf.expand_dims(self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,3],axis=-1))
+                tf.summary.image('test_depth_image2_ptb',tf.expand_dims(self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,7],axis=-1))
+
+
+
+
+    def combine_batches_from_datasets(self,batches):
+        driving_batch_img = batches[0][0]
+        driving_batch_lbl = batches[0][1]
+
+        flying_batch_img = batches[1][0]
+        flying_batch_lbl = batches[1][1]
+
+        monkaa_batch_img = batches[2][0]
+        monkaa_batch_lbl = batches[2][1]
+
+
+        if self.FLAGS['TRAIN_WITH_PTB'] == True:
+            ptb_batch_img = batches[3][0]
+            ptb_batch_lbl = batches[3][1]
+
+            final_img_batch = tf.concat((driving_batch_img,flying_batch_img,monkaa_batch_img,ptb_batch_img),axis=0)
+            final_lbl_batch = tf.concat((driving_batch_lbl,flying_batch_lbl,monkaa_batch_lbl,ptb_batch_lbl),axis=0)
+        else:
+            final_img_batch = tf.concat((driving_batch_img,flying_batch_img,monkaa_batch_img),axis=0)
+            final_lbl_batch = tf.concat((driving_batch_lbl,flying_batch_lbl,monkaa_batch_lbl),axis=0)
+
+        return final_img_batch, final_lbl_batch
+
+    
 
     def further_resize_imgs_lbls(self,network_input_images,network_input_labels):
 
@@ -484,12 +556,12 @@ class DatasetReader:
 
         # losses sections[section_type]
 
-        with tf.variable_scope('fb_loss_refine_3'):
-            _ = losses_helper.forward_backward_loss(predict_flows[1])
-        with tf.variable_scope('fb_loss_refine_3'):
-            _ = losses_helper.forward_backward_loss(predict_flows[2])
-        with tf.variable_scope('fb_loss_refine_3'):
-            _ = losses_helper.forward_backward_loss(predict_flows[3])
+        # with tf.variable_scope('fb_loss_refine_3'):
+        #     _ = losses_helper.forward_backward_loss(predict_flows[1])
+        # with tf.variable_scope('fb_loss_refine_3'):
+        #     _ = losses_helper.forward_backward_loss(predict_flows[2])
+        # with tf.variable_scope('fb_loss_refine_3'):
+        #     _ = losses_helper.forward_backward_loss(predict_flows[3])
 
 
         flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images)
@@ -509,16 +581,16 @@ class DatasetReader:
             Applying pc loss on lower resolutions
         '''
 
-        network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-        with tf.variable_scope('photoconsistency_loss_refine_3'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
-        with tf.variable_scope('photoconsistency_loss_refine_2'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
-        with tf.variable_scope('photoconsistency_loss_refine_1'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
+        # with tf.variable_scope('photoconsistency_loss_refine_3'):
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
+        # with tf.variable_scope('photoconsistency_loss_refine_2'):
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
+        # with tf.variable_scope('photoconsistency_loss_refine_1'):
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
 
 
 
