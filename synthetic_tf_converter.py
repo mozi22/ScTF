@@ -50,8 +50,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 4
-
+		self.dataset_number = 1
 		# these are inverse depths
 		self.max_depth_driving = 0.232809
 		# self.max_depth_driving_chng = 2.70248
@@ -87,7 +86,7 @@ class SyntheticTFRecordsWriter:
 		self.dataset_root = '../dataset_synthetic/'
 
 		self.dataset_ptb_root = '../dataset_ptb/'
-		self.ptb_folders = ['EvaluationSet']
+		self.ptb_folders = ['EvaluationSet','ValidationSet']
 
 
 		self.datasets = ['driving','flyingthings3d','monkaa','ptb']
@@ -193,7 +192,7 @@ class SyntheticTFRecordsWriter:
 
 		input_size = math.ceil(960 * self.v_factor), math.floor(540 * self.u_factor)
 
-		# test_writer = self.init_tfrecord_writer(self.dataset_save+'ptb_TEST.tfrecords')
+		test_writer = self.init_tfrecord_writer(self.dataset_save+'ptb_TEST.tfrecords')
 		train_writer = self.init_tfrecord_writer(self.dataset_save+'ptb_TRAIN.tfrecords')
 
 		# dataset_max_values = [36277,31452,29610,65168,34026,65168,65168,65168,39217,65168,
@@ -278,11 +277,17 @@ class SyntheticTFRecordsWriter:
 
 					# self.check_max_depth(depth1,depth2,0)
 
-					img1 = np.array(img1) / 255
-					img2 = np.array(img2) / 255
+					img1 = np.array(img1) 
+					img2 = np.array(img2) 
 
 					optical_flow = np.zeros_like(img1)
 					depth_change = np.zeros_like(img1)
+
+					optical_flow = np.delete(optical_flow,1,axis=2)
+					depth_change = depth_change[:,:,0]
+
+					depth_change = depth_change.astype(np.float32)
+					optical_flow = optical_flow.astype(np.float32)
 
 					patches = [{
 						'web_p': img1,
@@ -293,22 +298,22 @@ class SyntheticTFRecordsWriter:
 						'optical_flow': optical_flow,
 						'path': ''
 					}]
+ 
 
+					if set_type == 0:
+						self.create_tf_example(patches,
+							'',
+							train_writer,
+							'')
+					else:
+						print('train finished')
+						self.create_tf_example(patches,
+							'',
+							test_writer,
+							'')
 
-					# if set_type == 0:
-					# 	self.create_tf_example(patches,
-					# 		'',
-					# 		train_writer,
-					# 		'')
-					# else:
-					# print('train finished')
-					self.create_tf_example(patches,
-						'',
-						train_writer,
-						'')
-
-		# self.close_writer(train_writer)
 		self.close_writer(train_writer)
+		self.close_writer(test_writer)
 
 
 	def max_ptb_depth_values(depth1,depth2):
@@ -925,7 +930,6 @@ class SyntheticTFRecordsWriter:
 
 		web_p_file = np.array(web_p_file)[:,:,0:3]
 		web_p_file2 = np.array(web_p_file2)[:,:,0:3]
-
 		return [{
 			'web_p': web_p_file,
 			'web_p2': web_p_file2,

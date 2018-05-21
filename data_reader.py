@@ -97,25 +97,50 @@ def _parse_function(example_proto):
 
     return final_result["input_n"], final_result["label_n"]
 
+def _parse_function_ptb(example_proto):
 
-def read_with_dataset_api_for_test(batch_size,filenames,version='1'):
-    num_parallel_calls = 16
-    buffer_size = 50
+    features = tf.parse_single_example(example_proto, {
+        'depth1': tf.FixedLenFeature([], tf.string),
+        'depth2': tf.FixedLenFeature([], tf.string),
+        'image1': tf.FixedLenFeature([], tf.string),
+        'image2': tf.FixedLenFeature([], tf.string)
+    },
+    name="ExampleParserV")
 
-    mapped_handles = []
-    for file in filenames:
-        records_handle = tf.data.TFRecordDataset(file)
-        mapped = records_handle.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
-        mapped_handles.append(mapped)
+    # Convert the image data from binary back to arrays(Tensors)
+    depth1 = tf.decode_raw(features['depth1'], tf.float32)
+    depth2 = tf.decode_raw(features['depth2'], tf.float32)
 
-    dataset = tf.data.Dataset.zip(tuple(mapped_handles))
+    image1 = tf.decode_raw(features['image1'], tf.uint8)
+    image2 = tf.decode_raw(features['image2'], tf.uint8)
 
-    dataset = dataset.shuffle(buffer_size=50).repeat().apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
-    dataset = dataset.prefetch(batch_size)
+    input_pipeline_dimensions = [224, 384]
+    image1 = tf.to_float(image1)
+    image2 = tf.to_float(image2)
 
-    iterator = dataset.make_initializable_iterator()
 
-    return iterator
+    # reshape data to its original form
+    image1 = tf.reshape(image1, [input_pipeline_dimensions[0],input_pipeline_dimensions[1], 3],name="reshape_img1")
+    image2 = tf.reshape(image2, [input_pipeline_dimensions[0],input_pipeline_dimensions[1], 3],name="reshape_img2")
+
+    depth1 = tf.reshape(depth1, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp1")
+    depth2 = tf.reshape(depth2, [input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_disp2")
+
+    optical_flow1 = tf.zeros_like(depth1)
+    optical_flow2 = tf.zeros_like(depth1)
+    depth_chng = tf.zeros_like(depth1)
+
+    optical_flow1 = tf.expand_dims(optical_flow1,axis=2)
+    optical_flow2 = tf.expand_dims(optical_flow2,axis=2)
+    optical_flow = tf.concat([optical_flow1,optical_flow2],axis=2)
+
+    image1 = tf.divide(image1,[255])
+    image2 = tf.divide(image2,[255])
+
+    final_result = train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
+
+    return final_result["input_n"], final_result["label_n"]
+
 
 
 def read_with_dataset_api(batch_size,filenames,version='1'):
@@ -128,27 +153,15 @@ def read_with_dataset_api(batch_size,filenames,version='1'):
 
     for name in filenames:
         data = tf.data.TFRecordDataset(name)
-        data = data.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
+
+        if 'ptb' in name:
+            data = data.map(map_func=_parse_function_ptb, num_parallel_calls=num_parallel_calls)
+        else:
+            data = data.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
         mapped_data.append(data)
 
     data = tuple(mapped_data)
     dataset = tf.data.Dataset.zip(data)
-
-    # dataset_driving = tf.data.TFRecordDataset(filenames[0])
-    # dataset_flying = tf.data.TFRecordDataset(filenames[1])
-    # dataset_monkaa = tf.data.TFRecordDataset(filenames[2])
-
-
-    # dataset_driving = dataset_driving.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
-    # dataset_flying = dataset_flying.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
-    # dataset_monkaa = dataset_monkaa.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
-
-    # if TRAIN_WITH_PTB == True:
-    #     dataset_ptb = tf.data.TFRecordDataset(filenames[3])
-    #     dataset_ptb = dataset_ptb.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
-    #     dataset = tf.data.Dataset.zip((dataset_driving,dataset_flying, dataset_monkaa,dataset_ptb))
-    # else:
-    #     dataset = tf.data.Dataset.zip((dataset_driving,dataset_flying, dataset_monkaa))
 
     dataset = dataset.shuffle(buffer_size=50).repeat().apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
     dataset = dataset.prefetch(batch_size)

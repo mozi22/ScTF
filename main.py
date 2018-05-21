@@ -55,6 +55,7 @@ class DatasetReader:
     def create_input_pipeline(self,sections):
         
         prefix = self.FLAGS['DATASET_FOLDER']
+        self.dataset_used = 1
 
         # memory_folder = '/dev/shm/'
 
@@ -65,26 +66,31 @@ class DatasetReader:
         if sections[self.section_type] == sections[0]:
             train_filenames = [prefix+self.filenames_train[0]]
             test_filenames = [prefix+self.filenames_test[0]]
+            self.dataset_used = 1
 
         # driving, flying
         elif sections[self.section_type] == sections[1]:
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1]]
+            self.dataset_used = 2
 
         # driving, flying, monkaa
         elif sections[self.section_type] == sections[2]:
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
+            self.dataset_used = 3
 
         # driving, flying, monkaa, ptb
         elif sections[self.section_type] == sections[3]:
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2],prefix+self.filenames_train[3]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2],prefix+self.filenames_test[3]]
+            self.dataset_used = 4
 
         # only testing with ptb
         elif sections[self.section_type] == sections[4]:
             train_filenames = [prefix+self.filenames_train[3]]
             test_filenames = [prefix+self.filenames_test[3]]
+            self.dataset_used = 1
 
 
         train_dataset = data_reader.read_with_dataset_api(self.FLAGS['BATCH_SIZE'],train_filenames,version='1')
@@ -154,8 +160,8 @@ class DatasetReader:
         train_iterator, test_iterator = self.create_input_pipeline(sections)
 
         # for testing
-        self.X = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'] * len(self.filenames_test), 224, 384, 8))
-        self.Y = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'] * len(self.filenames_test), 224, 384, 3))
+        self.X = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'] * self.dataset_used, 224, 384, 8))
+        self.Y = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'] * self.dataset_used, 224, 384, 3))
 
         return train_iterator, test_iterator
 
@@ -239,14 +245,16 @@ class DatasetReader:
         # synchronization point across all towers.
         grads = self.average_gradients(tower_grads)
 
-        # Add a summary to track the learning rate.
-        summaries.append(tf.summary.scalar('learning_rate', learning_rate))
 
 
-        # Add histograms for gradients.
-        for grad, var in grads:
-            if grad is not None:
-                summaries.append(tf.summary.histogram(var.op.name + '/gradients', grad))
+        if not self.section_type is 4:
+            # Add a summary to track the learning rate.
+            summaries.append(tf.summary.scalar('learning_rate', learning_rate))
+    
+            # Add histograms for gradients.
+            for grad, var in grads:
+                if grad is not None:
+                    summaries.append(tf.summary.histogram(var.op.name + '/gradients', grad))
 
 
         # Apply the gradients to adjust the shared variables.
@@ -393,7 +401,7 @@ class DatasetReader:
                 test_image_batch, test_label_batch = sess.run([test_image_batch, test_label_batch])
 
                 loss_value, summary_str_test = sess.run([self.loss,self.summary_op],feed_dict={ 
-                            self.X: test_image_batch, 
+                            self.X: test_image_batch,
                             self.Y: test_label_batch
                 })
 
@@ -411,13 +419,13 @@ class DatasetReader:
         self.log(message='Testing ..., Total Test Epochs = ' + str(self.TEST_EPOCH))
         self.log()
 
+
+
         # iterator_test = sess.run(iterator_test)
-        image_batch, label_batch = self.combine_batches_from_datasets(iterator_test.get_next())
-        image_batch, label_batch = self.get_network_input_forward(image_batch,label_batch)
-        print(image_batch)
-        print(label_batch)
         for step in range(0,self.TEST_EPOCH + 10):
 
+            image_batch, label_batch = self.combine_batches_from_datasets(iterator_test.get_next())
+            image_batch, label_batch = self.get_network_input_forward(image_batch,label_batch)
 
             image,label = sess.run([image_batch, label_batch])
 
