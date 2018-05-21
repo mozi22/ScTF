@@ -4,6 +4,7 @@ import time
 import math
 import sys
 import network
+import shutil
 import logging
 import numpy as np
 import losses_helper
@@ -99,7 +100,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 2
+        self.section_type = 4
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -148,13 +149,9 @@ class DatasetReader:
 
         # gives the # of steps required to complete 1 epoch
         self.TRAIN_EPOCH = math.ceil(self.FLAGS['TOTAL_TRAIN_EXAMPLES'] / self.FLAGS['BATCH_SIZE'])
-
-
         self.TEST_EPOCH = math.ceil(self.FLAGS['TOTAL_TEST_EXAMPLES'] / self.FLAGS['TEST_BATCH_SIZE'])
 
-        train_iterator, test_iterator = self.create_input_pipeline(sections,
-                                                                   self.FLAGS['BATCH_SIZE'],
-                                                                   self.FLAGS['TEST_BATCH_SIZE'])
+        train_iterator, test_iterator = self.create_input_pipeline(sections)
 
         # for testing
         self.X = tf.placeholder(dtype=tf.float32, shape=(self.FLAGS['TEST_BATCH_SIZE'] * len(self.filenames_test), 224, 384, 8))
@@ -312,7 +309,8 @@ class DatasetReader:
 
 
         if self.section_type == 4:
-            os.remove(self.FLAGS['TRAIN_DIR'] +'/ptb_test')
+            if os.path.exists(self.FLAGS['TRAIN_DIR'] +'/ptb_test'):
+                shutil.rmtree(self.FLAGS['TRAIN_DIR'] +'/ptb_test')
             os.makedirs(self.FLAGS['TRAIN_DIR'] +'/ptb_test')                
             self.test_summary_writer = tf.summary.FileWriter(self.FLAGS['TRAIN_DIR']+'/ptb_test', sess.graph)
         else: 
@@ -408,7 +406,7 @@ class DatasetReader:
 
         summary_writer.close()
     
-    def test_model_on_ptb(sess,iterator_test):
+    def test_model_on_ptb(self,sess,iterator_test):
         self.log()
         self.log(message='Testing ..., Total Test Epochs = ' + str(self.TEST_EPOCH))
         self.log()
@@ -416,7 +414,9 @@ class DatasetReader:
         # iterator_test = sess.run(iterator_test)
         image_batch, label_batch = self.combine_batches_from_datasets(iterator_test.get_next())
         image_batch, label_batch = self.get_network_input_forward(image_batch,label_batch)
-        for step in range(0,self.TEST_EPOCH + 1000):
+        print(image_batch)
+        print(label_batch)
+        for step in range(0,self.TEST_EPOCH + 10):
 
 
             image,label = sess.run([image_batch, label_batch])
@@ -426,7 +426,7 @@ class DatasetReader:
             format_str = ('%s: Testing step %d, loss = %.15f')
             self.log(message=(format_str % (datetime.now(), step, np.log10(loss_value))))
 
-            if step % 100 == 0:
+            if step % 50 == 0:
                 self.test_summary_writer.add_summary(summary_str, step)
 
         self.log()
@@ -434,24 +434,24 @@ class DatasetReader:
         self.log()
 
 
-    def update_test_datasets_image_summaries():
+    def update_test_datasets_image_summaries(self):
 
         # if TEST_ON_PTB_ONLY = True, than we'll only have 4 values in the dataset i.e [4,:,:,:]. Hence we only use
         # the first part and the rest is left out in the summary.
-        if self.FLAGS['TEST_ON_PTB_ONLY'] == False:
-            flow_u_1 = 'test_flow_u_1_driving'
-            flow_v_1 = 'test_flow_v_1_driving'
-            input_image1 = 'test_input_image1_driving'
-            input_image2 = 'test_input_image2_driving'
-            depth_image1 = 'test_depth_image1_driving'
-            depth_image2 = 'test_depth_image2_driving'
-        else:
+        if self.section_type == 4:
             flow_u_1 = 'test_flow_u_1_ptb'
             flow_v_1 = 'test_flow_v_1_ptb'
             input_image1 = 'test_input_ptb'
             input_image2 = 'test_input_ptb'
             depth_image1 = 'test_depth_ptb'
             depth_image2 = 'test_depth_ptb'
+        else:
+            flow_u_1 = 'test_flow_u_1_driving'
+            flow_v_1 = 'test_flow_v_1_driving'
+            input_image1 = 'test_input_image1_driving'
+            input_image2 = 'test_input_image2_driving'
+            depth_image1 = 'test_depth_image1_driving'
+            depth_image2 = 'test_depth_image2_driving'
 
 
         # driving or ptb in case of TEST_ON_PTB_ONLY = True
@@ -463,7 +463,8 @@ class DatasetReader:
         tf.summary.image(depth_image2,tf.expand_dims(self.X[0:self.FLAGS['BATCH_SIZE'],:,:,7],axis=-1))
 
 
-        if self.FLAGS['TEST_ON_PTB_ONLY'] == False:
+        if self.section_type is not 4:
+
             # flying
             tf.summary.image('test_flow_u_1_flying',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,0:1])
             tf.summary.image('test_flow_v_1_flying',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,1:2])
@@ -481,7 +482,7 @@ class DatasetReader:
             tf.summary.image('test_depth_image2_monkaa',tf.expand_dims(self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,7],axis=-1))
 
 
-            if self.FLAGS['TRAIN_WITH_PTB'] == True:
+            if self.section_type == 3:
                 # ptb
                 tf.summary.image('test_flow_u_1_ptb',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*4),:,:,0:1])
                 tf.summary.image('test_flow_v_1_ptb',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*4),:,:,1:2])
@@ -494,8 +495,17 @@ class DatasetReader:
 
 
     def combine_batches_from_datasets(self,batches):
+
+
         driving_batch_img = batches[0][0]
         driving_batch_lbl = batches[0][1]
+
+        # this will be ptb only than
+        if self.section_type == 4:
+            final_img_batch = tf.concat((driving_batch_img),axis=0)
+            final_lbl_batch = tf.concat((driving_batch_lbl),axis=0)
+
+            return final_img_batch, final_lbl_batch
 
         flying_batch_img = batches[1][0]
         flying_batch_lbl = batches[1][1]
@@ -504,7 +514,7 @@ class DatasetReader:
         monkaa_batch_lbl = batches[2][1]
 
 
-        if self.FLAGS['TRAIN_WITH_PTB'] == True:
+        if self.section_type == 3:
             ptb_batch_img = batches[3][0]
             ptb_batch_lbl = batches[3][1]
 
@@ -536,7 +546,7 @@ class DatasetReader:
         return network_input_images, network_input_labels
 
 
-    def remove_ptb_records(network_input_images,network_input_labels):
+    def remove_ptb_records(self,network_input_images,network_input_labels):
         return network_input_images[0:12,:,:,:], network_input_labels[0:12,:,:,:]
 
 
@@ -608,7 +618,7 @@ class DatasetReader:
 
 
         # unsupervised losses done. Now remove ptb. Since it doesn't have ground truth.
-        if self.FLAGS['TRAIN_WITH_PTB'] == True:
+        if self.section_type == 3:
             network_input_images, network_input_labels = self.remove_ptb_records(network_input_images, network_input_labels)
 
 
