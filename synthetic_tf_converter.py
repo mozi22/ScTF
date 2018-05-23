@@ -36,7 +36,7 @@ import math
 import glob
 import csv
 from multiprocessing import Process
-# import ijremote as ij
+import ijremote as ij
 from os.path import isfile, join
 class SyntheticTFRecordsWriter:
 
@@ -264,8 +264,8 @@ class SyntheticTFRecordsWriter:
 					depth1 = depth1.resize(input_size, Image.NEAREST)
 					depth2 = depth2.resize(input_size, Image.NEAREST)
 
-					# depth1 = self.visualize_ptb_image(depth1,True)
-					# depth2 = self.visualize_ptb_image(depth2)
+					depth1 = self.visualize_ptb_image(depth1)
+					depth2 = self.visualize_ptb_image(depth2)
 
 					depth1 = np.array(depth1)
 					depth2 = np.array(depth2)
@@ -311,6 +311,8 @@ class SyntheticTFRecordsWriter:
 							'',
 							test_writer,
 							'')
+					break
+				break
 
 		self.close_writer(train_writer)
 		self.close_writer(test_writer)
@@ -341,9 +343,9 @@ class SyntheticTFRecordsWriter:
 		depth1 = depth1_left | depth1_right
 		
 		if show_as_img == True:
-			ij.setImage('depth8',depth1.astype(np.uint8))
+			# ij.setImage('depth8',depth1.astype(np.uint8))
 			# ij.setImage('depth16',depth1.astype(np.float32))
-			# Image.fromarray(depth1.astype(np.uint8)).show()
+			Image.fromarray(depth1.astype(np.uint8)).show()
 			# Image.fromarray(depth1).show()
 
 		return depth1.astype(np.uint8)
@@ -710,8 +712,8 @@ class SyntheticTFRecordsWriter:
 	def normalizeOptFlow(self,flow,input_size):
 
 		# remove the values bigger than the image size
-		flow[:,:,0][flow[:,:,0] > input_size[0] ] = np.nan
-		flow[:,:,1][flow[:,:,1] > input_size[1] ] = np.nan
+		flow[:,:,0][flow[:,:,0] > input_size[0] ] = 0
+		flow[:,:,1][flow[:,:,1] > input_size[1] ] = 0
 
 		# separate the u and v values 
 		flow_u = flow[:,:,0]
@@ -875,7 +877,7 @@ class SyntheticTFRecordsWriter:
 		# opt_flow = opt_flow * self.factor
 
 		# normalize flow values between 0 - 1
-		# opt_flow = self.normalizeOptFlow(opt_flow,size)
+		opt_flow = self.normalizeOptFlow(opt_flow,size)
 
 		return opt_flow
 

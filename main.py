@@ -106,7 +106,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 4
+        self.section_type = 2
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -419,8 +419,6 @@ class DatasetReader:
         self.log(message='Testing ..., Total Test Epochs = ' + str(self.TEST_EPOCH))
         self.log()
 
-
-
         # iterator_test = sess.run(iterator_test)
         for step in range(0,self.TEST_EPOCH + 10):
 
@@ -429,13 +427,14 @@ class DatasetReader:
 
             image,label = sess.run([image_batch, label_batch])
 
-            loss_value,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: image, self.Y: label})
+            loss_value,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: image})
+
 
             format_str = ('%s: Testing step %d, loss = %.15f')
             self.log(message=(format_str % (datetime.now(), step, np.log10(loss_value))))
 
-            if step % 50 == 0:
-                self.test_summary_writer.add_summary(summary_str, step)
+            # if step % 50 == 0:
+            self.test_summary_writer.add_summary(summary_str, step)
 
         self.log()
         self.log(message='Continue Training ...')

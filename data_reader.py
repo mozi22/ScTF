@@ -323,6 +323,9 @@ def train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow):
     depth1 = depth1 / tf.reduce_max(depth1)
     depth2 = depth2 / tf.reduce_max(depth1)
 
+    depth1 = sops.replace_nonfinite(depth1)
+    depth2 = sops.replace_nonfinite(depth2)
+
     image1 = combine_depth_values(image1,depth1,2)
     image2 = combine_depth_values(image2,depth2,2)
 
