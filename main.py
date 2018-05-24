@@ -106,7 +106,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 2
+        self.section_type = 3
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -554,6 +554,7 @@ class DatasetReader:
 
 
     def remove_ptb_records(self,network_input_images,network_input_labels):
+
         return network_input_images[0:12,:,:,:], network_input_labels[0:12,:,:,:]
 
 
@@ -586,12 +587,12 @@ class DatasetReader:
 
         # losses sections[self.section_type]
 
-        # with tf.variable_scope('fb_loss_refine_3'):
-        #     _ = losses_helper.forward_backward_loss(predict_flows[1])
-        # with tf.variable_scope('fb_loss_refine_3'):
-        #     _ = losses_helper.forward_backward_loss(predict_flows[2])
-        # with tf.variable_scope('fb_loss_refine_3'):
-        #     _ = losses_helper.forward_backward_loss(predict_flows[3])
+        with tf.variable_scope('fb_loss_refine_3'):
+            _ = losses_helper.forward_backward_loss(predict_flows[1])
+        with tf.variable_scope('fb_loss_refine_3'):
+            _ = losses_helper.forward_backward_loss(predict_flows[2])
+        with tf.variable_scope('fb_loss_refine_3'):
+            _ = losses_helper.forward_backward_loss(predict_flows[3])
 
 
         flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images)
@@ -622,11 +623,11 @@ class DatasetReader:
         # with tf.variable_scope('photoconsistency_loss_refine_1'):
         #     _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
 
-
-
         # unsupervised losses done. Now remove ptb. Since it doesn't have ground truth.
         if self.section_type == 3:
             network_input_images, network_input_labels = self.remove_ptb_records(network_input_images, network_input_labels)
+            flows_dict['predict_flow_ref3'][0], flows_dict['predict_flow_ref2'][0] = self.remove_ptb_records(flows_dict['predict_flow_ref3'][0], flows_dict['predict_flow_ref2'][0])
+            flows_dict['predict_flow_ref1'][0], flows_dict['predict_flow'][0] = self.remove_ptb_records(flows_dict['predict_flow_ref1'][0], flows_dict['predict_flow'][0])
 
 
         # supervised
