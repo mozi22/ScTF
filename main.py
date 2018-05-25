@@ -64,30 +64,55 @@ class DatasetReader:
 
         # driving
         if sections[self.section_type] == sections[0]:
+
+            self.log()
+            self.log('Using Driving Dataset ... ')
+            self.log()
+
             train_filenames = [prefix+self.filenames_train[0]]
             test_filenames = [prefix+self.filenames_test[0]]
             self.dataset_used = 1
 
         # driving, flying
         elif sections[self.section_type] == sections[1]:
+
+            self.log()
+            self.log('Using Driving, Flying Datasets ... ')
+            self.log()
+
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1]]
             self.dataset_used = 2
 
         # driving, flying, monkaa
         elif sections[self.section_type] == sections[2]:
+
+            self.log()
+            self.log('Using Driving, Flying and Monkaa Datasets ... ')
+            self.log()
+
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
             self.dataset_used = 3
 
         # driving, flying, monkaa, ptb
         elif sections[self.section_type] == sections[3]:
+
+            self.log()
+            self.log('Using Driving, Flying, Monkaa and PTB Datasets ... ')
+            self.log()
+
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2],prefix+self.filenames_train[3]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2],prefix+self.filenames_test[3]]
             self.dataset_used = 4
 
         # only testing with ptb
         elif sections[self.section_type] == sections[4]:
+
+            self.log()
+            self.log('Using PTB Dataset ... ')
+            self.log()
+
             train_filenames = [prefix+self.filenames_train[3]]
             test_filenames = [prefix+self.filenames_test[3]]
             self.dataset_used = 1
@@ -106,7 +131,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 0
+        self.section_type = 1
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -524,12 +549,12 @@ class DatasetReader:
 
         # losses sections[self.section_type]
 
-        with tf.variable_scope('fb_loss_refine_3'):
-            _ = losses_helper.forward_backward_loss(predict_flows[1])
-        with tf.variable_scope('fb_loss_refine_3'):
-            _ = losses_helper.forward_backward_loss(predict_flows[2])
-        with tf.variable_scope('fb_loss_refine_3'):
-            _ = losses_helper.forward_backward_loss(predict_flows[3])
+        # with tf.variable_scope('fb_loss_refine_3'):
+        #     _ = losses_helper.forward_backward_loss(predict_flows[1])
+        # with tf.variable_scope('fb_loss_refine_3'):
+        #     _ = losses_helper.forward_backward_loss(predict_flows[2])
+        # with tf.variable_scope('fb_loss_refine_3'):
+        #     _ = losses_helper.forward_backward_loss(predict_flows[3])
 
 
         flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images)
@@ -550,16 +575,16 @@ class DatasetReader:
         '''
 
         # _ = losses_helper.photoconsistency_loss(network_input_images,flows_dict['predict_flow'][0])
-        # network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        # network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        # network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-        # with tf.variable_scope('photoconsistency_loss_refine_3'):
-        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
-        # with tf.variable_scope('photoconsistency_loss_refine_2'):
-        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
-        # with tf.variable_scope('photoconsistency_loss_refine_1'):
-        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
+        with tf.variable_scope('photoconsistency_loss_refine_3'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
+        with tf.variable_scope('photoconsistency_loss_refine_2'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
+        with tf.variable_scope('photoconsistency_loss_refine_1'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
 
         # unsupervised losses done. Now remove ptb. Since it doesn't have ground truth.
         if self.section_type == 3:

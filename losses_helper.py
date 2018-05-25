@@ -22,10 +22,11 @@ def photoconsistency_loss(img,predicted_flow, weight=10):
     img1, img2 = get_separate_rgb_images(img)
     predicted_flow = denormalize_flow(predicted_flow)
     warped_img = flow_warp(img2,predicted_flow)
-    
-    img1 = tf.stop_gradient(img1)
+
     warped_img = sops.replace_nonfinite(warped_img)
-    # img1 = get_occulation_aware_image(img1,warped_img)
+    img1 = get_occulation_aware_image(img1,warped_img)
+
+    img1 = tf.stop_gradient(img1)
 
     pc_loss = endpoint_loss(img1, warped_img,weight,'pc_loss')
     # pc_loss = tf.Print(pc_loss,[pc_loss],'pcloss ye hai ')
@@ -84,9 +85,11 @@ def forward_backward_loss(predicted_flow,weight=100):
     # flow_backward = tf.Print(flow_backward,[flow_backward],'backward ye hai ')
     flow_forward = denormalize_flow(flow_forward)
 
+
     # step 1,2,3
     B = sops.replace_nonfinite(flow_warp(flow_backward,flow_forward))
 
+    B = get_occulation_aware_image(flow_forward,B)
     # step 4
     fb_loss = sops.replace_nonfinite(endpoint_loss(flow_forward,-B,weight,'fb_loss'))
 
@@ -250,8 +253,7 @@ def pointwise_l2_loss(inp, gt, epsilon, data_format='NCHW'):
 
 # returns an image with all the occulded pixel values as 0
 def get_occulation_aware_image(img,warped_img):
-    masked_img = img * tf.ones(img.get_shape())
-    masked_img = masked_img / masked_img
+    masked_img = warped_img / warped_img
     masked_img = sops.replace_nonfinite(masked_img)
     return masked_img * img
 
