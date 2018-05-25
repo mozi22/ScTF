@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import lmbspecialops as sops
-
+import math
 
 # Polynomial Learning Rate
 
@@ -20,22 +20,34 @@ def photoconsistency_loss(img,predicted_flow, weight=10):
   with tf.variable_scope('photoconsistency_loss'):
 
     img1, img2 = get_separate_rgb_images(img)
-
-    warped_img = flow_warp(img1,predicted_flow)
+    predicted_flow = denormalize_flow(predicted_flow)
+    warped_img = flow_warp(img2,predicted_flow)
+    
+    img1 = tf.stop_gradient(img1)
     warped_img = sops.replace_nonfinite(warped_img)
-    tf.summary.image('img1_pc',img1)
-    tf.summary.image('img2_pc',img2)
-    tf.summary.image('img_warp_pc',warped_img)
-    tf.summary.image('predicted_flow_u',tf.expand_dims(predicted_flow[:,:,:,0],axis=-1))
-    tf.summary.image('predicted_flow_v',tf.expand_dims(predicted_flow[:,:,:,1],axis=-1))
     # img1 = get_occulation_aware_image(img1,warped_img)
-    # img1 = tf.stop_gradient(img1)
-    pc_loss = endpoint_loss(img2, warped_img,weight,'pc_loss')
+
+    pc_loss = endpoint_loss(img1, warped_img,weight,'pc_loss')
     # pc_loss = tf.Print(pc_loss,[pc_loss],'pcloss ye hai ')
     # tf.losses.compute_weighted_loss(pc_loss,weights=weight)
     # tf.summary.scalar('pc_loss',sops.replace_nonfinite(pc_loss))
 
   return pc_loss
+
+def denormalize_flow(flow):
+
+    u_factor = 0.414814815
+    v_factor = 0.4
+
+    input_size = math.ceil(960 * v_factor), math.floor(540 * u_factor)
+
+    u = flow[:,:,:,0] * input_size[0]
+    v = flow[:,:,:,1] * input_size[1]
+
+    u = tf.expand_dims(u,axis=-1)
+    v = tf.expand_dims(v,axis=-1)
+
+    return tf.concat([u,v],axis=-1)
 
 def forward_backward_loss(predicted_flow,weight=100):
 
@@ -70,6 +82,7 @@ def forward_backward_loss(predicted_flow,weight=100):
     flow_backward = tf.check_numerics(flow_backward,'flow_backward Nan Value found')
     # flow_forward = tf.Print(flow_forward,[flow_forward],'forward ye hai ')
     # flow_backward = tf.Print(flow_backward,[flow_backward],'backward ye hai ')
+    flow_forward = denormalize_flow(flow_forward)
 
     # step 1,2,3
     B = sops.replace_nonfinite(flow_warp(flow_backward,flow_forward))

@@ -55,7 +55,7 @@ class DatasetReader:
     def create_input_pipeline(self,sections):
         
         prefix = self.FLAGS['DATASET_FOLDER']
-        self.dataset_used = 1
+        self.dataset_used = 3
 
         # memory_folder = '/dev/shm/'
 
@@ -106,7 +106,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 3
+        self.section_type = 0
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -377,7 +377,7 @@ class DatasetReader:
             #     test_loss_calculating_index = test_loss_calculating_index + 1
 
             # ####################### Testing #######################
-            if step % 10 == 0 or first_iteration==True:
+            if step % 100 == 0 or first_iteration==True:
                 num_examples_per_step = self.FLAGS['BATCH_SIZE'] * self.FLAGS['NUM_GPUS']
                 examples_per_sec = num_examples_per_step / duration
                 sec_per_batch = duration / self.FLAGS['NUM_GPUS']
@@ -392,7 +392,7 @@ class DatasetReader:
             #     summary_str = sess.run(self.summary_op)
             #     summary_writer.add_summary(summary_str, step)
 
-            if step % 10 == 0 and step!=0:
+            if step % 100 == 0 and step!=0:
                 summary_str = sess.run(self.summary_op)
                 summary_writer.add_summary(summary_str, step)
 
@@ -427,8 +427,7 @@ class DatasetReader:
             image_batch, label_batch = self.get_network_input_forward(image_batch,label_batch)
 
             image,label = sess.run([image_batch, label_batch])
-
-            loss_value,summary_str = sess.run([self.loss,self.summary_op],feed_dict={self.X: image})
+            summary_str = sess.run([self.summary_op],feed_dict={self.X: image})
 
 
             format_str = ('%s: Testing step %d, loss = %.15f')
@@ -442,99 +441,32 @@ class DatasetReader:
         self.log()
 
 
-    def update_test_datasets_image_summaries(self,concatenated_FB_images):
 
-
-        test_summaries = []
-
-        # if TEST_ON_PTB_ONLY = True, than we'll only have 4 values in the dataset i.e [4,:,:,:]. Hence we only use
-        # the first part and the rest is left out in the summary.
-        if self.section_type == 4:
-            flow_u_1 = 'test_flow_u_1_ptb'
-            flow_v_1 = 'test_flow_v_1_ptb'
-            input_image1 = 'test_input_ptb'
-            input_image2 = 'test_input_ptb'
-            depth_image1 = 'test_depth_ptb'
-            depth_image2 = 'test_depth_ptb'
-        else:
-            flow_u_1 = 'test_flow_u_1_driving'
-            flow_v_1 = 'test_flow_v_1_driving'
-            input_image1 = 'test_input_image1_driving'
-            input_image2 = 'test_input_image2_driving'
-            depth_image1 = 'test_depth_image1_driving'
-            depth_image2 = 'test_depth_image2_driving'
-
-
-        # driving or ptb in case of TEST_ON_PTB_ONLY = True
-        test_summaries.append(tf.summary.image(flow_u_1,self.Y[0:self.FLAGS['BATCH_SIZE'],:,:,0:1]))
-        test_summaries.append(tf.summary.image(flow_v_1,self.Y[0:self.FLAGS['BATCH_SIZE'],:,:,1:2]))
-        test_summaries.append(tf.summary.image(input_image1,self.X[0:self.FLAGS['BATCH_SIZE'],:,:,0:3]))
-        test_summaries.append(tf.summary.image(input_image2,self.X[0:self.FLAGS['BATCH_SIZE'],:,:,4:7]))
-        test_summaries.append(tf.summary.image(depth_image1,tf.expand_dims(self.X[0:self.FLAGS['BATCH_SIZE'],:,:,3],axis=-1)))
-        test_summaries.append(tf.summary.image(depth_image2,tf.expand_dims(self.X[0:self.FLAGS['BATCH_SIZE'],:,:,7],axis=-1)))
-
-
-        if self.section_type is not 4:
-
-            # flying
-            test_summaries.append(tf.summary.image('test_flow_u_1_flying',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,0:1]))
-            test_summaries.append(tf.summary.image('test_flow_v_1_flying',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,1:2]))
-            test_summaries.append(tf.summary.image('test_input_image1_flying',self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,0:3]))
-            test_summaries.append(tf.summary.image('test_input_image2_flying',self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,4:7]))
-            test_summaries.append(tf.summary.image('test_depth_image1_flying',tf.expand_dims(self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,3],axis=-1)))
-            test_summaries.append(tf.summary.image('test_depth_image2_flying',tf.expand_dims(self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*2),:,:,7],axis=-1)))
-
-            # monkaa
-            test_summaries.append(tf.summary.image('test_flow_u_1_monkaa',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,0:1]))
-            test_summaries.append(tf.summary.image('test_flow_v_1_monkaa',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,1:2]))
-            test_summaries.append(tf.summary.image('test_input_image1_monkaa',self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,0:3]))
-            test_summaries.append(tf.summary.image('test_input_image2_monkaa',self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,4:7]))
-            test_summaries.append(tf.summary.image('test_depth_image1_monkaa',tf.expand_dims(self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,3],axis=-1)))
-            test_summaries.append(tf.summary.image('test_depth_image2_monkaa',tf.expand_dims(self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,7],axis=-1)))
-
-
-            if self.section_type == 3:
-
-                # ptb
-                test_summaries.append(tf.summary.image('test_flow_u_1_ptb',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*4),:,:,0:1]))
-                test_summaries.append(tf.summary.image('test_flow_v_1_ptb',self.Y[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*4),:,:,1:2]))
-                test_summaries.append(tf.summary.image('test_input_image1_ptb',self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*4),:,:,0:3]))
-                test_summaries.append(tf.summary.image('test_input_image2_ptb',self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*4),:,:,4:7]))
-                test_summaries.append(tf.summary.image('test_depth_image1_ptb',tf.expand_dims(self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,3],axis=-1)))
-                test_summaries.append(tf.summary.image('test_depth_image2_ptb',tf.expand_dims(self.X[self.FLAGS['BATCH_SIZE']: (self.FLAGS['BATCH_SIZE']*3),:,:,7],axis=-1)))
-
-
-        return test_summaries
 
     def combine_batches_from_datasets(self,batches):
 
+        imgs = []
+        lbls = []
 
-        driving_batch_img = batches[0][0]
-        driving_batch_lbl = batches[0][1]
-
-        # this will be ptb only than
-        if self.section_type == 4:
-            final_img_batch = tf.concat((driving_batch_img),axis=0)
-            final_lbl_batch = tf.concat((driving_batch_lbl),axis=0)
-
-            return final_img_batch, final_lbl_batch
-
-        flying_batch_img = batches[1][0]
-        flying_batch_lbl = batches[1][1]
-
-        monkaa_batch_img = batches[2][0]
-        monkaa_batch_lbl = batches[2][1]
+        # driving
+        imgs.append(batches[0][0])
+        lbls.append(batches[0][1])
 
 
-        if self.section_type == 3:
-            ptb_batch_img = batches[3][0]
-            ptb_batch_lbl = batches[3][1]
+        if self.section_type > 0 and self.section_type is not 4:
+            imgs.append(batches[1][0])
+            lbls.append(batches[1][1])
 
-            final_img_batch = tf.concat((driving_batch_img,flying_batch_img,monkaa_batch_img,ptb_batch_img),axis=0)
-            final_lbl_batch = tf.concat((driving_batch_lbl,flying_batch_lbl,monkaa_batch_lbl,ptb_batch_lbl),axis=0)
-        else:
-            final_img_batch = tf.concat((driving_batch_img,flying_batch_img,monkaa_batch_img),axis=0)
-            final_lbl_batch = tf.concat((driving_batch_lbl,flying_batch_lbl,monkaa_batch_lbl),axis=0)
+        if self.section_type > 1 and self.section_type is not 4:
+            imgs.append(batches[2][0])
+            lbls.append(batches[2][1])
+
+        if self.section_type > 2 and self.section_type is not 4:
+            imgs.append(batches[3][0])
+            lbls.append(batches[3][1])
+
+        final_img_batch = tf.concat(tuple(imgs),axis=0)
+        final_lbl_batch = tf.concat(tuple(lbls),axis=0)
 
         return final_img_batch, final_lbl_batch
 
@@ -602,7 +534,7 @@ class DatasetReader:
 
         flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images)
 
-        self.write_flows_concatenated_side_by_side(network_input_labels,flows_dict['predict_flow'][0])
+        self.write_flows_concatenated_side_by_side(network_input_images,network_input_labels,flows_dict['predict_flow'][0])
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
 
@@ -613,10 +545,11 @@ class DatasetReader:
        #  predict_flow2_refine1 = losses_helper.downsample_label(predict_flows[3],
        #                                  size=[80,128],factorU=0.5,factorV=0.5)
 
-        '''
+        ''' 
             Applying pc loss on lower resolutions
         '''
 
+        # _ = losses_helper.photoconsistency_loss(network_input_images,flows_dict['predict_flow'][0])
         # network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
         # network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
         # network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
@@ -742,25 +675,24 @@ class DatasetReader:
         tf.summary.image('depth_image1_driving',tf.expand_dims(concatenated_FB_images[0:4,:,:,3],axis=-1))
         tf.summary.image('depth_image2_driving',tf.expand_dims(concatenated_FB_images[0:4,:,:,7],axis=-1))
 
-        if self.section_type is not 4:
-
+        if self.section_type > 0 and self.section_type is not 4:
             tf.summary.image('input_image1_flying',concatenated_FB_images[4:8,:,:,0:3])
             tf.summary.image('input_image2_flying',concatenated_FB_images[4:8,:,:,4:7])
             tf.summary.image('depth_image1_flying',tf.expand_dims(concatenated_FB_images[4:8,:,:,3],axis=-1))
             tf.summary.image('depth_image2_flying',tf.expand_dims(concatenated_FB_images[4:8,:,:,7],axis=-1))
 
+        if self.section_type > 1 and self.section_type is not 4:
             tf.summary.image('input_image1_monkaa',concatenated_FB_images[8:12,:,:,0:3])
             tf.summary.image('input_image2_monkaa',concatenated_FB_images[8:12,:,:,4:7])
             tf.summary.image('depth_image1_monkaa',tf.expand_dims(concatenated_FB_images[8:12,:,:,3],axis=-1))
             tf.summary.image('depth_image2_monkaa',tf.expand_dims(concatenated_FB_images[8:12,:,:,7],axis=-1))
 
-            if self.section_type == 3:
-                tf.summary.image('input_image1_ptb',concatenated_FB_images[12:16,:,:,0:3])
-                tf.summary.image('input_image2_ptb',concatenated_FB_images[12:16,:,:,4:7])
-                tf.summary.image('depth_image1_ptb',tf.expand_dims(concatenated_FB_images[12:16,:,:,3],axis=-1))
-                tf.summary.image('depth_image2_ptb',tf.expand_dims(concatenated_FB_images[12:16,:,:,7],axis=-1))
+        if self.section_type > 2 and self.section_type is not 4:
+            tf.summary.image('input_image1_ptb',concatenated_FB_images[12:16,:,:,0:3])
+            tf.summary.image('input_image2_ptb',concatenated_FB_images[12:16,:,:,4:7])
+            tf.summary.image('depth_image1_ptb',tf.expand_dims(concatenated_FB_images[12:16,:,:,3],axis=-1))
+            tf.summary.image('depth_image2_ptb',tf.expand_dims(concatenated_FB_images[12:16,:,:,7],axis=-1))
 
-        # self.update_test_datasets_image_summaries(concatenated_FB_images)
 
         return {
             'predict_flow': [predict_flow_forward, predict_flow_backward],
@@ -769,32 +701,43 @@ class DatasetReader:
             'predict_flow_ref1': [predict_flow_forward_ref1, predict_flow_backward_ref1]
         }
 
-    def write_flows_concatenated_side_by_side(self,network_input_labels,predict_flow2):
+    def write_flows_concatenated_side_by_side(self,network_input_images,network_input_labels,predict_flow2):
         concated_flows_u_driving = tf.concat([network_input_labels[0:4,:,:,0:1],predict_flow2[0:4,:,:,0:1]],axis=-2)
         concated_flows_v_driving = tf.concat([network_input_labels[0:4,:,:,1:2],predict_flow2[0:4,:,:,1:2]],axis=-2)
 
+        denormalized_flow = losses_helper.denormalize_flow(predict_flow2)
+        warped_img = losses_helper.flow_warp(network_input_images[:,:,:,4:7],denormalized_flow)
+
         tf.summary.image('gt_predict_flow_u_driving',concated_flows_u_driving)
         tf.summary.image('gt_predict_flow_v_driving',concated_flows_v_driving)
+        tf.summary.image('flow_warp_with_original_image_driving',tf.concat([network_input_images[0:4,:,:,0:3],warped_img[0:4,:,:,:]],axis=-2))
 
-        if self.section_type is not 4:
+        if self.section_type > 0  and self.section_type is not 4:
             concated_flows_u_flying = tf.concat([network_input_labels[4:8,:,:,0:1],predict_flow2[4:8,:,:,0:1]],axis=-2)
             concated_flows_v_flying = tf.concat([network_input_labels[4:8,:,:,1:2],predict_flow2[4:8,:,:,1:2]],axis=-2)
-
-            concated_flows_u_monkaa = tf.concat([network_input_labels[8:12,:,:,0:1],predict_flow2[8:12,:,:,0:1]],axis=-2)
-            concated_flows_v_monkaa = tf.concat([network_input_labels[8:12,:,:,1:2],predict_flow2[8:12,:,:,1:2]],axis=-2)
 
             tf.summary.image('concated_flows_u_flying',concated_flows_u_flying)
             tf.summary.image('concated_flows_v_flying',concated_flows_v_flying)
 
+            tf.summary.image('flow_warp_with_original_image_flying',tf.concat([network_input_images[4:8,:,:,0:3],warped_img[4:8,:,:,:]],axis=-2))
+
+        if self.section_type > 1 and self.section_type is not 4:
+
+            concated_flows_u_monkaa = tf.concat([network_input_labels[8:12,:,:,0:1],predict_flow2[8:12,:,:,0:1]],axis=-2)
+            concated_flows_v_monkaa = tf.concat([network_input_labels[8:12,:,:,1:2],predict_flow2[8:12,:,:,1:2]],axis=-2)
+
             tf.summary.image('concated_flows_u_monkaa',concated_flows_u_monkaa)
             tf.summary.image('concated_flows_v_monkaa',concated_flows_v_monkaa)
 
-            if self.section_type == 3:
-                concated_flows_u_ptb = tf.concat([network_input_labels[12:16,:,:,0:1],predict_flow2[12:16,:,:,0:1]],axis=-2)
-                concated_flows_v_ptb = tf.concat([network_input_labels[12:16,:,:,1:2],predict_flow2[12:16,:,:,1:2]],axis=-2)
+            tf.summary.image('flow_warp_with_original_image_monkaa',tf.concat([network_input_images[8:12,:,:,0:3],warped_img[8:12,:,:,:]],axis=-2))
 
-                tf.summary.image('concated_flows_u_ptb',concated_flows_u_ptb)
-                tf.summary.image('concated_flows_v_ptb',concated_flows_v_ptb)
+        if self.section_type > 2 and self.section_type is not 4:
+            concated_flows_u_ptb = tf.concat([network_input_labels[12:16,:,:,0:1],predict_flow2[12:16,:,:,0:1]],axis=-2)
+            concated_flows_v_ptb = tf.concat([network_input_labels[12:16,:,:,1:2],predict_flow2[12:16,:,:,1:2]],axis=-2)
+
+            tf.summary.image('concated_flows_u_ptb',concated_flows_u_ptb)
+            tf.summary.image('concated_flows_v_ptb',concated_flows_v_ptb)
+            tf.summary.image('flow_warp_with_original_image_ptb',tf.concat([network_input_images[12:16,:,:,0:3],warped_img[12:16,:,:,:]],axis=-2))
 
 
 
