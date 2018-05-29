@@ -21,6 +21,7 @@ def photoconsistency_loss(img,predicted_flow, weight=10):
 
     img1, img2 = get_separate_rgb_images(img)
     predicted_flow = denormalize_flow(predicted_flow)
+
     warped_img = flow_warp(img2,predicted_flow)
 
     warped_img = sops.replace_nonfinite(warped_img)
@@ -50,10 +51,11 @@ def denormalize_flow(flow):
 
     return tf.concat([u,v],axis=-1)
 
-def forward_backward_loss(predicted_flow,weight=100):
+def forward_backward_loss(predicted_flow,weight=1):
 
   with tf.variable_scope('fb_loss'):
 
+    # predicted_flow = sops.replace_nonfinite(predicted_flow)
     '''
       So, here we do the following steps. 
 
@@ -79,17 +81,28 @@ def forward_backward_loss(predicted_flow,weight=100):
     flow_forward = predicted_flow[0:forward_part,:,:,:]
     flow_backward = predicted_flow[forward_part:batch_size,:,:,:]
 
-    flow_forward = tf.check_numerics(flow_forward,'flow_forward Nan Value found')
-    flow_backward = tf.check_numerics(flow_backward,'flow_backward Nan Value found')
+    flow_forward = sops.replace_nonfinite(flow_forward)
+    flow_backward = sops.replace_nonfinite(flow_backward)
     # flow_forward = tf.Print(flow_forward,[flow_forward],'forward ye hai ')
     # flow_backward = tf.Print(flow_backward,[flow_backward],'backward ye hai ')
-    flow_forward = denormalize_flow(flow_forward)
+    flow_forward = tf.check_numerics(flow_forward,'flow_forward Nan Value found')
+    flow_backward = tf.check_numerics(flow_backward,'flow_backward Nan Value found')
 
+    # flow_forward_denormed = denormalize_flow(flow_forward)
+    # flow_forward_denormed = sops.replace_nonfinite(flow_forward_denormed)
+    flow_forward_denormed = flow_forward
+    # tf.summary.image('flow_forward_u',tf.expand_dims(flow_forward[:,:,:,0],axis=-1))
+    # tf.summary.image('flow_forward_v',tf.expand_dims(flow_forward[:,:,:,1],axis=-1))
+    # tf.summary.image('flow_backward_u',tf.expand_dims(flow_backward[:,:,:,0],axis=-1))
+    # tf.summary.image('flow_backward_v',tf.expand_dims(flow_backward[:,:,:,1],axis=-1))
 
     # step 1,2,3
-    B = sops.replace_nonfinite(flow_warp(flow_backward,flow_forward))
+    B = sops.replace_nonfinite(flow_warp(flow_backward,flow_forward_denormed))
 
     B = get_occulation_aware_image(flow_forward,B)
+
+
+
     # step 4
     fb_loss = sops.replace_nonfinite(endpoint_loss(flow_forward,-B,weight,'fb_loss'))
 

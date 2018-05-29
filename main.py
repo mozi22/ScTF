@@ -131,7 +131,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 1
+        self.section_type = 3
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -438,6 +438,10 @@ class DatasetReader:
                 checkpoint_path = os.path.join(self.FLAGS['TRAIN_DIR']+'/train', 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=step)
 
+
+            if step == self.FLAGS['MAX_STEPS']+2:
+                break
+
         summary_writer.close()
     
     def test_model_on_ptb(self,sess,iterator_test):
@@ -549,11 +553,12 @@ class DatasetReader:
 
         # losses sections[self.section_type]
 
+
         # with tf.variable_scope('fb_loss_refine_3'):
         #     _ = losses_helper.forward_backward_loss(predict_flows[1])
-        # with tf.variable_scope('fb_loss_refine_3'):
+        # with tf.variable_scope('fb_loss_refine_2'):
         #     _ = losses_helper.forward_backward_loss(predict_flows[2])
-        # with tf.variable_scope('fb_loss_refine_3'):
+        # with tf.variable_scope('fb_loss_refine_1'):
         #     _ = losses_helper.forward_backward_loss(predict_flows[3])
 
 
@@ -586,6 +591,7 @@ class DatasetReader:
         with tf.variable_scope('photoconsistency_loss_refine_1'):
             _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
 
+
         # unsupervised losses done. Now remove ptb. Since it doesn't have ground truth.
         if self.section_type == 3:
             network_input_images, network_input_labels = self.remove_ptb_records(network_input_images, network_input_labels)
@@ -604,14 +610,14 @@ class DatasetReader:
             Applying epe loss on lower resolutions
         '''
 
+
+
         network_input_labels_refine3 = losses_helper.downsample_label(network_input_labels,
                                         size=[20,32],factorU=0.125,factorV=0.125)
         network_input_labels_refine2 = losses_helper.downsample_label(network_input_labels,
                                         size=[40,64],factorU=0.25,factorV=0.25)
         network_input_labels_refine1 = losses_helper.downsample_label(network_input_labels,
                                         size=[80,128],factorU=0.5,factorV=0.5)
-
-
 
 
         with tf.variable_scope('epe_loss_refine_3'):
@@ -733,8 +739,8 @@ class DatasetReader:
         denormalized_flow = losses_helper.denormalize_flow(predict_flow2)
         warped_img = losses_helper.flow_warp(network_input_images[:,:,:,4:7],denormalized_flow)
 
-        tf.summary.image('gt_predict_flow_u_driving',concated_flows_u_driving)
-        tf.summary.image('gt_predict_flow_v_driving',concated_flows_v_driving)
+        tf.summary.image('concated_flows_u_driving',concated_flows_u_driving)
+        tf.summary.image('concated_flows_v_driving',concated_flows_v_driving)
         tf.summary.image('flow_warp_with_original_image_driving',tf.concat([network_input_images[0:4,:,:,0:3],warped_img[0:4,:,:,:]],axis=-2))
 
         if self.section_type > 0  and self.section_type is not 4:
