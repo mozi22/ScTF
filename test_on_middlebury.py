@@ -2,6 +2,8 @@ import network
 import synthetic_tf_converter as stc
 import tensorflow as tf
 import numpy as np
+import math
+from PIL import Image 
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -9,13 +11,12 @@ tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe/train/',
                            """The name of the tower """)
 
 
-sess = tf.InteractiveSession()
-X = tf.placeholder(dtype=tf.float32, shape=(1, 224, 384, 8))
-load_model_ckpt(sess,FLAGS.CKPT_FOLDER)
-predict_flow2 = network.train_network(X)
-predict_flow2 = predict_flow2[0]
 
 
+u_factor = 0.414814815
+v_factor = 0.4
+
+input_size = math.ceil(960 * v_factor), math.floor(540 * u_factor)
 
 
 def get_depth_from_disp(disparity):
@@ -28,10 +29,6 @@ def combine_depth_values(img,depth):
 	return np.concatenate((img,depth),axis=2)
 
 def parse_input(img1,img2,disp1,disp2):
-	u_factor = 0.414814815
-	v_factor = 0.4
-
-	input_size = math.ceil(960 * v_factor), math.floor(540 * u_factor)
 	img1 = Image.open(img1)
 	img2 = Image.open(img2)
 
@@ -71,6 +68,9 @@ def load_model_ckpt(sess,filename):
 
 
 def predict(img_pair):
+
+	img_pair = np.expand_dims(img_pair,axis=0)
+
 	feed_dict = {
 		X: img_pair,
 	}
@@ -79,7 +79,7 @@ def predict(img_pair):
 
 	return denormalize_flow(v['prediction'][0])
 
-def denormalize_flow(self,flow,input_size):
+def denormalize_flow(flow):
 
 	u = flow[:,:,0] * input_size[0]
 	v = flow[:,:,1] * input_size[1]
@@ -108,7 +108,7 @@ def perform_testing():
 
 		else:
 			print('parsing middlebury 2005 ... ')
-			folders = ['Art','Books','Computer','Dolls','Drumsticks','Dwarves','Laundry','Moebius','Reindeer']
+			folders = ['Art','Books','Dolls','Laundry','Moebius','Reindeer']
 
 			img1_path = 'view1.png'
 			img2_path = 'view5.png'
@@ -117,19 +117,26 @@ def perform_testing():
 
 
 		for folder in folders:
+			final_path = ''
 			final_path = ds_current_root + '/' +folder + '/'
 
-			img1_path = final_path + img1_path
-			img2_path = final_path + img2_path
-			disp1_path = final_path + disp1_path
-			disp2_path = final_path + disp2_path
+			img1_path_final = final_path + img1_path
+			img2_path_final = final_path + img2_path
+			disp1_path_final = final_path + disp1_path
+			disp2_path_final = final_path + disp2_path
 
 			print('')
 			print('folder = '+ folder)
 			print('')
 
-			img_pair = parse_input(img1_path,img2_path,disp1_path,disp2_path)
+			img_pair = parse_input(img1_path_final,img2_path_final,disp1_path_final,disp2_path_final)
 			result = predict(img_pair)
+			print(result)
 
+sess = tf.InteractiveSession()
+X = tf.placeholder(dtype=tf.float32, shape=(1, 224, 384, 8))
+predict_flow2 = network.train_network(X)
+load_model_ckpt(sess,FLAGS.CKPT_FOLDER)
+predict_flow2 = predict_flow2[0]
 
 perform_testing()
