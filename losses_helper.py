@@ -104,7 +104,7 @@ def forward_backward_loss(predicted_flow,weight=1):
 
 
     # step 4
-    fb_loss = sops.replace_nonfinite(endpoint_loss(flow_forward,-B,weight,'fb_loss'))
+    fb_loss = sops.replace_nonfinite(endpoint_loss(-B,flow_forward,weight,'fb_loss',False))
 
     # tf.losses.compute_weighted_loss(fb_loss,weights=weight)
 
@@ -112,11 +112,12 @@ def forward_backward_loss(predicted_flow,weight=1):
 
 # loss value ranges around 0.01 to 2.0
 # defined here :: https://arxiv.org/pdf/1702.02295.pdf
-def endpoint_loss(gt_flow,predicted_flow,weight=500,scope='epe_loss'):
+def endpoint_loss(gt_flow,predicted_flow,weight=500,scope='epe_loss',stop_grad=False):
 
   with tf.variable_scope(scope):
 
-    gt_flow = tf.stop_gradient(gt_flow)
+    if stop_grad == False:
+      gt_flow = tf.stop_gradient(gt_flow)
 
 
     # get u & v value for gt
@@ -325,8 +326,8 @@ def flow_warp(img,flow):
   X = tf.cast(X,np.float32)
   Y = tf.cast(Y,np.float32)
 
-  Y = Y + flow[:,:,:,0]
-  X = X + flow[:,:,:,1]
+  X = X + flow[:,:,:,0]
+  Y = Y + flow[:,:,:,1]
 
   con = tf.stack([X,Y])
 

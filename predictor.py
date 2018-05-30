@@ -7,10 +7,10 @@ import matplotlib as plt
 
 # import synthetic_tf_converter as converter
 import tensorflow as tf
-import data_reader as dr
+# import data_reader as dr
 # import matplotlib.mlab as mlab
-import ijremote as ij
-import losses_helper as lhpl
+# import ijremote as ij
+# import losses_helper as lhpl
 folder = '../dataset_synthetic/driving/'
 # folder = '/misc/lmbraid19/muazzama/dataset_synthetic/driving/'
 import synthetic_tf_converter as stc
@@ -134,29 +134,52 @@ disparity3 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0107
 ''' ********************************************* this is the writing part ********************************************* '''
 ''' ********************************************* this is the writing part ********************************************* '''
 
-sess = tf.InteractiveSession()
-results = stc.convert_for_testing().from_paths_to_data(disparity1,disparity2,disp_change,opt_flow,img1,img2,'L')
+# sess = tf.InteractiveSession()
+# results = stc.convert_for_testing().from_paths_to_data(disparity1,disparity2,disp_change,opt_flow,img1,img2,'L')
 
 
-img1 = np.array(Image.open(img1))
-img2 = np.array(Image.open(img2))
+# img1 = np.array(Image.open(img1))
+# img2 = np.array(Image.open(img2))
 
-opt_flow = hpl.readPFM(opt_flow)[0]
-opt_flow = opt_flow[:,:,0:2]
+# opt_flow = hpl.readPFM(opt_flow)[0]
+# opt_flow = opt_flow[:,:,0:2]
 
-# opt_flow = tf.convert_to_tensor(opt_flow,dtype=tf.float32)
-# opt_flow = tf.image.resize_images(opt_flow,[224,384])
+# # opt_flow = tf.convert_to_tensor(opt_flow,dtype=tf.float32)
+# # opt_flow = tf.image.resize_images(opt_flow,[224,384])
 
-img2 = tf.expand_dims(tf.convert_to_tensor(results[0]['web_p2'],dtype=tf.float32),axis=0)
+# # img2 = tf.expand_dims(tf.convert_to_tensor(results[0]['web_p2'],dtype=tf.float32),axis=0)
+# # flow = tf.expand_dims(tf.convert_to_tensor(results[0]['optical_flow'],dtype=tf.float32)[:,:,0:2],axis=0)
 # flow = tf.expand_dims(opt_flow,axis=0)
 # img2 = tf.expand_dims(tf.convert_to_tensor(img2,dtype=tf.float32),axis=0)
-flow = tf.expand_dims(tf.convert_to_tensor(results[0]['optical_flow'],dtype=tf.float32)[:,:,0:2],axis=0)
 
-warped_img = lhpl.flow_warp(img2,flow)
-warped_img = sess.run(warped_img)
+# warped_img = lhpl.flow_warp(img2,flow)
+# warped_img = sess.run(warped_img)
 
-warped_img = np.squeeze(warped_img)
+# warped_img = np.squeeze(warped_img)
 
-Image.fromarray(np.uint8(warped_img)).show()
+# Image.fromarray(np.uint8(warped_img)).show()
 
+def read_pgm(pgmf):
+    """Return a raster of integers from a PGM as a list of lists."""
+    assert pgmf.readline() == 'P5\n'
+    (width, height) = [int(i) for i in pgmf.readline().split()]
+    depth = int(pgmf.readline())
+    assert depth <= 255
 
+    raster = []
+    for y in range(height):
+        row = []
+        for y in range(width):
+            row.append(ord(pgmf.read(1)))
+        raster.append(row)
+    return raster
+
+img = Image.open('../softwares/downloads/middlebury2003/conesF/im0.ppm')
+img.show()
+u_factor = 0.414814815
+v_factor = 0.4
+import math
+input_size = math.ceil(960 * v_factor), math.floor(540 * u_factor)
+
+web_p_file = img.resize(input_size, Image.BILINEAR)
+web_p_file.show()

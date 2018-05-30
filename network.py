@@ -178,6 +178,7 @@ def train_network(image_pair):
             features_direct=conv4_1,
             name='paddit'
         )
+        # predict_flow_ref4 = _predict_flow(concat4)
 
 
     # shape=(8, 20, 32, 384)

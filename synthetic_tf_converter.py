@@ -762,6 +762,8 @@ class SyntheticTFRecordsWriter:
 
 
 
+
+
 	def check_normalized_depth(self,depth1,depth2,depth_change):
 		depth_mx = np.amax(depth1) 
 		depth2_mx = np.amax(depth2) 
@@ -1035,5 +1037,3 @@ def convert_whole_dataset():
 
 def convert_for_testing():
 	return SyntheticTFRecordsWriter()
-
-convert_whole_dataset()

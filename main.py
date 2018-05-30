@@ -131,7 +131,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 3
+        self.section_type = 2
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -554,11 +554,11 @@ class DatasetReader:
         # losses sections[self.section_type]
 
 
-        # with tf.variable_scope('fb_loss_refine_3'):
+        # with tf.variable_scope('fb_loss_refine_4'):
         #     _ = losses_helper.forward_backward_loss(predict_flows[1])
-        # with tf.variable_scope('fb_loss_refine_2'):
+        # with tf.variable_scope('fb_loss_refine_3'):
         #     _ = losses_helper.forward_backward_loss(predict_flows[2])
-        # with tf.variable_scope('fb_loss_refine_1'):
+        # with tf.variable_scope('fb_loss_refine_2'):
         #     _ = losses_helper.forward_backward_loss(predict_flows[3])
 
 
@@ -580,16 +580,16 @@ class DatasetReader:
         '''
 
         # _ = losses_helper.photoconsistency_loss(network_input_images,flows_dict['predict_flow'][0])
-        network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-        with tf.variable_scope('photoconsistency_loss_refine_3'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
-        with tf.variable_scope('photoconsistency_loss_refine_2'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
-        with tf.variable_scope('photoconsistency_loss_refine_1'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
+        # with tf.variable_scope('photoconsistency_loss_refine_3'):
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
+        # with tf.variable_scope('photoconsistency_loss_refine_2'):
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
+        # with tf.variable_scope('photoconsistency_loss_refine_1'):
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
 
 
         # unsupervised losses done. Now remove ptb. Since it doesn't have ground truth.
