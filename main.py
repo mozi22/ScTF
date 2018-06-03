@@ -554,12 +554,24 @@ class DatasetReader:
         # losses sections[self.section_type]
 
 
-        # with tf.variable_scope('fb_loss_refine_4'):
-        #     _ = losses_helper.forward_backward_loss(predict_flows[1])
-        # with tf.variable_scope('fb_loss_refine_3'):
-        #     _ = losses_helper.forward_backward_loss(predict_flows[2])
-        # with tf.variable_scope('fb_loss_refine_2'):
-        #     _ = losses_helper.forward_backward_loss(predict_flows[3])
+        with tf.variable_scope('fb_loss_refine_4'):
+            _ = losses_helper.forward_backward_loss(predict_flows[1])
+        with tf.variable_scope('fb_loss_refine_3'):
+            _ = losses_helper.forward_backward_loss(predict_flows[2],
+                                                    losses_helper.ease_in_quad(self.global_step,
+                                                                               0,
+                                                                               1.0,
+                                                                               30000.0,
+                                                                               50000,
+                                                                               'fb_loss_refine_3'))
+        with tf.variable_scope('fb_loss_refine_2'):
+            _ = losses_helper.forward_backward_loss(predict_flows[3],
+                                                    losses_helper.ease_in_quad(self.global_step,
+                                                                               0,
+                                                                               1.0,
+                                                                               30000.0,
+                                                                               100000,
+                                                                               'fb_loss_refine_2'))
 
 
         flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images)
@@ -679,9 +691,9 @@ class DatasetReader:
         batch_half = batch_size // 2
 
         predict_flow = predict_flows[0]
-        predict_flow_ref3 = predict_flows[1]
-        predict_flow_ref2 = predict_flows[2]
-        predict_flow_ref1 = predict_flows[3]
+        predict_flow_ref3 = predict_flows[2]
+        predict_flow_ref2 = predict_flows[3]
+        predict_flow_ref1 = predict_flows[4]
 
         # for other losses, we only consider forward flow
         predict_flow_forward = predict_flow[0:batch_half,:,:,:]

@@ -159,27 +159,3 @@ disparity3 = folder + 'disparity/35mm_focallength/scene_backwards/fast/left/0107
 
 # Image.fromarray(np.uint8(warped_img)).show()
 
-def read_pgm(pgmf):
-    """Return a raster of integers from a PGM as a list of lists."""
-    assert pgmf.readline() == 'P5\n'
-    (width, height) = [int(i) for i in pgmf.readline().split()]
-    depth = int(pgmf.readline())
-    assert depth <= 255
-
-    raster = []
-    for y in range(height):
-        row = []
-        for y in range(width):
-            row.append(ord(pgmf.read(1)))
-        raster.append(row)
-    return raster
-
-img = Image.open('../softwares/downloads/middlebury2003/conesF/im0.ppm')
-img.show()
-u_factor = 0.414814815
-v_factor = 0.4
-import math
-input_size = math.ceil(960 * v_factor), math.floor(540 * u_factor)
-
-web_p_file = img.resize(input_size, Image.BILINEAR)
-web_p_file.show()

@@ -104,7 +104,7 @@ def forward_backward_loss(predicted_flow,weight=1):
 
 
     # step 4
-    fb_loss = sops.replace_nonfinite(endpoint_loss(-B,flow_forward,weight,'fb_loss',False))
+    fb_loss = sops.replace_nonfinite(endpoint_loss(-B,flow_forward,weight,'fb_loss',True))
 
     # tf.losses.compute_weighted_loss(fb_loss,weights=weight)
 
@@ -335,3 +335,32 @@ def flow_warp(img,flow):
 
   # result = tf.expand_dims(result,0)
   return tf.contrib.resampler.resampler(img,result)
+
+def ease_in_quad( current_time, start_value, change_value, duration , starter, name="ease_in_quad"):
+  """
+   current_time: float or Tensor
+       The current time
+
+   start_value: float or Tensor
+       The start value
+
+   change_value: float or Tensor
+       The value change of the duration. The final value is 
+       start_value + change_value
+
+   duration: float or Tensor
+       The duration
+
+   Returns the value for the current time
+    """
+
+  current_time = current_time - starter
+  with tf.name_scope(name):
+    t = tf.clip_by_value(current_time/duration, 0, 1)
+    result = tf.to_float(change_value*t*t + start_value)
+
+    tf.summary.scalar('ease_in_quad',result)
+
+    return result
+
+# _depth_sig_weight_factor = ease_in_quad(trainer.global_step(),0,1,10*_k)
