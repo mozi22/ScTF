@@ -15,7 +15,7 @@ tf.app.flags.DEFINE_float('SIGL_POWER', 2,
                             """How fast the learning rate should go down.""")
 
 # loss value ranges around 0.01 to 0.1
-def photoconsistency_loss(img,predicted_flow, weight=10):
+def photoconsistency_loss(img,predicted_flow, weight=7):
 
   with tf.variable_scope('photoconsistency_loss'):
 
@@ -38,20 +38,17 @@ def photoconsistency_loss(img,predicted_flow, weight=10):
 
 def denormalize_flow(flow):
 
-    u_factor = 0.414814815
-    v_factor = 0.4
+    flow_shape = flow.get_shape().as_list()
 
-    input_size = math.ceil(960 * v_factor), math.floor(540 * u_factor)
-
-    u = flow[:,:,:,0] * input_size[0]
-    v = flow[:,:,:,1] * input_size[1]
+    u = flow[:,:,:,0] * flow_shape[2]
+    v = flow[:,:,:,1] * flow_shape[1]
 
     u = tf.expand_dims(u,axis=-1)
     v = tf.expand_dims(v,axis=-1)
 
     return tf.concat([u,v],axis=-1)
 
-def forward_backward_loss(predicted_flow,weight=1):
+def forward_backward_loss(predicted_flow,name='ref1',weight=1):
 
   with tf.variable_scope('fb_loss'):
 
@@ -88,19 +85,26 @@ def forward_backward_loss(predicted_flow,weight=1):
     flow_forward = tf.check_numerics(flow_forward,'flow_forward Nan Value found')
     flow_backward = tf.check_numerics(flow_backward,'flow_backward Nan Value found')
 
-    # flow_forward_denormed = denormalize_flow(flow_forward)
+    flow_forward_denormed = denormalize_flow(flow_forward)
     # flow_forward_denormed = sops.replace_nonfinite(flow_forward_denormed)
-    flow_forward_denormed = flow_forward
-    # tf.summary.image('flow_forward_u',tf.expand_dims(flow_forward[:,:,:,0],axis=-1))
-    # tf.summary.image('flow_forward_v',tf.expand_dims(flow_forward[:,:,:,1],axis=-1))
-    # tf.summary.image('flow_backward_u',tf.expand_dims(flow_backward[:,:,:,0],axis=-1))
-    # tf.summary.image('flow_backward_v',tf.expand_dims(flow_backward[:,:,:,1],axis=-1))
+    # flow_forward_denormed = flow_forward
+    # tf.summary.image('flow_forward_u_loss',tf.expand_dims(flow_forward[:,:,:,0],axis=-1))
+    # tf.summary.image('flow_forward_v_loss',tf.expand_dims(flow_forward[:,:,:,1],axis=-1))
+    # tf.summary.image('flow_backward_u_loss',tf.expand_dims(flow_backward[:,:,:,0],axis=-1))
+    # tf.summary.image('flow_backward_v_loss',tf.expand_dims(flow_backward[:,:,:,1],axis=-1))
+
+    # concatenated_flow_u_fb = tf.concat([tf.expand_dims(flow_forward[:,:,:,0]),tf.expand_dims(flow_backward[:,:,:,0])],axis=-2)
+
+    # tf.summary.image('concatenated_fb_ref1_u',concatenated_fb_ref1_u)
+    # tf.summary.image('concatenated_fb_ref1_v',concatenated_fb_ref1_v)
 
     # step 1,2,3
     B = sops.replace_nonfinite(flow_warp(flow_backward,flow_forward_denormed))
 
     B = get_occulation_aware_image(flow_forward,B)
 
+    tf.summary.image('flow_backward_warped_u_loss'+name,tf.expand_dims(B[:,:,:,0],axis=-1))
+    tf.summary.image('flow_backward_warped_v_loss'+name,tf.expand_dims(B[:,:,:,1],axis=-1))
 
 
     # step 4
@@ -134,10 +138,9 @@ def endpoint_loss(gt_flow,predicted_flow,weight=500,scope='epe_loss',stop_grad=F
 
     epe_loss = tf.sqrt((diff_u**2) + (diff_v**2) + 1e-6)
 
-    # print('epe krdo')
-    # epe_loss = tf.reduce_mean(epe_loss[:,])
-
     epe_loss = tf.reduce_mean(epe_loss)
+
+    tf.summary.scalar('epe_non_weighted',epe_loss)
 
     epe_loss = tf.check_numerics(epe_loss,'numeric checker')
     # epe_loss = tf.Print(epe_loss,[epe_loss],'epeloss ye hai ')

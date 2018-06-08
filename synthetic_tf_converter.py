@@ -50,7 +50,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 1
+		self.dataset_number = 3
 		# these are inverse depths
 		self.max_depth_driving = 0.232809
 		# self.max_depth_driving_chng = 2.70248
@@ -82,7 +82,7 @@ class SyntheticTFRecordsWriter:
 		# self.flyingdata_FILES_IDS = [6,8]
 
 		# self.dataset_root = '../dataset_synthetic_sm50/'
-		self.dataset_save = '../dataset_synthetic/'
+		self.dataset_save = '../dataset_synthetic/fixedmonkaa'
 		self.dataset_root = '../dataset_synthetic/'
 
 		self.dataset_ptb_root = '../dataset_ptb/'
@@ -116,12 +116,12 @@ class SyntheticTFRecordsWriter:
 
 
 		# for monkaa ( need to add the others here too for large dataset)
-		self.monkaa_scenes = ['a_rain_of_stones_x2','eating_camera2_x2','treeflight_x2',
+		self.monkaa_scenes = ['a_rain_of_stones_x2',
 		# 'flower_storm_augmented1_x2',
-		'eating_x2','lonetree_augmented1_x2','funnyworld_x2','family_x2',
-		'treeflight_augmented1_x2','funnyworld_augmented0_x2','eating_naked_camera2_x2','funnyworld_camera2_x2',
-		'lonetree_winter_x2','funnyworld_camera2_augmented1_x2','flower_storm_x2','treeflight_augmented0_x2',
-		'lonetree_x2','top_view_x2','funnyworld_augmented1_x2','funnyworld_camera2_augmented0_x2',
+		'lonetree_augmented1_x2','funnyworld_x2',
+		'funnyworld_augmented0_x2','funnyworld_camera2_x2',
+		'lonetree_winter_x2','funnyworld_camera2_augmented1_x2','flower_storm_x2',
+		'lonetree_x2','funnyworld_augmented1_x2','funnyworld_camera2_augmented0_x2',
 		'lonetree_difftex_x2','lonetree_augmented0_x2','flower_storm_augmented0_x2','lonetree_difftex2_x2'] 
 		# self.monkaa_scenes = ['a_rain_of_stones_x2','eating_camera2_x2']
 
@@ -710,10 +710,9 @@ class SyntheticTFRecordsWriter:
 		return depth1 - depth2
 
 	def normalizeOptFlow(self,flow,input_size):
-
 		# remove the values bigger than the image size
-		flow[:,:,0][flow[:,:,0] > input_size[0] ] = 0
-		flow[:,:,1][flow[:,:,1] > input_size[1] ] = 0
+		flow[:,:,0][flow[:,:,0] > input_size[0] ] = 0 # 384
+		flow[:,:,1][flow[:,:,1] > input_size[1] ] = 0 # 224
 
 		# separate the u and v values 
 		flow_u = flow[:,:,0]

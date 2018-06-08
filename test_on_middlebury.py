@@ -2,11 +2,11 @@ import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('CKPT_FOLDER_SCGAN', '../ScGAN/ckpt/driving/cgan5',
+tf.app.flags.DEFINE_string('CKPT_FOLDER_SCGAN', '../ScGAN/ckpt/driving/cgan1_with_encoder_dropout',
                            """The name of the tower """)
 
 
-tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe/train/',
+tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe_pc_with_ptb/train/',
                            """The name of the tower """)
 
 tf.app.flags.DEFINE_boolean('TEST_GAN', True,
@@ -24,10 +24,6 @@ import losses_helper as lhpl
 import numpy as np
 import math
 from PIL import Image 
-
-
-
-
 
 u_factor = 0.414814815
 v_factor = 0.4
@@ -115,7 +111,7 @@ def predict(img_pair,optical_flow):
 
 	loss, v = sess.run([loss_result,predict_flow2],feed_dict=feed_dict)
 
-	return v, loss
+	return denormalize_flow(v), loss
 
 def denormalize_flow(flow):
 
@@ -181,13 +177,11 @@ def perform_testing():
 			img2_to_tensor = tf.expand_dims(tf.convert_to_tensor(img2_orig,dtype=tf.float32),axis=0)
 			pred_flow_to_tensor = tf.convert_to_tensor(predicted_flow,dtype=tf.float32)
 			orig_flow_to_tensor = tf.expand_dims(tf.convert_to_tensor(optical_flow,dtype=tf.float32),axis=0)
-			orig_flow_to_tensor = further_resize_lbls(orig_flow_to_tensor)
 
 
 			if FLAGS.TEST_GAN == True:
 				img2_to_tensor = further_resize_imgs(img2_to_tensor)
-
-
+				orig_flow_to_tensor = further_resize_lbls(orig_flow_to_tensor)
 
 			warped_img =  lhpl.flow_warp(img2_to_tensor,pred_flow_to_tensor)
 
@@ -198,7 +192,6 @@ def perform_testing():
 			# Image.fromarray(np.uint8(warped_img)).show()
 			print(loss)
 
-			break
 
 
 def normalizeOptFlow(flow,input_size):
