@@ -479,6 +479,9 @@ class DatasetReader:
 
 
         # driving
+
+        # batches[x][y] = (4, 2, 224, 384, 8)
+
         imgs.append(batches[0][0])
         lbls.append(batches[0][1])
 
@@ -644,7 +647,6 @@ class DatasetReader:
                                                     )
 
 
-
         self.write_flows_concatenated_side_by_side(network_input_images,network_input_labels,flows_dict['predict_flow'][0])
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
@@ -692,7 +694,6 @@ class DatasetReader:
         '''
 
 
-
         network_input_labels_refine3 = losses_helper.downsample_label(network_input_labels,
                                         size=[20,32],factorU=0.125,factorV=0.125)
         network_input_labels_refine2 = losses_helper.downsample_label(network_input_labels,
@@ -707,9 +708,6 @@ class DatasetReader:
             _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict['predict_flow_ref2'][0],100)
         with tf.variable_scope('epe_loss_refine_1'):
             _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict['predict_flow_ref1'][0],100)
-
-
-
 
         # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flows[0])
         # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flows[0])
@@ -798,8 +796,6 @@ class DatasetReader:
 
             tf.summary.image('concatenated_fb_ref4_u',concatenated_fb_ref4_u)
             tf.summary.image('concatenated_fb_ref4_v',concatenated_fb_ref4_v)
-
-
 
         # concatenated_fb_ref1_u = tf.concat([tf.expand_dims(predict_flow_forward_ref1[:,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward_ref1[:,:,:,0],axis=-1)],axis=-2)
         # concatenated_fb_ref1_v = tf.concat([tf.expand_dims(predict_flow_forward_ref1[:,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward_ref1[:,:,:,1],axis=-1)],axis=-2)
