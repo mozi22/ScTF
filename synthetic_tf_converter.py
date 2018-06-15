@@ -50,7 +50,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 3
+		self.dataset_number = 4
 		# these are inverse depths
 		self.max_depth_driving = 0.232809
 		# self.max_depth_driving_chng = 2.70248
@@ -264,13 +264,15 @@ class SyntheticTFRecordsWriter:
 					depth1 = depth1.resize(input_size, Image.NEAREST)
 					depth2 = depth2.resize(input_size, Image.NEAREST)
 
-					depth1 = self.visualize_ptb_image(depth1)
-					depth2 = self.visualize_ptb_image(depth2)
-
 					depth1 = np.array(depth1)
 					depth2 = np.array(depth2)
 
+					depth1 = self.visualize_ptb_image(depth1)
+					depth2 = self.visualize_ptb_image(depth2)
 
+					depth1 = depth1.astype(np.float32)
+					depth2 = depth2.astype(np.float32)
+				
 					# normalize depth values
 					# depth1 = depth1 / max_value
 					# depth2 = depth2 / max_value
@@ -306,17 +308,40 @@ class SyntheticTFRecordsWriter:
 							train_writer,
 							'')
 					else:
-						print('train finished')
 						self.create_tf_example(patches,
 							'',
 							test_writer,
 							'')
+
 					break
 				break
 
 		self.close_writer(train_writer)
 		self.close_writer(test_writer)
 
+	def visualize_ptb_image(self,depth,show_as_img=False):
+		# depth = '../dataset_ptb/EvaluationSet/bag1/depth/10.png'
+		# depth = '../dataset_ptb/EvaluationSet/bag1/depth/10.png'
+
+		# depth = Image.open(depth)
+
+		# depth = np.array(depth)
+
+		# print(np.right_shift(np.uint64(2**32-1),3,casting='no').dtype)
+		# print(np.binary_repr(np.right_shift(np.uint16(2**16-1),3)))
+		# print(np.binary_repr(np.uint16(2**16-1),3))
+
+		depth1_right = np.right_shift(depth.copy(),3)
+		depth1_left = np.left_shift(depth.copy(),13)
+
+		depth1 = np.bitwise_or(depth1_left,depth1_right)
+		depth1 = np.bitwise_and(depth1, np.int64(2**16-1)).astype(np.uint16)
+
+		# depth1 = depth1.astype(np.float32)/1000
+		depth1[depth1 == -np.inf] = 0
+		depth1[depth1 == np.inf] = 0
+
+		return depth1
 
 	def max_ptb_depth_values(depth1,depth2):
 		
@@ -332,7 +357,7 @@ class SyntheticTFRecordsWriter:
 			print(self.max_depth2)
 
 
-	def visualize_ptb_image(self,depth,show_as_img=False):
+	def visualize_ptb_image_old(self,depth,show_as_img=False):
 
 		# depth = '../dataset_ptb/EvaluationSet/bag1/depth/10.png'
 		# depth = Image.open(depth)

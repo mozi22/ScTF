@@ -3,33 +3,31 @@ import numpy as np
 import lmbspecialops as sops
 import math
 
-# Polynomial Learning Rate
-
-FLAGS = tf.app.flags.FLAGS
-
-tf.app.flags.DEFINE_float('SIGL_START_LEARNING_RATE', 1,
-                            """Where to start the learning.""")
-tf.app.flags.DEFINE_float('SIGL_END_LEARNING_RATE', 500,
-                            """Where to end the learning.""")
-tf.app.flags.DEFINE_float('SIGL_POWER', 2,
-                            """How fast the learning rate should go down.""")
-
 # loss value ranges around 0.01 to 0.1
-def photoconsistency_loss(img,predicted_flow, weight=7):
+def photoconsistency_loss(img,predicted_flow, weight=7, typee='forward'):
 
-  with tf.variable_scope('photoconsistency_loss'):
+  with tf.variable_scope('photoconsistency_loss_' + typee):
+
 
     img1, img2 = get_separate_rgb_images(img)
     predicted_flow = denormalize_flow(predicted_flow)
 
-    warped_img = flow_warp(img2,predicted_flow)
+    if not typee is 'forward':
+      # backward flow
+      warped_img = flow_warp(img1,predicted_flow)
+      img2 = get_occulation_aware_image(img2,warped_img)
+      img2 = tf.stop_gradient(img2)
+      pc_loss = endpoint_loss(img2, warped_img,weight,'pc_loss_backward')
+    else:
+      # forward flow
+      warped_img = flow_warp(img2,predicted_flow)
+      img1 = get_occulation_aware_image(img1,warped_img)
+      img1 = tf.stop_gradient(img1)
+      pc_loss = endpoint_loss(img1, warped_img,weight,'pc_loss_forward')
 
-    warped_img = sops.replace_nonfinite(warped_img)
-    img1 = get_occulation_aware_image(img1,warped_img)
 
-    img1 = tf.stop_gradient(img1)
 
-    pc_loss = endpoint_loss(img1, warped_img,weight,'pc_loss')
+
     # pc_loss = tf.Print(pc_loss,[pc_loss],'pcloss ye hai ')
     # tf.losses.compute_weighted_loss(pc_loss,weights=weight)
     # tf.summary.scalar('pc_loss',sops.replace_nonfinite(pc_loss))
@@ -48,7 +46,7 @@ def denormalize_flow(flow):
 
     return tf.concat([u,v],axis=-1)
 
-def forward_backward_loss(predicted_flow,name='ref1',weight=1):
+def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,name='ref1',weight=1):
 
   with tf.variable_scope('fb_loss'):
 
@@ -66,17 +64,12 @@ def forward_backward_loss(predicted_flow,name='ref1',weight=1):
 
     # get batch size ( assuming batch_size will always be divisible by 2 )
 
-    tensor_shape = predicted_flow.get_shape().as_list()
-
-    batch_size = tensor_shape[0]
-    # if the BS is 32, first 16 images represent forward flow prediction and the next 16 represent backward flow predictions.
-    forward_part = batch_size // 2
 
 
     # 0 - 16 is the forward flow
     # 17 - 31 is the backward flow
-    flow_forward = predicted_flow[0:forward_part,:,:,:]
-    flow_backward = predicted_flow[forward_part:batch_size,:,:,:]
+    flow_forward = predicted_flow_forward
+    flow_backward = predicted_flow_backward
 
     flow_forward = sops.replace_nonfinite(flow_forward)
     flow_backward = sops.replace_nonfinite(flow_backward)
@@ -101,14 +94,14 @@ def forward_backward_loss(predicted_flow,name='ref1',weight=1):
     # step 1,2,3
     B = sops.replace_nonfinite(flow_warp(flow_backward,flow_forward_denormed))
 
-    B = get_occulation_aware_image(flow_forward,B)
+    # B = get_occulation_aware_image(flow_forward,B)
 
     tf.summary.image('flow_backward_warped_u_loss'+name,tf.expand_dims(B[:,:,:,0],axis=-1))
     tf.summary.image('flow_backward_warped_v_loss'+name,tf.expand_dims(B[:,:,:,1],axis=-1))
 
 
     # step 4
-    fb_loss = sops.replace_nonfinite(endpoint_loss(-B,flow_forward,weight,'fb_loss',True))
+    fb_loss = sops.replace_nonfinite(endpoint_loss(-B,flow_forward,weight,'fb_loss',False))
 
     # tf.losses.compute_weighted_loss(fb_loss,weights=weight)
 

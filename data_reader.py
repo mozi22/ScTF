@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import lmbspecialops as sops
 from PIL import Image
+import ijremote as ij
 def tf_record_input_pipeline(filenames,version='1'):
 
     # Create a list of filenames and pass it to a queue
@@ -161,6 +162,7 @@ def read_with_dataset_api(batch_size,filenames,version='1'):
         mapped_data.append(data)
 
     data = tuple(mapped_data)
+
     dataset = tf.data.Dataset.zip(data)
 
     dataset = dataset.shuffle(buffer_size=50).repeat().apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
@@ -173,14 +175,47 @@ def read_with_dataset_api(batch_size,filenames,version='1'):
 
 
 def testing_ds_api(dataset):
+
     dataset = dataset.make_initializable_iterator()
     sess = tf.InteractiveSession()
     sess.run(dataset.initializer)
 
     next_batch = dataset.get_next()
-    print(next_batch)
+
+    final_img_batch, final_lbl_batch = combine_batches_from_datasets(next_batch)
+
+    next_batch_forward = final_img_batch[:,0,:,:,:]
+    next_batch_backward = final_img_batch[:,1,:,:,:]
+
+    forward, backward = sess.run([next_batch_forward,next_batch_backward])
+    ij.setHost('tcp://linus:13463')
+    ij.setImage('myimage_f',np.transpose(forward,[0,3,1,2]))
+    ij.setImage('myimage_b',np.transpose(backward,[0,3,1,2]))
 
 
+def combine_batches_from_datasets(batches):
+
+    imgs = []
+    lbls = []
+
+    # driving
+
+    # batches[x][y] = (4, 2, 224, 384, 8)
+
+    imgs.append(batches[0][0])
+    lbls.append(batches[0][1])
+
+    imgs.append(batches[1][0])
+    lbls.append(batches[1][1])
+
+    imgs.append(batches[2][0])
+    lbls.append(batches[2][1])
+
+
+    final_img_batch = tf.concat(tuple(imgs),axis=0)
+    final_lbl_batch = tf.concat(tuple(lbls),axis=0)
+
+    return final_img_batch, final_lbl_batch
 
 
 def train_for_opticalflow(image1,image2,optical_flow):
@@ -222,10 +257,9 @@ def decode_webp(path):
 
 def train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow):
 
-
-
-    depth1 = depth1 / tf.reduce_max(depth1)
-    depth2 = depth2 / tf.reduce_max(depth1)
+    max_depth1 = tf.reduce_max(depth1)
+    depth1 = depth1 / max_depth1
+    depth2 = depth2 / max_depth1
 
     depth1 = sops.replace_nonfinite(depth1)
     depth2 = sops.replace_nonfinite(depth2)
@@ -236,14 +270,10 @@ def train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow):
     img_pair_rgbd = tf.concat([image1,image2],axis=-1)
     img_pair_rgbd_swapped = tf.concat([image2,image1],axis=-1)
 
-
     # optical_flow = optical_flow / 50
-
-
     # comment for optical flow. Uncomment for Sceneflow
     optical_flow_with_depth_change = combine_depth_values(optical_flow,depth_chng,2)
     optical_flow_with_depth_change_swapped = tf.zeros(optical_flow_with_depth_change.get_shape())
-
 
     # inputt = divide_inputs_to_patches(img_pair,8)
     # label = divide_inputs_to_patches(label_pair,3)
