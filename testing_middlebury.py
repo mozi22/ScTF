@@ -6,10 +6,13 @@ tf.app.flags.DEFINE_string('CKPT_FOLDER_SCGAN', '../ScGAN/ckpt/driving/cgan1_wit
                            """The name of the tower """)
 
 
-tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe_pc_with_ptb/train/',
+tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe_all_ds/train/',
                            """The name of the tower """)
 
-tf.app.flags.DEFINE_boolean('TEST_GAN', True,
+tf.app.flags.DEFINE_boolean('TEST_GAN', False,
+                            """Whether to log device placement.""")
+
+tf.app.flags.DEFINE_boolean('DRIVING', True,
                             """Whether to log device placement.""")
 
 
@@ -22,8 +25,11 @@ import network
 import synthetic_tf_converter as stc
 import losses_helper as lhpl
 import numpy as np
+import helpers as hpl
 import math
 from PIL import Image 
+import ijremote as ij
+ij.setHost('tcp://linus:13463')
 
 u_factor = 0.414814815
 v_factor = 0.4
@@ -44,14 +50,26 @@ def parse_input(img1,img2,disp1,disp2):
 	img1 = Image.open(img1)
 	img2 = Image.open(img2)
 
-	disp1 = Image.open(disp1)
-	disp2 = Image.open(disp2)
-
 	img1 = img1.resize(input_size, Image.BILINEAR)
 	img2 = img2.resize(input_size, Image.BILINEAR)
 
-	disp1 = disp1.resize(input_size, Image.NEAREST)
-	disp2 = disp2.resize(input_size, Image.NEAREST)
+	if FLAGS.DRIVING == False:
+		disp1 = Image.open(disp1)
+		disp2 = Image.open(disp2)
+
+		disp1 = disp1.resize(input_size, Image.NEAREST)
+		disp2 = disp2.resize(input_size, Image.NEAREST)
+
+	else:
+		disp1 = hpl.readPFM(disp1)[0]
+		disp2 = hpl.readPFM(disp2)[0]
+
+		disp1 = Image.fromarray(disp1,mode='F')
+		disp2 = Image.fromarray(disp2,mode='F')
+
+		disp1 = disp1.resize(input_size, Image.NEAREST)
+		disp2 = disp2.resize(input_size, Image.NEAREST)
+
 
 	disp1 = np.array(disp1,dtype=np.float32)
 	disp2 = np.array(disp2,dtype=np.float32)
@@ -60,14 +78,15 @@ def parse_input(img1,img2,disp1,disp2):
 	depth2 = get_depth_from_disp(disp2)
 
 	# normalize
-	depth1 = depth1 / np.max(depth1)
-	depth2 = depth2 / np.max(depth1)
+	depth_norm = np.max(depth1)
+	depth1 = depth1 / depth_norm
+	depth2 = depth2 / depth_norm
 
 	img1_orig = np.array(img1)
 	img2_orig = np.array(img2)
 
 	img1 = img1_orig / 255
-	img2 = img1_orig / 255
+	img2 = img2_orig / 255
 
 	rgbd1 = combine_depth_values(img1,depth1)
 	rgbd2 = combine_depth_values(img2,depth2)
@@ -115,15 +134,98 @@ def predict(img_pair,optical_flow):
 
 def denormalize_flow(flow):
 
+
 	u = flow[:,:,:,0] * input_size[0]
 	v = flow[:,:,:,1] * input_size[1]
 	# w = flow[:,:,2] * self.max_depth_driving_chng
 	
 	flow = np.stack((u,v),axis=3)
 	
+
 	return flow
 
-def perform_testing():
+def denormalize_flow_tensor(flow):
+
+
+	u = flow[:,:,:,0] * input_size[0]
+	v = flow[:,:,:,1] * input_size[1]
+	# w = flow[:,:,2] * self.max_depth_driving_chng
+	
+	flow = tf.concat([tf.expand_dims(u,axis=-1),tf.expand_dims(v,axis=-1)],axis=3)
+	
+
+	return flow
+
+def parse_results(img_pair, optical_flow, img2_orig):
+
+	optical_flow_normed = normalizeOptFlow(optical_flow,(384,224))
+
+	predicted_flow, loss = predict(img_pair,optical_flow_normed)
+
+	img2_to_tensor = tf.expand_dims(tf.convert_to_tensor(img2_orig,dtype=tf.float32),axis=0)
+
+	# denormalizing gt flow
+	orig_flow_denormed_to_tensor = tf.expand_dims(tf.convert_to_tensor(optical_flow,dtype=tf.float32),axis=0)
+
+	
+	# denormalizing pred flow
+	denormalized_flow = denormalize_flow_tensor(predicted_flow)
+	pred_flow_denormed_to_tensor = tf.convert_to_tensor(denormalized_flow,dtype=tf.float32)
+
+
+	if FLAGS.TEST_GAN == True:
+		img2_to_tensor = further_resize_imgs(img2_to_tensor)
+		orig_flow_to_tensor = further_resize_lbls(orig_flow_to_tensor)
+
+	# warped_img =  lhpl.flow_warp(img2_to_tensor,orig_flow_denormed_to_tensor)
+	warped_img =  lhpl.flow_warp(img2_to_tensor,orig_flow_denormed_to_tensor)
+
+	warped_img = sess.run(warped_img)
+	warped_img = np.squeeze(warped_img)
+
+
+	denorm_u,denorm_v = sess.run([denormalized_flow[0,:,:,0],denormalized_flow[0,:,:,1]])
+
+	ij.setImage('gt_flow_u',optical_flow[:,:,0])
+	ij.setImage('gt_flow_v',optical_flow[:,:,1])
+	ij.setImage('de_opt_flow_u',denorm_u)
+	ij.setImage('de_opt_flow_v',denorm_v)
+	print(warped_img.shape)
+	ij.setImage('warped',np.transpose(warped_img,[2,0,1]))
+	# ij.setImage('orig',np.transpose(img2_orig,[2,0,1]))
+
+	# ij.setImage('orig',img2_orig)
+	# ij.setImage('warped',warped_img)
+	# Image.fromarray(np.uint8(img2_orig)).show()
+	# Image.fromarray(np.uint8(warped_img)).show()
+	print(loss)
+
+
+def perform_testing_with_driving():
+
+	dataset_root = '../dataset_synthetic/driving/'
+	IMG_ROOT = 'frames_finalpass_webp/35mm_focallength/scene_backwards/fast/left/'
+	DISP_ROOT = 'disparity/35mm_focallength/scene_backwards/fast/left/'
+	FLOW_ROOT = 'optical_flow/35mm_focallength/scene_backwards/fast/into_future/left/'
+	DISPARITY_CHNG_ROOT = 'disparity_change/35mm_focallength/scene_backwards/fast/into_future/left/'
+	IMG1_NUMBER = '0001'
+	IMG2_NUMBER = '0002'
+
+	IMG1 = dataset_root + IMG_ROOT + IMG1_NUMBER + '.webp'
+	IMG2 = dataset_root + IMG_ROOT + IMG2_NUMBER + '.webp'
+	DISPARITY1 = dataset_root + DISP_ROOT + IMG1_NUMBER + '.pfm'
+	DISPARITY2 = dataset_root + DISP_ROOT + IMG2_NUMBER + '.pfm'
+	DISPARITY_CHNG = dataset_root + DISPARITY_CHNG_ROOT + IMG1_NUMBER + '.pfm'
+	FLOW = dataset_root + FLOW_ROOT + 'OpticalFlowIntoFuture_' + IMG1_NUMBER + '_L.pfm'
+
+	img_pair, optical_flow, img2_orig = parse_input(IMG1,IMG2,DISPARITY1,DISPARITY2)
+	optical_flow = hpl.readPFM(FLOW)[0]
+	optical_flow = downsample_opt_flow(optical_flow,(384,224))	
+	parse_results(img_pair, optical_flow, img2_orig)
+
+
+
+def perform_testing_with_middlebury():
 	dataset_root = '../dataset_synthetic/middlebury/'
 	dataset_type = ['middlebury2003','middlebury2005']
 
@@ -164,33 +266,11 @@ def perform_testing():
 			print('')
 
 			img_pair, optical_flow, img2_orig = parse_input(img1_path_final,img2_path_final,disp1_path_final,disp2_path_final)
-
-
 			flow_expanded_u = np.expand_dims(optical_flow,axis=2) 
 			flow_expanded_v = np.expand_dims(np.zeros_like(optical_flow),axis=2)
-
 			optical_flow = np.concatenate([flow_expanded_u,flow_expanded_v],axis=-1)
-			optical_flow = normalizeOptFlow(optical_flow,(192,112))
+			parse_results(img_pair, optical_flow, img2_orig)
 
-			predicted_flow, loss = predict(img_pair,optical_flow)
-
-			img2_to_tensor = tf.expand_dims(tf.convert_to_tensor(img2_orig,dtype=tf.float32),axis=0)
-			pred_flow_to_tensor = tf.convert_to_tensor(predicted_flow,dtype=tf.float32)
-			orig_flow_to_tensor = tf.expand_dims(tf.convert_to_tensor(optical_flow,dtype=tf.float32),axis=0)
-
-
-			if FLAGS.TEST_GAN == True:
-				img2_to_tensor = further_resize_imgs(img2_to_tensor)
-				orig_flow_to_tensor = further_resize_lbls(orig_flow_to_tensor)
-
-			warped_img =  lhpl.flow_warp(img2_to_tensor,pred_flow_to_tensor)
-
-			warped_img = sess.run(warped_img)
-			warped_img = np.squeeze(warped_img)
-
-			# Image.fromarray(np.uint8(img2_orig)).show()
-			# Image.fromarray(np.uint8(warped_img)).show()
-			print(loss)
 
 
 
@@ -247,6 +327,9 @@ else:
 
 predict_flow2 = predict_flow2[:,:,:,0:2] 
 # loss_result = lhpl.endpoint_loss(Y,predict_flow2,1)
+
+
+predict_flow2 = denormalize_flow_tensor(predict_flow2)
 loss_result = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(Y, predict_flow2))))
 
 if FLAGS.TEST_GAN == True:
@@ -254,4 +337,7 @@ if FLAGS.TEST_GAN == True:
 else:
 	load_model_ckpt(sess,FLAGS.CKPT_FOLDER)
 
-perform_testing()
+if FLAGS.DRIVING == True:
+	perform_testing_with_driving()
+else:
+	perform_testing_with_middlebury()

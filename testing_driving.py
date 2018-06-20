@@ -243,38 +243,38 @@ tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe_fb_driving/train',
 # perform_testing()
 
 
-def visualize_ptb_image(depth,show_as_img=False):
-	depth = '../dataset_ptb/EvaluationSet/bag1/depth/10.png'
+# def visualize_ptb_image(depth,show_as_img=False):
+# 	depth = '../dataset_ptb/EvaluationSet/bag1/depth/10.png'
 
-	depth = '../dataset_ptb/EvaluationSet/bag1/depth/10.png'
-	depth = Image.open(depth)
+# 	depth = '../dataset_ptb/EvaluationSet/bag1/depth/10.png'
+# 	depth = Image.open(depth)
 
-	depth = np.array(depth)
+# 	depth = np.array(depth)
 
-	# print(np.right_shift(np.uint64(2**32-1),3,casting='no').dtype)
-	# print(np.binary_repr(np.right_shift(np.uint16(2**16-1),3)))
-	# print(np.binary_repr(np.uint16(2**16-1),3))
+# 	# print(np.right_shift(np.uint64(2**32-1),3,casting='no').dtype)
+# 	# print(np.binary_repr(np.right_shift(np.uint16(2**16-1),3)))
+# 	# print(np.binary_repr(np.uint16(2**16-1),3))
 
-	depth1_right = np.right_shift(depth.copy(),3)
-	depth1_left = np.left_shift(depth.copy(),13)
+# 	depth1_right = np.right_shift(depth.copy(),3)
+# 	depth1_left = np.left_shift(depth.copy(),13)
 
-	depth1 = np.bitwise_or(depth1_left,depth1_right)
-	depth1 = np.bitwise_and(depth1, np.int64(2**16-1)).astype(np.uint16)
+# 	depth1 = np.bitwise_or(depth1_left,depth1_right)
+# 	depth1 = np.bitwise_and(depth1, np.int64(2**16-1)).astype(np.uint16)
 
-	depth1 = depth1.astype(np.float32)/1000
+# 	depth1 = depth1.astype(np.float32)/1000
 
-	depth1 = sops.replace_infinite(1 / depth1)
+# 	depth1 = sops.replace_infinite(1 / depth1)
 
 
 
-	ij.setImage('depth',depth1)
+# 	ij.setImage('depth',depth1)
 	
-	# if show_as_img == True:
-	# 	# ij.setImage('depth8',depth1.astype(np.uint8))
-	# 	# ij.setImage('depth16',depth1.astype(np.float32))
-	# 	Image.fromarray(depth1.astype(np.uint8)).show()
-	# 	# Image.fromarray(depth1).show()
+# 	# if show_as_img == True:
+# 	# 	# ij.setImage('depth8',depth1.astype(np.uint8))
+# 	# 	# ij.setImage('depth16',depth1.astype(np.float32))
+# 	# 	Image.fromarray(depth1.astype(np.uint8)).show()
+# 	# 	# Image.fromarray(depth1).show()
 
 
 
-visualize_ptb_image('abc',True)
+# visualize_ptb_image('abc',True)

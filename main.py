@@ -77,11 +77,11 @@ class DatasetReader:
         elif sections[self.section_type] == sections[1]:
 
             self.log()
-            self.log('Using Driving, Flying Datasets ... ')
+            self.log('Using Driving, Monkaa Datasets ... ')
             self.log()
 
-            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1]]
-            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1]]
+            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[2]]
+            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[2]]
             self.dataset_used = 2
 
         # driving, flying, monkaa
@@ -131,7 +131,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 3
+        self.section_type = 2
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -681,25 +681,25 @@ class DatasetReader:
         '''
 
         # _ = losses_helper.photoconsistency_loss(network_input_images,flows_dict['predict_flow'][0])
-        network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-        with tf.variable_scope('photoconsistency_loss_refine_forward_3'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
-        with tf.variable_scope('photoconsistency_loss_refine_forward_2'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
-        with tf.variable_scope('photoconsistency_loss_refine_forward_1'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
+        # with tf.variable_scope('photoconsistency_loss_refine_forward_3'):
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
+        # with tf.variable_scope('photoconsistency_loss_refine_forward_2'):
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
+        # with tf.variable_scope('photoconsistency_loss_refine_forward_1'):
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
 
 
 
-        with tf.variable_scope('photoconsistency_loss_refine_backward_3'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][1],7,'backward')
-        with tf.variable_scope('photoconsistency_loss_refine_backward_2'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][1],7,'backward')
-        with tf.variable_scope('photoconsistency_loss_refine_backward_1'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][1],7,'backward')
+        # with tf.variable_scope('photoconsistency_loss_refine_backward_3'):
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][1],7,'backward')
+        # with tf.variable_scope('photoconsistency_loss_refine_backward_2'):
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][1],7,'backward')
+        # with tf.variable_scope('photoconsistency_loss_refine_backward_1'):
+        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][1],7,'backward')
 
 
         # unsupervised losses done. Now remove ptb. Since it doesn't have ground truth.
@@ -904,7 +904,7 @@ class DatasetReader:
         concated_flows_v_driving = tf.concat([network_input_labels[0:4,:,:,1:2],predict_flow2[0:4,:,:,1:2]],axis=-2)
 
         denormalized_flow = losses_helper.denormalize_flow(predict_flow2)
-        warped_img = losses_helper.flow_warp(network_input_images[0:4,:,:,4:7],denormalized_flow)
+        warped_img = losses_helper.flow_warp(network_input_images[:,:,:,4:7],denormalized_flow)
 
         tf.summary.image('concated_flows_u_driving',concated_flows_u_driving)
         tf.summary.image('concated_flows_v_driving',concated_flows_v_driving)
@@ -912,7 +912,6 @@ class DatasetReader:
 
         if self.section_type > 0  and self.section_type is not 4:
     
-            warped_img = losses_helper.flow_warp(network_input_images[4:8,:,:,4:7],denormalized_flow)
     
             concated_flows_u_flying = tf.concat([network_input_labels[4:8,:,:,0:1],predict_flow2[4:8,:,:,0:1]],axis=-2)
             concated_flows_v_flying = tf.concat([network_input_labels[4:8,:,:,1:2],predict_flow2[4:8,:,:,1:2]],axis=-2)
@@ -924,7 +923,6 @@ class DatasetReader:
 
         if self.section_type > 1 and self.section_type is not 4:
 
-            warped_img = losses_helper.flow_warp(network_input_images[8:12,:,:,4:7],denormalized_flow)
 
             concated_flows_u_monkaa = tf.concat([network_input_labels[8:12,:,:,0:1],predict_flow2[8:12,:,:,0:1]],axis=-2)
             concated_flows_v_monkaa = tf.concat([network_input_labels[8:12,:,:,1:2],predict_flow2[8:12,:,:,1:2]],axis=-2)
@@ -936,7 +934,6 @@ class DatasetReader:
 
         if self.section_type > 2 and self.section_type is not 4:
 
-            warped_img = losses_helper.flow_warp(network_input_images[12:16,:,:,4:7],denormalized_flow)
 
             concated_flows_u_ptb = tf.concat([network_input_labels[12:16,:,:,0:1],predict_flow2[12:16,:,:,0:1]],axis=-2)
             concated_flows_v_ptb = tf.concat([network_input_labels[12:16,:,:,1:2],predict_flow2[12:16,:,:,1:2]],axis=-2)
