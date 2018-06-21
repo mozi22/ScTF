@@ -7,7 +7,6 @@ import math
 import matplotlib as plt
 import ijremote as ij
 import synthetic_tf_converter as stc
-
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -21,7 +20,7 @@ tf.app.flags.DEFINE_boolean('SHOW_GT_DEPTH_CHANGE', False,
                             """Show Depth Images Ground Truth.""")
 
 
-tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', False,
+tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', True,
                             """Show both U and V Flow Values.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_GT_FLOWS', False,
@@ -36,10 +35,15 @@ tf.app.flags.DEFINE_boolean('SHOW_GT_WARPED_RESULT', False,
 tf.app.flags.DEFINE_boolean('SHOW_GT_IMGS', False,
                             """Show the ground truth images.""")
 
-tf.app.flags.DEFINE_boolean('PARSING_PTB', True,
+tf.app.flags.DEFINE_boolean('PARSING_PTB', False,
+                            """Show the ground truth images.""")
+
+tf.app.flags.DEFINE_boolean('PARSING_MID', True,
                             """Show the ground truth images.""")
 
 
+tf.app.flags.DEFINE_string('PARENT_FOLDER_MID', '../dataset_synthetic/middlebury/',
+                           """The root folder for the dataset """)
 
 tf.app.flags.DEFINE_string('PARENT_FOLDER', '../dataset_synthetic/driving/',
                            """The root folder for the dataset """)
@@ -66,9 +70,8 @@ tf.app.flags.DEFINE_string('DISPARITY_CHNG', 'disparity_change/35mm_focallength/
                            """The name of the tower """)
 
 
-tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe/train/',
+tf.app.flags.DEFINE_string('CKPT_FOLDER', 'ckpt/driving/epe_all_ds/train/',
                            """The name of the tower """)
-
 
 if FLAGS.PARSING_PTB == True:
 
@@ -82,6 +85,34 @@ if FLAGS.PARSING_PTB == True:
 	FLAGS.IMG2 = FLAGS.PARENT_FOLDER_PTB + PATH_RGB + IMG2_NUMBER + '.png'
 	FLAGS.DISPARITY1 = FLAGS.PARENT_FOLDER_PTB + PATH_DEPTH + IMG1_NUMBER + '.png'
 	FLAGS.DISPARITY2 = FLAGS.PARENT_FOLDER_PTB + PATH_DEPTH + IMG2_NUMBER + '.png'
+
+elif FLAGS.PARSING_MID == True:
+
+	DATASETS = ['middlebury2003/','middlebury2005/']
+
+		#          0        1			2_05	3		4		5			6			7
+	folders = ['conesF/','teddyF/','Art/','Books/','Dolls/','Laundry/','Moebius/','Reindeer/']
+
+	folder_num = 0
+
+	if folder_num > 1:
+		dataset_num = 1
+		img1_path = 'view1.png'
+		img2_path = 'view5.png'
+		disp1_path = 'disp1.png'
+		disp2_path = 'disp5.png'
+	else:
+		dataset_num = 0
+		img1_path = 'im2.ppm'
+		img2_path = 'im6.ppm'
+		disp1_path = 'disp2.pgm'
+		disp2_path = 'disp6.pgm'
+
+
+	FLAGS.IMG1 = FLAGS.PARENT_FOLDER_MID + DATASETS[dataset_num] + folders[folder_num] +  img1_path
+	FLAGS.IMG2 = FLAGS.PARENT_FOLDER_MID + DATASETS[dataset_num] + folders[folder_num] +  img2_path
+	FLAGS.DISPARITY1 = FLAGS.PARENT_FOLDER_MID + DATASETS[dataset_num] + folders[folder_num] +  disp1_path
+	FLAGS.DISPARITY2 = FLAGS.PARENT_FOLDER_MID + DATASETS[dataset_num] + folders[folder_num] +  disp2_path
 
 else:
 	IMG1_NUMBER = '0001'
@@ -99,6 +130,61 @@ else:
 
 
 class FlowPredictor:
+
+	def get_depth_from_disp(self,disparity):
+		focal_length = 1050.0
+		disp_to_depth = disparity / focal_length
+		return disp_to_depth
+
+	def preprocess_mid(self):
+
+		self.input_size = (256, 160)
+
+		img1 = Image.open(FLAGS.IMG1)
+		img2 = Image.open(FLAGS.IMG2)
+		
+		disp1 = Image.open(FLAGS.DISPARITY1)
+		disp2 = Image.open(FLAGS.DISPARITY2)
+
+		disp1 = disp1.resize(self.input_size, Image.NEAREST)
+		disp2 = disp2.resize(self.input_size, Image.NEAREST)
+
+		depth1 = self.get_depth_from_disp(np.array(disp1))
+		depth2 = self.get_depth_from_disp(np.array(disp2))
+
+
+		self.init_img1 = img1.resize(self.input_size, Image.BILINEAR)
+		self.init_img2 = img2.resize(self.input_size, Image.BILINEAR)
+
+		self.img1_arr = np.array(self.init_img1)
+		self.img2_arr = np.array(self.init_img2)
+
+
+		self.img1 = self.img1_arr / 255
+		self.img2 = self.img2_arr / 255
+
+		max_val = np.max(depth1)
+		self.depth1 = depth1 / max_val
+		self.depth2 = depth2 / max_val
+
+		rgbd1 = self.combine_depth_values(self.img1,self.depth1)
+		rgbd2 = self.combine_depth_values(self.img2,self.depth2)
+
+		# # combine images to 8 channel rgbd-rgbd
+		# img_pair = np.concatenate((self.img1,self.img2),axis=2)
+		self.img_pair = np.concatenate((rgbd1,rgbd2),axis=2)
+
+
+		disp1 = np.array(disp1,dtype=np.float32)
+		flow_expanded_u = np.expand_dims(disp1,axis=2) 
+		flow_expanded_v = np.expand_dims(np.zeros_like(disp1),axis=2)
+		self.optical_floww = np.concatenate([flow_expanded_u,flow_expanded_v],axis=-1)
+
+		self.img_pair = np.expand_dims(self.img_pair,0)
+		self.initialize_network(self.optical_floww)
+
+		self.sess = tf.InteractiveSession()
+		self.load_model_ckpt(self.sess,FLAGS.CKPT_FOLDER)
 
 	# img1: path of img1
 	# img2: path of img2
@@ -313,23 +399,32 @@ class FlowPredictor:
 
 	def denormalize_flow(self,flow):
 
+		flow = np.squeeze(flow)
 		u = flow[:,:,0] * self.input_size[0]
 		v = flow[:,:,1] * self.input_size[1]
 		# w = flow[:,:,2] * self.max_depth_driving_chng
-		
+
+
 		flow = np.stack((u,v),axis=2)
 		
-		return flow, 'w'
+		return flow
 
 
 	def predict(self):
-		feed_dict = {
-			self.X: self.img_pair,
-		}
 
-		v = self.sess.run({'prediction': self.predict_flow2},feed_dict=feed_dict)
+		if self.lossee is None:
+			feed_dict = {
+				self.X: self.img_pair
+			}
+			v = self.sess.run([self.predict_flow2],feed_dict=feed_dict)
+		else:
+			feed_dict = {
+				self.X: self.img_pair,
+				self.Y: np.expand_dims(self.optical_floww,axis=0)
+			}
+			v, self.lossee = self.sess.run([self.predict_flow2,self.lossee],feed_dict=feed_dict)
 
-		return self.denormalize_flow(v['prediction'][0])
+		return self.denormalize_flow(v), self.lossee
 
 	def get_depth_from_disp(self,disparity):
 		disparity = disparity + 1e-6
@@ -360,50 +455,56 @@ class FlowPredictor:
 		depth = np.expand_dims(depth,2)
 		return np.concatenate((img,depth),axis=2)
 
-	def initialize_network(self):
+	def initialize_network(self,lbl=False):
 
 		self.batch_size = 1
 
 		self.X = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 160, 256, 8))
+		self.Y = tf.placeholder(dtype=tf.float32, shape=(self.batch_size, 160, 256, 2))
 
 		self.predict_flow2 = network.train_network(self.X)
 
 		self.predict_flow2 = self.predict_flow2[0]
+
+		if FLAGS.PARSING_MID == True:
+			self.lossee = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(self.Y, self.predict_flow2))))
+		else:
+			self.lossee = None
+
 		# self.predict_flow2 = self.predict_flow2
-
-
 
 	def load_model_ckpt(self,sess,filename):
 		saver = tf.train.Saver()
 		saver.restore(sess, tf.train.latest_checkpoint(filename))
 
-
-
 ####### work part ######
-
-
 predictor = FlowPredictor()
 
-if FLAGS.PARSING_PTB == False:
+if FLAGS.PARSING_PTB == True:
+	predictor.preprocess_ptb()
+elif FLAGS.PARSING_MID == True:
+	predictor.preprocess_mid()
+	gt_flow = predictor.optical_floww
+else:
 	predictor.preprocess()
 	gt_flow, gt_depth_change = predictor.read_gt(FLAGS.FLOW,FLAGS.DISPARITY_CHNG)
-else:
-	predictor.preprocess_ptb()
 
 
-pr_flow, pr_depth_change = predictor.predict()
-ij.setImage('prediction',pr_flow[:,:,1])
+pr_flow, loss = predictor.predict()
+print(pr_flow.shape)
+
+if not loss is None:
+	print(loss)
 
 if FLAGS.PARSING_PTB == False:
 	# show gt flows
 	if FLAGS.SHOW_GT_FLOWS == True:
-		ij.setImage('gt_flow_u',gt_flow[:,:,0])
-		ij.setImage('gt_flow_v',gt_flow[:,:,1])
-
+		ij.setImage('gt_flow_uv',np.transpose(gt_flow,[2,0,1]))
 
 	# warp with gt predited flow values
 	if FLAGS.SHOW_GT_WARPED_RESULT == True:
-		gt_flow = np.pad(gt_flow,((4,4),(0,0),(0,0)),'constant')
+		# gt_flow = np.pad(gt_flow,((4,4),(0,0),(0,0)),'constant')
+
 		flow = predictor.warp(predictor.img2_arr,gt_flow)
 		result = flow.eval()[0].astype(np.uint8)
 		predictor.show_image(result,'warped_img_gt')
@@ -430,8 +531,7 @@ if FLAGS.SHOW_PREDICTED_DEPTH_CHANGE == True:
 
 # show predicted flow values
 if FLAGS.SHOW_PREDICTED_FLOWS == True:
-	ij.setImage('predicted_flow_u',pr_flow[:,:,0])
-	ij.setImage('predicted_flow_v',pr_flow[:,:,1])
+	ij.setImage('predicted_uv',np.transpose(pr_flow,[2,0,1]))
 
 # show warped result with predicted flow values
 if FLAGS.SHOW_PREDICTED_WARPED_RESULT == True:

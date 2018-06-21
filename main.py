@@ -59,7 +59,7 @@ class DatasetReader:
 
         # memory_folder = '/dev/shm/'
 
-        self.filenames_train  = ['driving_TRAIN.tfrecords','flying_TRAIN.tfrecords','monkaa_TRAIN.tfrecords','ptb_TRAIN.tfrecords']
+        self.filenames_train  = ['driving_TRAIN.tfrecords','flying_TRAIN.tfrecords','monkaa_TRAIN.tfrecords','ptb_TRAIN.tfrecords','mid_TEST.tfrecords']
         self.filenames_test  = ['driving_TEST.tfrecords','flying_TEST.tfrecords','monkaa_TEST.tfrecords','ptb_TEST.tfrecords']
 
         # driving
@@ -69,7 +69,7 @@ class DatasetReader:
             self.log('Using Driving Dataset ... ')
             self.log()
 
-            train_filenames = [prefix+self.filenames_train[0]]
+            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[4]]
             test_filenames = [prefix+self.filenames_test[0]]
             self.dataset_used = 1
 
@@ -80,7 +80,7 @@ class DatasetReader:
             self.log('Using Driving, Monkaa Datasets ... ')
             self.log()
 
-            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[2]]
+            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[2],prefix+self.filenames_train[4]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[2]]
             self.dataset_used = 2
 
@@ -91,7 +91,7 @@ class DatasetReader:
             self.log('Using Driving, Flying and Monkaa Datasets ... ')
             self.log()
 
-            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2]]
+            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2],prefix+self.filenames_train[4]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
             self.dataset_used = 3
 
@@ -102,7 +102,7 @@ class DatasetReader:
             self.log('Using Driving, Flying, Monkaa and PTB Datasets ... ')
             self.log()
 
-            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2],prefix+self.filenames_train[3]]
+            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2],prefix+self.filenames_train[3],prefix+self.filenames_train[4]]
             test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2],prefix+self.filenames_test[3]]
             self.dataset_used = 4
 
@@ -426,7 +426,7 @@ class DatasetReader:
                 test_image_batch, test_label_batch = self.get_network_input_forward(test_image_batch,test_label_batch)
                 test_image_batch, test_label_batch = sess.run([test_image_batch, test_label_batch])
 
-                loss_value, summary_str_test = sess.run([self.loss,self.summary_op],feed_dict={ 
+                loss_value, summary_str_test = sess.run([self.loss,self.summary_op],feed_dict={
                             self.X: test_image_batch,
                             self.Y: test_label_batch
                 })
@@ -452,7 +452,7 @@ class DatasetReader:
         # iterator_test = sess.run(iterator_test)
         for step in range(0,self.TEST_EPOCH + 10):
 
-            image_batch, label_batch = self.combine_batches_from_datasets(iterator_test.get_next())
+            image_batch, label_batch = self.combine_batches_from_datasets(iterator_test.get_next(),True)
             image_batch, label_batch = self.get_network_input_forward(image_batch,label_batch)
 
             image,label = sess.run([image_batch, label_batch])
@@ -472,7 +472,7 @@ class DatasetReader:
 
 
 
-    def combine_batches_from_datasets(self,batches):
+    def combine_batches_from_datasets(self,batches,test=True):
 
         imgs = []
         lbls = []
@@ -495,6 +495,10 @@ class DatasetReader:
         if self.section_type > 2 and self.section_type is not 4:
             imgs.append(batches[3][0])
             lbls.append(batches[3][1])
+
+        if test == True:
+            imgs.append(batches[-1][0])
+            lbls.append(batches[-1][1])
 
         final_img_batch = tf.concat(tuple(imgs),axis=0)
         final_lbl_batch = tf.concat(tuple(lbls),axis=0)
@@ -530,8 +534,18 @@ class DatasetReader:
 
 
     def remove_ptb_records(self,network_input_images,network_input_labels):
-
         return network_input_images[0:12,:,:,:], network_input_labels[0:12,:,:,:]
+
+    def remove_mid_records(self,network_input_images,network_input_labels):
+    
+        if self.section_type == 3:
+            return network_input_images[0:16,:,:,:], network_input_labels[0:16,:,:,:]
+        elif self.section_type == 2:
+            return network_input_images[0:12,:,:,:], network_input_labels[0:12,:,:,:]
+        elif self.section_type == 1:
+            return network_input_images[0:8,:,:,:], network_input_labels[0:8,:,:,:]
+        else:
+            return network_input_images[0:4,:,:,:], network_input_labels[0:4,:,:,:]
 
 
     def write_forward_backward_images(self,forward,backward,forward_flow,backward_flow):
@@ -591,7 +605,6 @@ class DatasetReader:
         tf.summary.image('label_flow_u_monkaa',label_flow_u)
         tf.summary.image('label_flow_v_monkaa',label_flow_v)
 
-
         if self.section_type > 2 and self.section_type is not 4:
 
             forward_input_images = tf.concat([forward[12:16,:,:,0:3],forward[12:16,:,:,4:7]],axis=-2)
@@ -604,6 +617,30 @@ class DatasetReader:
             tf.summary.image('input_depths_ptb_forward',forward_input_depths)
             tf.summary.image('input_images_ptb_backward',backward_input_images)
             tf.summary.image('input_depths_ptb_backward',backward_input_depths)
+
+            # middlebury
+            forward_input_images = tf.concat([forward[16:20,:,:,0:3],forward[16:20,:,:,4:7]],axis=-2)
+            forward_input_depths = tf.concat([tf.expand_dims(forward[16:20,:,:,3],axis=-1),tf.expand_dims(forward[16:20,:,:,7],axis=-1)],axis=-2)
+
+            backward_input_images = tf.concat([backward[16:20,:,:,0:3],backward[16:20,:,:,4:7]],axis=-2)
+            backward_input_depths = tf.concat([tf.expand_dims(backward[16:20,:,:,3],axis=-1),tf.expand_dims(backward[16:20,:,:,7],axis=-1)],axis=-2)
+
+            tf.summary.image('input_images_middlebury_forward',forward_input_images)
+            tf.summary.image('input_depths_middlebury_forward',forward_input_depths)
+            tf.summary.image('input_images_middlebury_backward',backward_input_images)
+            tf.summary.image('input_depths_middlebury_backward',backward_input_depths)
+        else:
+            # middlebury
+            forward_input_images = tf.concat([forward[12:16,:,:,0:3],forward[12:16,:,:,4:7]],axis=-2)
+            forward_input_depths = tf.concat([tf.expand_dims(forward[12:16,:,:,3],axis=-1),tf.expand_dims(forward[12:16,:,:,7],axis=-1)],axis=-2)
+
+            backward_input_images = tf.concat([backward[12:16,:,:,0:3],backward[12:16,:,:,4:7]],axis=-2)
+            backward_input_depths = tf.concat([tf.expand_dims(backward[12:16,:,:,3],axis=-1),tf.expand_dims(backward[12:16,:,:,7],axis=-1)],axis=-2)
+
+            tf.summary.image('input_images_middlebury_forward',forward_input_images)
+            tf.summary.image('input_depths_middlebury_forward',forward_input_depths)
+            tf.summary.image('input_images_middlebury_backward',backward_input_images)
+            tf.summary.image('input_depths_middlebury_backward',backward_input_depths)
 
 
     def tower_loss(self,scope, images, labels):
@@ -630,6 +667,11 @@ class DatasetReader:
 
         self.write_forward_backward_images(network_input_images,network_input_images_back,network_input_labels,network_input_labels_back)
         flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images)
+
+        # remove middlebury
+        network_input_images, network_input_labels = self.remove_mid_records(network_input_images, network_input_labels)
+        flows_dict['predict_flow_ref3'][0], flows_dict['predict_flow_ref2'][0] = self.remove_mid_records(flows_dict['predict_flow_ref3'][0], flows_dict['predict_flow_ref2'][0])
+        flows_dict['predict_flow_ref1'][0], flows_dict['predict_flow'][0] = self.remove_mid_records(flows_dict['predict_flow_ref1'][0], flows_dict['predict_flow'][0])
 
         # backward_flow_images = losses_helper.forward_backward_loss(predict_flow)
         # Build inference Graph. - backward flow
@@ -942,7 +984,20 @@ class DatasetReader:
             tf.summary.image('concated_flows_v_ptb',concated_flows_v_ptb)
             tf.summary.image('flow_warp_with_original_image_ptb',tf.concat([network_input_images[12:16,:,:,0:3],warped_img[12:16,:,:,:]],axis=-2))
 
+            concated_flows_u_mid = tf.concat([network_input_labels[16:20,:,:,0:1],predict_flow2[16:20,:,:,0:1]],axis=-2)
+            concated_flows_v_mid = tf.concat([network_input_labels[16:20,:,:,1:2],predict_flow2[16:20,:,:,1:2]],axis=-2)
 
+            tf.summary.image('concated_flows_u_mid',concated_flows_u_mid)
+            tf.summary.image('concated_flows_v_mid',concated_flows_v_mid)
+            tf.summary.image('flow_warp_with_original_image_mid',tf.concat([network_input_images[16:20,:,:,0:3],warped_img[16:20,:,:,:]],axis=-2))
+
+        else:
+            concated_flows_u_mid = tf.concat([network_input_labels[12:16,:,:,0:1],predict_flow2[12:16,:,:,0:1]],axis=-2)
+            concated_flows_v_mid = tf.concat([network_input_labels[12:16,:,:,1:2],predict_flow2[12:16,:,:,1:2]],axis=-2)
+
+            tf.summary.image('concated_flows_u_mid',concated_flows_u_mid)
+            tf.summary.image('concated_flows_v_mid',concated_flows_v_mid)
+            tf.summary.image('flow_warp_with_original_image_mid',tf.concat([network_input_images[12:16,:,:,0:3],warped_img[12:16,:,:,:]],axis=-2))
 
 
     def get_network_input_forward(self,image_batch,label_batch):

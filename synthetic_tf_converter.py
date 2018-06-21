@@ -50,7 +50,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 4
+		self.dataset_number = 5
 		# these are inverse depths
 		self.max_depth_driving = 0.232809
 		# self.max_depth_driving_chng = 2.70248
@@ -82,14 +82,14 @@ class SyntheticTFRecordsWriter:
 		# self.flyingdata_FILES_IDS = [6,8]
 
 		# self.dataset_root = '../dataset_synthetic_sm50/'
-		self.dataset_save = '../dataset_synthetic/fixedmonkaa'
+		self.dataset_save = '../dataset_synthetic/'
 		self.dataset_root = '../dataset_synthetic/'
 
 		self.dataset_ptb_root = '../dataset_ptb/'
 		self.ptb_folders = ['EvaluationSet','ValidationSet']
 
 
-		self.datasets = ['driving','flyingthings3d','monkaa','ptb']
+		self.datasets = ['driving','flyingthings3d','monkaa','ptb','middlebury']
 		
 		self.data_types = [ 
 			'disparity',
@@ -181,6 +181,98 @@ class SyntheticTFRecordsWriter:
 		# elif direction == self.directions[1] and time == self.times[1]:
 		# 	return 'OpticalFlowIntoPast_'+str(file_id)+'_R'
 
+
+	def parse_midbury_dataset(self,dataset):
+
+		print('Converting '+ dataset + '...')
+
+		self.u_factor = 0.414814815
+		self.v_factor = 0.4
+
+		input_size = math.ceil(960 * self.v_factor), math.floor(540 * self.u_factor)
+
+		test_writer = self.init_tfrecord_writer(self.dataset_save+'mid_TEST.tfrecords')
+
+
+		dataset_root = '../dataset_synthetic/middlebury/'
+		dataset_type = ['middlebury2003','middlebury2005']
+
+		for typee in dataset_type:
+
+			ds_current_root = dataset_root + typee
+
+			if typee == dataset_type[0]:
+				print('parsing middlebury 2003 ... ')
+				folders = ['conesF','teddyF']
+
+				img1_path = 'im2.ppm'
+				img2_path = 'im6.ppm'
+				disp1_path = 'disp2.pgm'
+				disp2_path = 'disp6.pgm'
+
+			else:
+				print('parsing middlebury 2005 ... ')
+				folders = ['Art','Books','Dolls','Laundry','Moebius','Reindeer']
+
+				img1_path = 'view1.png'
+				img2_path = 'view5.png'
+				disp1_path = 'disp1.png'
+				disp2_path = 'disp5.png'
+
+
+			for folder in folders:
+				final_path = ''
+				final_path = ds_current_root + '/' +folder + '/'
+
+				img1_path_final = final_path + img1_path
+				img2_path_final = final_path + img2_path
+				disp1_path_final = final_path + disp1_path
+				disp2_path_final = final_path + disp2_path
+
+				img1 = Image.open(img1_path_final)
+				img2 = Image.open(img2_path_final)
+				
+				disp1 = Image.open(disp1_path_final)
+				disp2 = Image.open(disp2_path_final)
+
+				disp1 = disp1.resize(input_size, Image.NEAREST)
+				disp2 = disp2.resize(input_size, Image.NEAREST)
+
+				disp1 = np.array(disp1)
+				disp2 = np.array(disp2)
+
+				depth1 = self.get_depth_from_disp(disp1)
+				depth2 = self.get_depth_from_disp(disp2)
+
+
+				img1 = img1.resize(input_size, Image.BILINEAR)
+				img2 = img2.resize(input_size, Image.BILINEAR)
+
+				img1 = np.array(img1)
+				img2 = np.array(img2)
+
+				depth_change = np.zeros_like(img1)
+
+
+				flow_expanded_u = np.expand_dims(disp1,axis=2) 
+				flow_expanded_v = np.expand_dims(np.zeros_like(disp1),axis=2)
+				optical_flow = np.concatenate([flow_expanded_u,flow_expanded_v],axis=-1)
+
+				patches = [{
+					'web_p': img1,
+					'web_p2': img2,
+					'depth1': np.array(depth1),
+					'depth2': np.array(depth2),
+					'depth_change': depth_change,
+					'optical_flow': optical_flow,
+					'path': ''
+				}]
+
+
+				self.create_tf_example(patches,
+					'',
+					test_writer,
+					'')
 
 
 	def parse_ptb_dataset(self,dataset):
@@ -572,6 +664,8 @@ class SyntheticTFRecordsWriter:
 
 		self.close_writer(train_writer)
 		self.close_writer(test_writer)
+
+
 
 	def parse_monkaa_dataset(self,dataset):
 
@@ -978,9 +1072,13 @@ class SyntheticTFRecordsWriter:
 			self.parse_flyingthings3d_dataset(self.datasets[1])
 		elif self.dataset_number == 3:
 			self.parse_monkaa_dataset(self.datasets[2])
-		else:
+		elif self.dataset_number == 4:
 			self.parse_ptb_dataset(self.datasets[3])
-	
+		else:
+			self.parse_midbury_dataset(self.datasets[4])
+
+
+
 	def runInParallel(self,*fns):
 	  proc = []
 	  for fn in fns:
