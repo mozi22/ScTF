@@ -24,7 +24,7 @@ tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_FLOWS', True,
                             """Show both U and V Flow Values.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_GT_FLOWS', False,
-                            """Show both U and V Flow Values Ground truths.""")
+                            """Show both U and V Fl ow Values Ground truths.""")
 
 tf.app.flags.DEFINE_boolean('SHOW_PREDICTED_WARPED_RESULT', True,
                             """Perform warping with predicted flow values.""")
@@ -136,6 +136,37 @@ class FlowPredictor:
 		disp_to_depth = disparity / focal_length
 		return disp_to_depth
 
+	def normalizeOptFlow(self,flow,input_size):
+		# remove the values bigger than the image size
+		flow[:,:,0][flow[:,:,0] > input_size[0] ] = 0 # 384
+		flow[:,:,1][flow[:,:,1] > input_size[1] ] = 0 # 224
+
+		# separate the u and v values 
+		flow_u = flow[:,:,0]
+		flow_v = flow[:,:,1]
+		# np.savetxt('non_normal.txt',flow_u)
+
+		# Image.fromarray(flow[:,:,0]).show()
+		# Image.fromarray(flow[:,:,1]).show()
+
+		# opt_u = np.squeeze(flow_u).astype(np.uint8)
+		# opt_v = np.squeeze(flow_v).astype(np.uint8)
+
+		# result = np.dstack((flow_u,flow_v))
+		# opt_u = Image.fromarray(result[:,:,0]).show() 
+		# opt_v = Image.fromarray(result[:,:,1]).show()
+
+
+
+		# normalize the values by the image dimensions
+		flow_u = flow_u / input_size[0]
+		flow_v = flow_v / input_size[1]
+
+
+
+		# combine them back and return
+		return np.dstack((flow_u,flow_v))
+
 	def preprocess_mid(self):
 
 		self.input_size = (256, 160)
@@ -179,9 +210,10 @@ class FlowPredictor:
 		flow_expanded_u = np.expand_dims(disp1,axis=2) 
 		flow_expanded_v = np.expand_dims(np.zeros_like(disp1),axis=2)
 		self.optical_floww = np.concatenate([flow_expanded_u,flow_expanded_v],axis=-1)
+		# self.optical_floww = self.normalizeOptFlow(self.optical_floww,self.input_size)
 
 		self.img_pair = np.expand_dims(self.img_pair,0)
-		self.initialize_network(self.optical_floww)
+		self.initialize_network()
 
 		self.sess = tf.InteractiveSession()
 		self.load_model_ckpt(self.sess,FLAGS.CKPT_FOLDER)

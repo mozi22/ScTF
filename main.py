@@ -70,8 +70,8 @@ class DatasetReader:
             self.log()
 
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[4]]
-            test_filenames = [prefix+self.filenames_test[0]]
-            self.dataset_used = 1
+            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_train[4]]
+            self.dataset_used = 2
 
         # driving, flying
         elif sections[self.section_type] == sections[1]:
@@ -81,8 +81,8 @@ class DatasetReader:
             self.log()
 
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[2],prefix+self.filenames_train[4]]
-            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[2]]
-            self.dataset_used = 2
+            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[2],prefix+self.filenames_train[4]]
+            self.dataset_used = 3
 
         # driving, flying, monkaa
         elif sections[self.section_type] == sections[2]:
@@ -92,8 +92,8 @@ class DatasetReader:
             self.log()
 
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2],prefix+self.filenames_train[4]]
-            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
-            self.dataset_used = 3
+            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2],prefix+self.filenames_train[4]]
+            self.dataset_used = 4
 
         # driving, flying, monkaa, ptb
         elif sections[self.section_type] == sections[3]:
@@ -103,8 +103,8 @@ class DatasetReader:
             self.log()
 
             train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2],prefix+self.filenames_train[3],prefix+self.filenames_train[4]]
-            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2],prefix+self.filenames_test[3]]
-            self.dataset_used = 4
+            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2],prefix+self.filenames_test[3],prefix+self.filenames_train[4]]
+            self.dataset_used = 5
 
         # only testing with ptb
         elif sections[self.section_type] == sections[4]:
@@ -452,7 +452,7 @@ class DatasetReader:
         # iterator_test = sess.run(iterator_test)
         for step in range(0,self.TEST_EPOCH + 10):
 
-            image_batch, label_batch = self.combine_batches_from_datasets(iterator_test.get_next(),True)
+            image_batch, label_batch = self.combine_batches_from_datasets(iterator_test.get_next())
             image_batch, label_batch = self.get_network_input_forward(image_batch,label_batch)
 
             image,label = sess.run([image_batch, label_batch])
@@ -472,7 +472,7 @@ class DatasetReader:
 
 
 
-    def combine_batches_from_datasets(self,batches,test=True):
+    def combine_batches_from_datasets(self,batches):
 
         imgs = []
         lbls = []
@@ -496,9 +496,11 @@ class DatasetReader:
             imgs.append(batches[3][0])
             lbls.append(batches[3][1])
 
-        if test == True:
-            imgs.append(batches[-1][0])
-            lbls.append(batches[-1][1])
+
+        imgs.append(batches[3][0])
+        lbls.append(batches[3][1])
+
+
 
         final_img_batch = tf.concat(tuple(imgs),axis=0)
         final_lbl_batch = tf.concat(tuple(lbls),axis=0)
@@ -668,10 +670,16 @@ class DatasetReader:
         self.write_forward_backward_images(network_input_images,network_input_images_back,network_input_labels,network_input_labels_back)
         flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images)
 
+        self.write_flows_concatenated_side_by_side(network_input_images,network_input_labels,flows_dict['predict_flow'][0])
+
+
+        loss_result = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(network_input_labels[12:16,:,:,0:2], flows_dict['predict_flow'][0][12:16,:,:,0:2]))))
+        tf.summary.scalar('rmse_mid',loss_result)
         # remove middlebury
         network_input_images, network_input_labels = self.remove_mid_records(network_input_images, network_input_labels)
         flows_dict['predict_flow_ref3'][0], flows_dict['predict_flow_ref2'][0] = self.remove_mid_records(flows_dict['predict_flow_ref3'][0], flows_dict['predict_flow_ref2'][0])
         flows_dict['predict_flow_ref1'][0], flows_dict['predict_flow'][0] = self.remove_mid_records(flows_dict['predict_flow_ref1'][0], flows_dict['predict_flow'][0])
+
 
         # backward_flow_images = losses_helper.forward_backward_loss(predict_flow)
         # Build inference Graph. - backward flow
@@ -707,7 +715,6 @@ class DatasetReader:
         #                                             #                            'fb_loss_refine_2')
         #                                             )
 
-        self.write_flows_concatenated_side_by_side(network_input_images,network_input_labels,flows_dict['predict_flow'][0])
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
 

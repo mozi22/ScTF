@@ -241,8 +241,8 @@ class SyntheticTFRecordsWriter:
 				disp1 = np.array(disp1)
 				disp2 = np.array(disp2)
 
-				depth1 = self.get_depth_from_disp(disp1)
-				depth2 = self.get_depth_from_disp(disp2)
+				depth1 = self.get_depth_from_disp(disp1).astype(np.float32)
+				depth2 = self.get_depth_from_disp(disp2).astype(np.float32)
 
 
 				img1 = img1.resize(input_size, Image.BILINEAR)
@@ -251,18 +251,18 @@ class SyntheticTFRecordsWriter:
 				img1 = np.array(img1)
 				img2 = np.array(img2)
 
-				depth_change = np.zeros_like(img1)
+				depth_change = np.zeros_like(img1)[:,:,0].astype(np.float32)
 
 
 				flow_expanded_u = np.expand_dims(disp1,axis=2) 
 				flow_expanded_v = np.expand_dims(np.zeros_like(disp1),axis=2)
-				optical_flow = np.concatenate([flow_expanded_u,flow_expanded_v],axis=-1)
+				optical_flow = np.concatenate([flow_expanded_u,flow_expanded_v],axis=-1).astype(np.float32)
 
 				patches = [{
 					'web_p': img1,
 					'web_p2': img2,
-					'depth1': np.array(depth1),
-					'depth2': np.array(depth2),
+					'depth1': depth1,
+					'depth2': depth2,
 					'depth_change': depth_change,
 					'optical_flow': optical_flow,
 					'path': ''
