@@ -127,7 +127,7 @@ class SyntheticTFRecordsWriter:
 
 		# for flyingthings3d
 		self.tnts = ['TRAIN','TEST']
-		self.letters = ['A','B','C']
+		self.letters = ['B','C']
 
 		# 7 will be 15 here where both values are inclusive. Named from 0006 too 0015.
 		# in each folder.
@@ -268,11 +268,12 @@ class SyntheticTFRecordsWriter:
 					'path': ''
 				}]
 
+				filenames = img1_path_final, img2_path_final
 
 				self.create_tf_example(patches,
 					'',
 					test_writer,
-					'')
+					filenames)
 
 
 	def parse_ptb_dataset(self,dataset):
@@ -491,6 +492,7 @@ class SyntheticTFRecordsWriter:
 
 			# test_writer=csv.writer(f1, delimiter=',',lineterminator='\n',)
 			# train_writer=csv.writer(f2, delimiter=',',lineterminator='\n',)
+		iterationooo = 0
 
 		test_writer = self.init_tfrecord_writer(self.dataset_save+'driving_TEST.tfrecords')
 		train_writer = self.init_tfrecord_writer(self.dataset_save+'driving_TRAIN.tfrecords')
@@ -551,20 +553,22 @@ class SyntheticTFRecordsWriter:
 
 
 
-
+								time2 = frames_finalpass_webp, frames_finalpass_webp2
 								# camera_L_R = self.get_frame_by_id(file_id - 1)
 								camera_L_R ='1'
 
+								print(iterationooo)
+								iterationooo += 1
 								if file_id > test_files:
 									self.create_tf_example(patches,
 										camera_L_R,
 										train_writer,
-										time)
+										time2)
 								else:
 									self.create_tf_example(patches,
 										camera_L_R,
 										test_writer,
-										time)
+										time2)
 
 				# 					break
 				# 				break
@@ -636,16 +640,18 @@ class SyntheticTFRecordsWriter:
 
 									camera_L_R = self.get_frame_by_id(file_id - 6,True)
 
+									time2 = frames_finalpass_webp_path, frames_finalpass_webp_path2
+
 									if tnt == self.tnts[0]:
 										self.create_tf_example(patches,
 											camera_L_R,
 											train_writer,
-											time)
+											time2)
 									else:
 										self.create_tf_example(patches,
 											camera_L_R,
 											test_writer,
-											time)
+											time2)
 
 				# 					if self.global_check == self.break_mode:
 				# 						break
@@ -721,16 +727,17 @@ class SyntheticTFRecordsWriter:
 
 							camera_L_R = self.get_frame_by_id(file_id)
 
+							time2 = frames_finalpass_webp_path, frames_finalpass_webp_path2
 							if file_id > test_files:
 								self.create_tf_example(patches,
 									camera_L_R,
 									train_writer,
-									time)
+									time2)
 							else:
 								self.create_tf_example(patches,
 									camera_L_R,
 									test_writer,
-									time)
+									time2)
 
  
 		self.close_writer(train_writer)
@@ -738,7 +745,7 @@ class SyntheticTFRecordsWriter:
 
 
 
-	def create_tf_example(self,patches,camera_L_R,writer,scene_direction):
+	def create_tf_example(self,patches,camera_L_R,writer,filename):
 
 		# self.factor = 0.4
 		# input_size = int(960 * self.factor), int(540 * self.factor) 
@@ -765,7 +772,6 @@ class SyntheticTFRecordsWriter:
 			frames_finalpass_webp = item['web_p'].tostring()
 			frames_finalpass_webp2 = item['web_p2'].tostring()
 
-
 			# if scene_direction == self.times[0]:
 			# 	direction = b'f';
 			# else:
@@ -779,7 +785,9 @@ class SyntheticTFRecordsWriter:
 					'depth_change': self._bytes_feature(depth_chng),
 					'opt_flow': self._bytes_feature(opt_flow),
 					'image1': self._bytes_feature(frames_finalpass_webp),
-					'image2': self._bytes_feature(frames_finalpass_webp2)
+					'image2': self._bytes_feature(frames_finalpass_webp2),
+					'filename1': self._bytes_feature(str.encode(filename[0])),
+					'filename2': self._bytes_feature(str.encode(filename[1]))
 			    }),
 			)
 

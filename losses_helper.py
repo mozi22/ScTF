@@ -109,7 +109,7 @@ def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,name='r
 
 # loss value ranges around 0.01 to 2.0
 # defined here :: https://arxiv.org/pdf/1702.02295.pdf
-def endpoint_loss(gt_flow,predicted_flow,weight=500,scope='epe_loss',stop_grad=False):
+def endpoint_loss(gt_flow,predicted_flow,weight=500,scope='epe_loss',stop_grad=False,summary_type='_train'):
 
   with tf.variable_scope(scope):
 
@@ -131,14 +131,15 @@ def endpoint_loss(gt_flow,predicted_flow,weight=500,scope='epe_loss',stop_grad=F
 
     epe_loss = tf.sqrt((diff_u**2) + (diff_v**2) + 1e-6)
 
-    epe_loss = tf.reduce_mean(epe_loss)
-
-    tf.summary.scalar('epe_non_weighted',epe_loss)
+    epe_loss = tf.reduce_mean(sops.replace_nonfinite(epe_loss))
 
     epe_loss = tf.check_numerics(epe_loss,'numeric checker')
     # epe_loss = tf.Print(epe_loss,[epe_loss],'epeloss ye hai ')
 
-    tf.losses.compute_weighted_loss(epe_loss,weights=weight)
+    if summary_type == '_test':
+      tf.summary.scalar('weighted_epe_loss'+summary_type,epe_loss * weight)
+    else:
+      tf.losses.compute_weighted_loss(epe_loss,weights=weight)
   
   return epe_loss
 
