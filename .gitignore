@@ -2,6 +2,7 @@ flow10.flo
 optical_flow.tfrecords
 ckpt/
 img/
+testboard/
 dataset/
 *.index
 *.meta
