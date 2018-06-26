@@ -361,3 +361,9 @@ def ease_in_quad( current_time, start_value, change_value, duration , starter, n
     return result
 
 # _depth_sig_weight_factor = ease_in_quad(trainer.global_step(),0,1,10*_k)
+
+
+def get_learning_rate(global_step,learning_rate,end_learning_rate,decay_steps,power):
+  decayed_learning_rate = (learning_rate - end_learning_rate) * np.power((1.0 - float(global_step) / decay_steps), power) + end_learning_rate
+  return decayed_learning_rate
+

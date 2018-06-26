@@ -108,7 +108,9 @@ def _parse_function_ptb(example_proto):
         'depth1': tf.FixedLenFeature([], tf.string),
         'depth2': tf.FixedLenFeature([], tf.string),
         'image1': tf.FixedLenFeature([], tf.string),
-        'image2': tf.FixedLenFeature([], tf.string)
+        'image2': tf.FixedLenFeature([], tf.string),
+        'filename1':tf.FixedLenFeature([], tf.string),
+        'filename2':tf.FixedLenFeature([], tf.string)
     },
     name="ExampleParserV")
 
@@ -144,7 +146,7 @@ def _parse_function_ptb(example_proto):
 
     final_result = train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
 
-    return final_result["input_n"], final_result["label_n"]
+    return final_result["input_n"], final_result["label_n"], features['filename1'], features['filename2']
 
 
 
@@ -170,7 +172,7 @@ def read_with_dataset_api(batch_size,filenames,version='1'):
 
     dataset = tf.data.Dataset.zip(data)
 
-    dataset = dataset.shuffle(buffer_size=50).apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
+    dataset = dataset.shuffle(buffer_size=50).repeat().apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
     dataset = dataset.prefetch(batch_size)
     # testing_ds_api(dataset)
 

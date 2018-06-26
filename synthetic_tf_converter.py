@@ -50,7 +50,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 5
+		self.dataset_number = 4
 		# these are inverse depths
 		self.max_depth_driving = 0.232809
 		# self.max_depth_driving_chng = 2.70248
@@ -339,17 +339,17 @@ class SyntheticTFRecordsWriter:
 					if i == len(files_depth) - 1:
 						break
 
-					img1 = rgb_path + '/' + files_rgb[i]
-					img2 = rgb_path + '/' + files_rgb[i+1]
+					img1_path_final = rgb_path + '/' + files_rgb[i]
+					img2_path_final = rgb_path + '/' + files_rgb[i+1]
 
-					depth1 = depth_path + '/' + files_depth[i]
-					depth2 = depth_path + '/' + files_depth[i+1]
+					depth1_path_final = depth_path + '/' + files_depth[i]
+					depth2_path_final = depth_path + '/' + files_depth[i+1]
 
-					img1 = Image.open(img1)
-					img2 = Image.open(img2)
+					img1 = Image.open(img1_path_final)
+					img2 = Image.open(img2_path_final)
 					
-					depth1 = Image.open(depth1)
-					depth2 = Image.open(depth2)
+					depth1 = Image.open(depth1_path_final)
+					depth2 = Image.open(depth2_path_final)
 
 					img1 = img1.resize(input_size, Image.BILINEAR)
 					img2 = img2.resize(input_size, Image.BILINEAR)
@@ -395,19 +395,19 @@ class SyntheticTFRecordsWriter:
 					}]
  
 
+					filenames = img1_path_final, img2_path_final
+
 					if set_type == 0:
 						self.create_tf_example(patches,
 							'',
 							train_writer,
-							'')
+							filenames)
 					else:
 						self.create_tf_example(patches,
 							'',
 							test_writer,
-							'')
+							filenames)
 
-					break
-				break
 
 		self.close_writer(train_writer)
 		self.close_writer(test_writer)

@@ -77,22 +77,22 @@ class DatasetReader:
         elif sections[self.section_type] == sections[1]:
 
             self.log()
-            self.log('Using Driving, Monkaa Datasets ... ')
+            self.log('Using Flying, Monkaa Datasets ... ')
             self.log()
 
-            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[2],prefix+self.filenames_train[4]]
-            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[2],prefix+self.filenames_train[4]]
+            train_filenames = [prefix+self.filenames_train[1],prefix+self.filenames_train[2]]
+            test_filenames = [prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
             self.dataset_used = 3
 
         # driving, flying, monkaa
         elif sections[self.section_type] == sections[2]:
 
             self.log()
-            self.log('Using Driving, Flying and Monkaa Datasets ... ')
+            self.log('Using Flying, Monkaa and PTB Datasets ... ')
             self.log()
 
-            train_filenames = [prefix+self.filenames_train[0],prefix+self.filenames_train[1],prefix+self.filenames_train[2],prefix+self.filenames_train[4]]
-            test_filenames = [prefix+self.filenames_test[0],prefix+self.filenames_test[1],prefix+self.filenames_test[2],prefix+self.filenames_train[4]]
+            train_filenames = [prefix+self.filenames_train[3],prefix+self.filenames_train[1],prefix+self.filenames_train[2]]
+            test_filenames = [prefix+self.filenames_test[3],prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
             self.dataset_used = 4
 
         # driving, flying, monkaa, ptb
@@ -131,7 +131,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 0
+        self.section_type = 2
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -156,6 +156,7 @@ class DatasetReader:
             'CLEAN_FILES': parser[sections[self.section_type]].getboolean('CLEAN_FILES'),
             'TRAIN_WITH_PTB' : parser[sections[self.section_type]].getboolean('TRAIN_WITH_PTB'),
             'DATASET_FOLDER': parser[sections[self.section_type]]['DATASET_FOLDER'],
+            'LOAD_WITH_NEW_LEARNING_RATE':parser[sections[self.section_type]].getboolean('LOAD_WITH_NEW_LEARNING_RATE'),
 
             # TEST
             'TESTING_ENABLED': parser[sections[self.section_type]].getboolean('TESTING_ENABLED'),
@@ -190,8 +191,6 @@ class DatasetReader:
 
         return train_iterator, test_iterator
 
-
-
     def train(self,iterator_train,iterator_test):
 
         self.global_step = tf.get_variable(
@@ -203,13 +202,18 @@ class DatasetReader:
         end_learning_rate = self.FLAGS['END_LEARNING_RATE']
         power = self.FLAGS['POWER']
 
-        learning_rate = tf.train.polynomial_decay(start_learning_rate, self.global_step,
+        #lr_new_gstep = tf.placeholder(tf.int32,name='global_stepo')
+        # lr_new_gstep = tf.get_variable('global_step', [], dtype=tf.int64, initializer=tf.constant_initializer(0), trainable=False)
+        # self.global_step = lr_new_gstep
+        self.alternate_global_step = tf.placeholder(tf.int32)
+        # self.incr_global_step = tf.assign(self.alternate_global_step, self.alternate_global_step+1)
+        # learning_rate = tf.placeholder(tf.float32,shape=(),name="learing_rate")
+        learning_rate = tf.train.polynomial_decay(start_learning_rate, self.alternate_global_step,
                                                   decay_steps, end_learning_rate,
-                                                  power=power)
-
+                                                  power=power,name="new_one2")
 
         opt = tf.train.AdamOptimizer(learning_rate)
-    
+
         # images, labels = tf.train.shuffle_batch(
         #                     [ features_train['input_n'] , features_train['label_n'] ],
         #                     batch_size=self.FLAGS['BATCH_SIZE'],
@@ -234,9 +238,7 @@ class DatasetReader:
     
             # self.batch_queue_test = tf.contrib.slim.prefetch_queue.prefetch_queue(
             #     [self.images_test, self.labels_test], capacity=self.FLAGS['SHUFFLE_BATCH_QUEUE_CAPACITY'] * self.FLAGS['NUM_GPUS'])
-        
-
-        
+               
         tower_grads = []
         train_summaries = []
         test_summaries = []
@@ -306,18 +308,23 @@ class DatasetReader:
         # Group all updates to into a single train op.
         train_op = tf.group(apply_gradient_op, variables_averages_op)
 
-        # Create a saver.
-        saver = tf.train.Saver(tf.global_variables())
-
-
-
-
         # Build the summary operation from the last tower summaries.
         self.summary_op = tf.summary.merge(train_summaries)
         self.summary_op_test = tf.summary.merge(test_summaries)
 
+        if self.FLAGS['LOAD_WITH_NEW_LEARNING_RATE'] == True:
+            # Create a saver.
+            varsss = self.optimistic_restore(tf.train.latest_checkpoint(self.FLAGS['TRAIN_DIR']+'/train'))
+
+            b = tf.global_variables()
+
+            saver = tf.train.Saver(var_list=b[:len(varsss)])
+        else:
+            saver = tf.train.Saver(tf.global_variables())
+
         # Build an initialization operation to run below.
         init = tf.global_variables_initializer()
+
 
 
         # Start running operations on the Graph. allow_soft_placement must be set to
@@ -343,6 +350,8 @@ class DatasetReader:
         if self.FLAGS['LOAD_FROM_CKPT'] == True or self.section_type == 4:
             print('loading from ckpt...')
             saver.restore(sess,tf.train.latest_checkpoint(self.FLAGS['TRAIN_DIR']+'/train/'))
+            # saver.restore(sess,tf.train.latest_checkpoint('./ckpt/driving/one_at_a_time_training_flying/train/'))
+
 
 
         # Start the queue runners.
@@ -366,6 +375,8 @@ class DatasetReader:
         loop_start = tf.train.global_step(sess, self.global_step)
         loop_stop = loop_start + self.FLAGS['MAX_STEPS']
 
+
+
         if self.FLAGS['DEBUG_MODE']:
             sess = tf_debug.LocalCLIDebugWrapperSession(sess)
 
@@ -382,17 +393,25 @@ class DatasetReader:
             sys.exit('Done Testing')
 
 
+        alternate_global_stepper = 0
+
         # main loop
         for step in range(loop_start,loop_stop):
 
             start_time = time.time()
 
-            _, loss_value = sess.run([train_op, self.loss])
+            # lr_gstep = mozi
+            # print(type(lr_gstep))
+
+            # fetches = {"global_step": self.global_step, "incr_global_step": self.incr_global_step}
+            _, loss_value = sess.run([train_op, self.loss], feed_dict={
+                self.alternate_global_step: alternate_global_stepper
+            })
+
             files_r1, files_r2 = sess.run([files1, files2])
 
             print(files_r1)
             print(files_r2)
-
 
             duration = time.time() - start_time
 
@@ -432,7 +451,9 @@ class DatasetReader:
             #     summary_writer.add_summary(summary_str, step)
 
             if step % 100 == 0 and step!=0:
-                summary_str = sess.run(self.summary_op)
+                summary_str = sess.run(self.summary_op, feed_dict={
+                    self.alternate_global_step: alternate_global_stepper
+                })
                 summary_writer.add_summary(summary_str, step)
 
                 # # write a summary for test
@@ -446,14 +467,16 @@ class DatasetReader:
                 summary_str = sess.run(self.summary_op_test)
                 self.test_summary_writer.add_summary(summary_str, step)
 
+            alternate_global_stepper += 1
+
             # Save the model checkpoint periodically.
-            if step % 500 == 0 or (step + 1) == self.FLAGS['MAX_STEPS']:
+            if step % 5000 == 0 or (step + 1) == self.FLAGS['MAX_STEPS']:
                 checkpoint_path = os.path.join(self.FLAGS['TRAIN_DIR']+'/train', 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=step)
 
 
-            if step == self.FLAGS['MAX_STEPS']+2:
-                break
+            # if step == self.FLAGS['MAX_STEPS']+2:
+            #     break
 
         summary_writer.close()
         self.test_summary_writer.close()
@@ -484,9 +507,6 @@ class DatasetReader:
         self.log(message='Continue Training ...')
         self.log()
 
-
-
-
     def combine_batches_from_datasets(self,batches):
 
         imgs = []
@@ -496,26 +516,29 @@ class DatasetReader:
 
         # driving
 
-        # batches[x][y] = (4, 2, 224, 384, 8)
 
+        # batches[x][y] = (4, 2, 224, 384, 8)
         imgs.append(batches[0][0])
         lbls.append(batches[0][1])
         file1.append(batches[0][2])
         file2.append(batches[0][3])
 
         if self.section_type > 0 and self.section_type is not 4:
+
             imgs.append(batches[1][0])
             lbls.append(batches[1][1])
             file1.append(batches[1][2])
             file2.append(batches[1][3])
 
         if self.section_type > 1 and self.section_type is not 4:
+
             imgs.append(batches[2][0])
             lbls.append(batches[2][1])
             file1.append(batches[2][2])
             file2.append(batches[2][3])
 
         if self.section_type > 2 and self.section_type is not 4:
+
             imgs.append(batches[3][0])
             lbls.append(batches[3][1])
             file1.append(batches[3][2])
@@ -586,10 +609,10 @@ class DatasetReader:
         backward_input_images = tf.concat([backward[0:4,:,:,0:3],backward[0:4,:,:,4:7]],axis=-2)
         backward_input_depths = tf.concat([tf.expand_dims(backward[0:4,:,:,3],axis=-1),tf.expand_dims(backward[0:4,:,:,7],axis=-1)],axis=-2)
 
-        tf.summary.image('input_images_forward'+summary_type,forward_input_images)
-        tf.summary.image('input_depths_forward'+summary_type,forward_input_depths)
-        tf.summary.image('input_images_backward'+summary_type,backward_input_images)
-        tf.summary.image('input_depths_backward'+summary_type,backward_input_depths)
+        tf.summary.image('input_images_forward_flying'+summary_type,forward_input_images)
+        tf.summary.image('input_depths_forward_flying'+summary_type,forward_input_depths)
+        tf.summary.image('input_images_backward_flying'+summary_type,backward_input_images)
+        tf.summary.image('input_depths_backward_flying'+summary_type,backward_input_depths)
 
         if self.section_type > 0  and self.section_type is not 4:
             # flying
@@ -599,11 +622,10 @@ class DatasetReader:
             backward_input_images = tf.concat([backward[4:8,:,:,0:3],backward[4:8,:,:,4:7]],axis=-2)
             backward_input_depths = tf.concat([tf.expand_dims(backward[4:8,:,:,3],axis=-1),tf.expand_dims(backward[4:8,:,:,7],axis=-1)],axis=-2)
 
-            tf.summary.image('input_images_flying_forward'+summary_type,forward_input_images)
-            tf.summary.image('input_depths_flying_forward'+summary_type,forward_input_depths)
-            tf.summary.image('input_images_flying_backward'+summary_type,backward_input_images)
-            tf.summary.image('input_depths_flying_backward'+summary_type,backward_input_depths)
-
+            tf.summary.image('input_images_forward_monkaa'+summary_type,forward_input_images)
+            tf.summary.image('input_depths_forward_monkaa'+summary_type,forward_input_depths)
+            tf.summary.image('input_images_backward_monkaa'+summary_type,backward_input_images)
+            tf.summary.image('input_depths_backward_monkaa'+summary_type,backward_input_depths)
 
         if self.section_type > 1  and self.section_type is not 4:
             # monkaa
@@ -613,10 +635,10 @@ class DatasetReader:
             backward_input_images = tf.concat([backward[8:12,:,:,0:3],backward[8:12,:,:,4:7]],axis=-2)
             backward_input_depths = tf.concat([tf.expand_dims(backward[8:12,:,:,3],axis=-1),tf.expand_dims(backward[8:12,:,:,7],axis=-1)],axis=-2)
 
-            tf.summary.image('input_images_monkaa_forward'+summary_type,forward_input_images)
-            tf.summary.image('input_depths_monkaa_forward'+summary_type,forward_input_depths)
-            tf.summary.image('input_images_monkaa_backward'+summary_type,backward_input_images)
-            tf.summary.image('input_depths_monkaa_backward'+summary_type,backward_input_depths)
+            tf.summary.image('input_images_forward_ptb'+summary_type,forward_input_images)
+            tf.summary.image('input_depths_forward_ptb'+summary_type,forward_input_depths)
+            tf.summary.image('input_images_backward_ptb'+summary_type,backward_input_images)
+            tf.summary.image('input_depths_backward_ptb'+summary_type,backward_input_depths)
 
         # ground truth
         label_flow_u = tf.concat([tf.expand_dims(forward_flow[0:4,:,:,0],axis=-1),tf.expand_dims(backward_flow[0:4,:,:,0],axis=-1)],axis=-2)
@@ -704,8 +726,6 @@ class DatasetReader:
         self.write_forward_backward_images(network_input_images,network_input_images_back,network_input_labels,network_input_labels_back,summary_type)
         flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images,summary_type)
 
-
-
         self.write_flows_concatenated_side_by_side(network_input_images,network_input_labels,flows_dict['predict_flow'][0],summary_type)
 
 
@@ -774,7 +794,6 @@ class DatasetReader:
         #     _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
         # with tf.variable_scope('photoconsistency_loss_refine_forward_1'):
         #     _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
-
 
 
         # with tf.variable_scope('photoconsistency_loss_refine_backward_3'):
@@ -891,15 +910,12 @@ class DatasetReader:
 
         # tf.summary.image('flow_u_1',network_input_labels[:,:,:,0:1])
         # tf.summary.image('flow_v_1',network_input_labels[:,:,:,1:2])
-
-    
+  
         # tf.summary.image('predict_flow_forward_ref4_u'+summary_type,tf.expand_dims(predict_flow_forward_ref4[:,:,:,0],axis=3))
         # tf.summary.image('predict_flow_forward_ref4_v'+summary_type,tf.expand_dims(predict_flow_forward_ref4[:,:,:,1],axis=3))
 
         # tf.summary.image('predict_flow_backward_ref4_u'+summary_type,tf.expand_dims(predict_flow_backward_ref4[:,:,:,0],axis=3))
         # tf.summary.image('predict_flow_backward_ref4_v'+summary_type,tf.expand_dims(predict_flow_backward_ref4[:,:,:,1],axis=3))
-
-
 
         # concatenated_fb_ref1_u = tf.concat([tf.expand_dims(predict_flow_forward_ref1[:,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward_ref1[:,:,:,0],axis=-1)],axis=-2)
         # concatenated_fb_ref1_v = tf.concat([tf.expand_dims(predict_flow_forward_ref1[:,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward_ref1[:,:,:,1],axis=-1)],axis=-2)
@@ -907,14 +923,20 @@ class DatasetReader:
         # concatenated_fb_ref4_u = tf.concat([tf.expand_dims(predict_flow_forward_ref4[:,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward_ref4[:,:,:,0],axis=-1)],axis=-2)
         # concatenated_fb_ref4_v = tf.concat([tf.expand_dims(predict_flow_forward_ref4[:,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward_ref4[:,:,:,1],axis=-1)],axis=-2)
 
-        concatenated_fb_ref3_u = tf.concat([tf.expand_dims(predict_flow_forward_ref3[:,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward_ref3[:,:,:,0],axis=-1)],axis=-2)
-        concatenated_fb_ref3_v = tf.concat([tf.expand_dims(predict_flow_forward_ref3[:,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward_ref3[:,:,:,1],axis=-1)],axis=-2)
+        concatenated_fb_ref3_u = tf.concat([tf.expand_dims(predict_flow_forward_ref3[0:4,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward_ref3[0:4,:,:,0],axis=-1)],axis=-2)
+        concatenated_fb_ref3_v = tf.concat([tf.expand_dims(predict_flow_forward_ref3[0:4,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward_ref3[0:4,:,:,1],axis=-1)],axis=-2)
 
-        concatenated_fb_ref2_u = tf.concat([tf.expand_dims(predict_flow_forward_ref2[:,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward_ref2[:,:,:,0],axis=-1)],axis=-2)
-        concatenated_fb_ref2_v = tf.concat([tf.expand_dims(predict_flow_forward_ref2[:,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward_ref2[:,:,:,1],axis=-1)],axis=-2)
+        concatenated_fb_ref2_u = tf.concat([tf.expand_dims(predict_flow_forward_ref2[0:4,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward_ref2[0:4,:,:,0],axis=-1)],axis=-2)
+        concatenated_fb_ref2_v = tf.concat([tf.expand_dims(predict_flow_forward_ref2[0:4,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward_ref2[0:4,:,:,1],axis=-1)],axis=-2)
 
-        concatenated_fb_u = tf.concat([tf.expand_dims(predict_flow_forward[:,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward[:,:,:,0],axis=-1)],axis=-2)
-        concatenated_fb_v = tf.concat([tf.expand_dims(predict_flow_forward[:,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward[:,:,:,1],axis=-1)],axis=-2)
+        concatenated_fb_u = tf.concat([tf.expand_dims(predict_flow_forward[0:4,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward[0:4,:,:,0],axis=-1)],axis=-2)
+        concatenated_fb_v = tf.concat([tf.expand_dims(predict_flow_forward[0:4,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward[0:4,:,:,1],axis=-1)],axis=-2)
+
+        concatenated_fb_u_monkaa = tf.concat([tf.expand_dims(predict_flow_forward[4:8,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward[4:8,:,:,0],axis=-1)],axis=-2)
+        concatenated_fb_v_monkaa = tf.concat([tf.expand_dims(predict_flow_forward[4:8,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward[4:8,:,:,1],axis=-1)],axis=-2)
+
+        concatenated_fb_u_ptb = tf.concat([tf.expand_dims(predict_flow_forward[8:12,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward[8:12,:,:,0],axis=-1)],axis=-2)
+        concatenated_fb_v_ptb = tf.concat([tf.expand_dims(predict_flow_forward[8:12,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward[8:12,:,:,1],axis=-1)],axis=-2)
 
         # tf.summary.image('concatenated_fb_ref4_u'+summary_type,concatenated_fb_ref4_u)
         # tf.summary.image('concatenated_fb_ref4_v'+summary_type,concatenated_fb_ref4_v)
@@ -927,6 +949,12 @@ class DatasetReader:
 
         tf.summary.image('concatenated_fb_final_u'+summary_type,concatenated_fb_u)
         tf.summary.image('concatenated_fb_final_v'+summary_type,concatenated_fb_v)
+
+        tf.summary.image('concatenated_fb_final_u_monkaa'+summary_type,concatenated_fb_u_monkaa)
+        tf.summary.image('concatenated_fb_final_v_monkaa'+summary_type,concatenated_fb_v_monkaa)
+
+        tf.summary.image('concatenated_fb_final_u_ptb'+summary_type,concatenated_fb_u_ptb)
+        tf.summary.image('concatenated_fb_final_v_ptb'+summary_type,concatenated_fb_v_ptb)
 
         # tf.summary.image('concatenated_fb_ref1_u'+summary_type,concatenated_fb_ref1_u)
         # tf.summary.image('concatenated_fb_ref1_v'+summary_type,concatenated_fb_ref1_v)
@@ -947,10 +975,10 @@ class DatasetReader:
         # tf.summary.image('predict_flow_backward_ref2_v'+summary_type,tf.expand_dims(predict_flow_backward_ref2[:,:,:,1],axis=3))
         # tf.summary.image('predict_flow_backward_ref3_v'+summary_type,tf.expand_dims(predict_flow_backward_ref3[:,:,:,1],axis=3))
 
-        # tf.summary.image('input_image1_driving'+summary_type,concatenated_FB_images[0:4,:,:,0:3])
-        # tf.summary.image('input_image2_driving'+summary_type,concatenated_FB_images[0:4,:,:,4:7])
-        # tf.summary.image('depth_image1_driving'+summary_type,tf.expand_dims(concatenated_FB_images[0:4,:,:,3],axis=-1))
-        # tf.summary.image('depth_image2_driving'+summary_type,tf.expand_dims(concatenated_FB_images[0:4,:,:,7],axis=-1))
+        # tf.summary.image('input_image1_monkaa'+summary_type,concatenated_FB_images[4:8,:,:,0:3])
+        # tf.summary.image('input_image2_monkaa'+summary_type,concatenated_FB_images[4:8,:,:,4:7])
+        # tf.summary.image('depth_image1_monkaa'+summary_type,tf.expand_dims(concatenated_FB_images[4:8,:,:,3],axis=-1))
+        # tf.summary.image('depth_image2_monkaa'+summary_type,tf.expand_dims(concatenated_FB_images[4:8,:,:,7],axis=-1))
 
         return {
             'predict_flow': [predict_flow_forward, predict_flow_backward],
@@ -967,9 +995,9 @@ class DatasetReader:
         denormalized_flow = losses_helper.denormalize_flow(predict_flow2)
         warped_img = losses_helper.flow_warp(network_input_images[:,:,:,4:7],denormalized_flow)
 
-        tf.summary.image('concated_flows_u_driving'+summary_type,concated_flows_u_driving)
-        tf.summary.image('concated_flows_v_driving'+summary_type,concated_flows_v_driving)
-        tf.summary.image('flow_warp_with_original_image_driving'+summary_type,tf.concat([network_input_images[0:4,:,:,0:3],warped_img[0:4,:,:,:]],axis=-2))
+        tf.summary.image('concated_flows_u_flying'+summary_type,concated_flows_u_driving)
+        tf.summary.image('concated_flows_v_flying'+summary_type,concated_flows_v_driving)
+        tf.summary.image('flow_warp_with_original_image_flying'+summary_type,tf.concat([network_input_images[0:4,:,:,0:3],warped_img[0:4,:,:,:]],axis=-2))
 
         if self.section_type > 0  and self.section_type is not 4:
     
@@ -977,10 +1005,10 @@ class DatasetReader:
             concated_flows_u_flying = tf.concat([network_input_labels[4:8,:,:,0:1],predict_flow2[4:8,:,:,0:1]],axis=-2)
             concated_flows_v_flying = tf.concat([network_input_labels[4:8,:,:,1:2],predict_flow2[4:8,:,:,1:2]],axis=-2)
 
-            tf.summary.image('concated_flows_u_flying'+summary_type,concated_flows_u_flying)
-            tf.summary.image('concated_flows_v_flying'+summary_type,concated_flows_v_flying)
+            tf.summary.image('concated_flows_u_monkaa'+summary_type,concated_flows_u_flying)
+            tf.summary.image('concated_flows_v_monkaa'+summary_type,concated_flows_v_flying)
 
-            tf.summary.image('flow_warp_with_original_image_flying'+summary_type,tf.concat([network_input_images[4:8,:,:,0:3],warped_img[4:8,:,:,:]],axis=-2))
+            tf.summary.image('flow_warp_with_original_image_monkaa'+summary_type,tf.concat([network_input_images[4:8,:,:,0:3],warped_img[4:8,:,:,:]],axis=-2))
 
         if self.section_type > 1 and self.section_type is not 4:
 
@@ -988,10 +1016,10 @@ class DatasetReader:
             concated_flows_u_monkaa = tf.concat([network_input_labels[8:12,:,:,0:1],predict_flow2[8:12,:,:,0:1]],axis=-2)
             concated_flows_v_monkaa = tf.concat([network_input_labels[8:12,:,:,1:2],predict_flow2[8:12,:,:,1:2]],axis=-2)
 
-            tf.summary.image('concated_flows_u_monkaa'+summary_type,concated_flows_u_monkaa)
-            tf.summary.image('concated_flows_v_monkaa'+summary_type,concated_flows_v_monkaa)
+            tf.summary.image('concated_flows_u_ptb'+summary_type,concated_flows_u_monkaa)
+            tf.summary.image('concated_flows_v_ptb'+summary_type,concated_flows_v_monkaa)
 
-            tf.summary.image('flow_warp_with_original_image_monkaa'+summary_type,tf.concat([network_input_images[8:12,:,:,0:3],warped_img[8:12,:,:,:]],axis=-2))
+            tf.summary.image('flow_warp_with_original_image_ptb'+summary_type,tf.concat([network_input_images[8:12,:,:,0:3],warped_img[8:12,:,:,:]],axis=-2))
 
         if self.section_type > 2 and self.section_type is not 4:
 
@@ -1040,6 +1068,8 @@ class DatasetReader:
         for grad_and_vars in zip(*tower_grads):
             # Note that each grad_and_vars looks like the following:
             #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
+
+
             grads = []
             for g, _ in grad_and_vars:
                 # Add 0 dimension to the gradients to represent the tower.
@@ -1049,6 +1079,7 @@ class DatasetReader:
                 grads.append(expanded_g)
 
             # Average over the 'tower' dimension.
+
             grad = tf.concat(axis=0, values=grads)
             grad = tf.reduce_mean(grad, 0)
 
@@ -1067,6 +1098,39 @@ class DatasetReader:
         print(message)
 
 
+    def optimistic_restore(self, save_file, ignore_vars=None, verbose=False, ignore_incompatible_shapes=False):
+        """This function tries to restore all variables in the save file.
+        This function ignores variables that do not exist or have incompatible shape.
+        Raises TypeError if the there is a type mismatch for compatible shapes.
+        
+        session: tf.Session
+            The tf session
+        save_file: str
+            Path to the checkpoint without the .index, .meta or .data extensions.
+        ignore_vars: list, tuple or set of str
+            These variables will be ignored.
+        verbose: bool
+            If True prints which variables will be restored
+        ignore_incompatible_shapes: bool
+            If True ignores variables with incompatible shapes.
+            If False raises a runtime error f shapes are incompatible.
+        """
+        def vprint(*args, **kwargs): 
+            if verbose: print(*args, flush=True, **kwargs)
+        # def dbg(*args, **kwargs): print(*args, flush=True, **kwargs)
+        def dbg(*args, **kwargs): pass
+        if ignore_vars is None:
+            ignore_vars = []
+
+        reader = tf.train.NewCheckpointReader(save_file)
+        var_to_shape_map = reader.get_variable_to_shape_map()
+
+        var_list = []
+        for key in sorted(var_to_shape_map):
+            if 'Adam' in key: 
+                var_list.append(key)
+
+        return var_list 
 
 
 
@@ -1075,3 +1139,18 @@ class DatasetReader:
 reader = DatasetReader()
 train_iterator,test_iterator = reader.preprocess()
 reader.train(train_iterator,test_iterator)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
