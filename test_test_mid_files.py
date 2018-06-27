@@ -5,7 +5,7 @@ import network
 
 def get_network_input_forward(image_batch,label_batch):
     return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
-
+ 
 filee = ['../dataset_synthetic/mid_TEST.tfrecords']
 
 
@@ -116,12 +116,16 @@ img_forward_predict_v_ref1 = tf.concat([tf.expand_dims(network_input_labels_refi
 img_fb_predict = tf.concat([tf.expand_dims(flows_dict['predict_flow'][0][:,:,:,0],axis=-1),tf.expand_dims(flows_dict['predict_flow'][1][:,:,:,1],axis=-1)],axis=2)
 
 
+denormalized_flow = losses_helper.denormalize_flow(flows_dict['predict_flow'][0])
+warped_img = losses_helper.flow_warp(X_forward[:,:,:,4:7],denormalized_flow)
 
-summaies.append(tf.summary.scalar('rmse_loss',total_loss))
+
+summaies.append(tf.summary.image('warped_img',tf.concat([X_forward[:,:,:,0:3],warped_img],axis=2)))
 summaies.append(tf.summary.image('image_forward',img_forward))
 summaies.append(tf.summary.image('image_backward',img_backward))
 summaies.append(tf.summary.image('depth_forward',depth_forward))
 summaies.append(tf.summary.image('depth_backward',depth_backward))
+summaies.append(tf.summary.scalar('rmse_loss',total_loss))
 
 summaies.append(tf.summary.image('lbl_pred_final_flow_u',img_forward_predict_u))
 summaies.append(tf.summary.image('lbl_pred_final_flow_v',img_forward_predict_v))
@@ -137,7 +141,7 @@ summary_op = tf.summary.merge(summaies)
 
 
 sess = tf.InteractiveSession()
-load_model_ckpt(sess,'ckpt/driving/one_at_a_time_training_flying/train/')
+load_model_ckpt(sess,'ckpt/driving/flying/train/')
 
 
 test_summary_writer = tf.summary.FileWriter('./testboard/', sess.graph)

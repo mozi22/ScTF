@@ -91,8 +91,8 @@ class DatasetReader:
             self.log('Using Flying, Monkaa and PTB Datasets ... ')
             self.log()
 
-            train_filenames = [prefix+self.filenames_train[3],prefix+self.filenames_train[1],prefix+self.filenames_train[2]]
-            test_filenames = [prefix+self.filenames_test[3],prefix+self.filenames_test[1],prefix+self.filenames_test[2]]
+            train_filenames = [prefix+self.filenames_train[1],prefix+self.filenames_train[2],prefix+self.filenames_train[3]]
+            test_filenames = [prefix+self.filenames_test[1],prefix+self.filenames_test[2],prefix+self.filenames_test[3]]
             self.dataset_used = 4
 
         # driving, flying, monkaa, ptb
@@ -784,24 +784,24 @@ class DatasetReader:
         '''
 
         # _ = losses_helper.photoconsistency_loss(network_input_images,flows_dict['predict_flow'][0])
-        # network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        # network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        # network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-        # with tf.variable_scope('photoconsistency_loss_refine_forward_3'):
-        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
-        # with tf.variable_scope('photoconsistency_loss_refine_forward_2'):
-        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
-        # with tf.variable_scope('photoconsistency_loss_refine_forward_1'):
-        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
+        with tf.variable_scope('photoconsistency_loss_refine_forward_3'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
+        with tf.variable_scope('photoconsistency_loss_refine_forward_2'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
+        with tf.variable_scope('photoconsistency_loss_refine_forward_1'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
 
 
-        # with tf.variable_scope('photoconsistency_loss_refine_backward_3'):
-        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][1],7,'backward')
-        # with tf.variable_scope('photoconsistency_loss_refine_backward_2'):
-        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][1],7,'backward')
-        # with tf.variable_scope('photoconsistency_loss_refine_backward_1'):
-        #     _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][1],7,'backward')
+        with tf.variable_scope('photoconsistency_loss_refine_backward_3'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][1],7,'backward')
+        with tf.variable_scope('photoconsistency_loss_refine_backward_2'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][1],7,'backward')
+        with tf.variable_scope('photoconsistency_loss_refine_backward_1'):
+            _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][1],7,'backward')
 
 
         # unsupervised losses done. Now remove ptb. Since it doesn't have ground truth.
