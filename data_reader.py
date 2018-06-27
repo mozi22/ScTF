@@ -180,6 +180,36 @@ def read_with_dataset_api(batch_size,filenames,version='1'):
 
 
 
+def read_with_dataset_api_test(batch_size,filenames,version='1'):
+
+    # parallel cpu calls
+    num_parallel_calls = 16
+    buffer_size = 50
+
+    mapped_data = []
+
+    for name in filenames:
+        data = tf.data.TFRecordDataset(name)
+
+        if 'ptb' in name:
+            data = data.map(map_func=_parse_function_ptb, num_parallel_calls=num_parallel_calls)
+        else:
+            data = data.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
+
+        mapped_data.append(data)
+
+    data = tuple(mapped_data)
+
+    dataset = tf.data.Dataset.zip(data)
+
+    dataset = dataset.shuffle(buffer_size=50).apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
+    dataset = dataset.prefetch(batch_size)
+    # testing_ds_api(dataset)
+
+    return dataset
+
+
+
 def testing_ds_api(dataset):
 
     dataset = dataset.make_initializable_iterator()

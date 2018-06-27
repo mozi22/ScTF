@@ -1001,7 +1001,6 @@ class DatasetReader:
 
         if self.section_type > 0  and self.section_type is not 4:
     
-    
             concated_flows_u_flying = tf.concat([network_input_labels[4:8,:,:,0:1],predict_flow2[4:8,:,:,0:1]],axis=-2)
             concated_flows_v_flying = tf.concat([network_input_labels[4:8,:,:,1:2],predict_flow2[4:8,:,:,1:2]],axis=-2)
 
