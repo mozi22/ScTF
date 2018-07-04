@@ -411,9 +411,6 @@ class DatasetReader:
 
             files_r1, files_r2 = sess.run([files1, files2])
 
-            print(files_r1)
-            print(files_r2)
-
             duration = time.time() - start_time
 
             assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
@@ -728,8 +725,10 @@ class DatasetReader:
 
         self.write_forward_backward_images(network_input_images,network_input_images_back,network_input_labels,network_input_labels_back,summary_type)
         flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images,summary_type)
+        flows_dict2 = self.get_predict_flow_forward_backward(predict_flows2,network_input_labels,concatenated_FB_images,summary_type)
 
         self.write_flows_concatenated_side_by_side(network_input_images,network_input_labels,flows_dict['predict_flow'][0],summary_type)
+        self.write_flows_concatenated_side_by_side(network_input_images,network_input_labels,flows_dict2['predict_flow'][0],summary_type +'_evoltuion2')
 
 
         # # remove middlebury
@@ -819,6 +818,7 @@ class DatasetReader:
             Applying epe loss on full resolution
         '''
         _ = losses_helper.endpoint_loss(network_input_labels,flows_dict['predict_flow'][0],summary_type=summary_type)
+        _ = losses_helper.endpoint_loss(network_input_labels,flows_dict2['predict_flow'][0],summary_type=summary_type + '_evoltuion2')
 
         '''
             Applying epe loss on lower resolutions
@@ -833,10 +833,13 @@ class DatasetReader:
 
         with tf.variable_scope('epe_loss_refine_3'):
             _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict['predict_flow_ref3'][0],100,summary_type=summary_type)
+            _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict2['predict_flow_ref3'][0],100,summary_type=summary_type + '_evoltuion2')
         with tf.variable_scope('epe_loss_refine_2'):
             _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict['predict_flow_ref2'][0],100,summary_type=summary_type)
+            _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict2['predict_flow_ref2'][0],100,summary_type=summary_type + '_evoltuion2')
         with tf.variable_scope('epe_loss_refine_1'):
             _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict['predict_flow_ref1'][0],100,summary_type=summary_type)
+            _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict2['predict_flow_ref1'][0],100,summary_type=summary_type + '_evoltuion2')
 
         # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flows[0])
         # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flows[0])
@@ -850,12 +853,25 @@ class DatasetReader:
                                                                                 np.array([1,2,4,8,16]),
                                                                                 np.array([1,1,1,1,1]))
 
+        scale_invariant_gradient_image_pred2 = losses_helper.scale_invariant_gradient(flows_dict2['predict_flow'][0],
+                                                                                np.array([1,2,4,8,16]),
+                                                                                np.array([1,1,1,1,1]))
+
         _ = losses_helper.scale_invariant_gradient_loss(
                 scale_invariant_gradient_image_pred,
                 scale_invariant_gradient_image_gt,
                 0.0001,
                 self.FLAGS['MAX_STEPS'],
                 self.global_step)
+
+        _ = losses_helper.scale_invariant_gradient_loss(
+                scale_invariant_gradient_image_pred2,
+                scale_invariant_gradient_image_gt,
+                0.0001,
+                self.FLAGS['MAX_STEPS'],
+                self.global_step,
+                100,
+                'scale_invariant_gradient_loss_evolution2')
 
 
  
