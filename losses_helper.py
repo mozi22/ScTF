@@ -17,19 +17,21 @@ def photoconsistency_loss(img,predicted_flow, weight=7, typee='forward'):
       warped_img = flow_warp(img1,predicted_flow)
       img2 = get_occulation_aware_image(img2,warped_img)
       img2 = tf.stop_gradient(img2)
-      pc_loss = endpoint_loss(img2, warped_img,weight,'pc_loss_backward')
+      # pc_loss = endpoint_loss(img2, warped_img,weight,'pc_loss_backward')
+      pc_loss = tf.sqrt((img2**2) + (warped_img**2) + 1e-6)
     else:
       # forward flow
       warped_img = flow_warp(img2,predicted_flow)
       img1 = get_occulation_aware_image(img1,warped_img)
       img1 = tf.stop_gradient(img1)
-      pc_loss = endpoint_loss(img1, warped_img,weight,'pc_loss_forward')
-
+      # pc_loss = endpoint_loss(img1, warped_img,weight,'pc_loss_forward')
+      pc_loss = tf.sqrt((img1**2) + (warped_img**2) + 1e-6)
+      
 
 
 
     # pc_loss = tf.Print(pc_loss,[pc_loss],'pcloss ye hai ')
-    # tf.losses.compute_weighted_loss(pc_loss,weights=weight)
+    pc_loss = tf.losses.compute_weighted_loss(pc_loss,weights=weight)
     # tf.summary.scalar('pc_loss',sops.replace_nonfinite(pc_loss))
 
   return pc_loss
@@ -46,7 +48,7 @@ def denormalize_flow(flow):
 
     return tf.concat([u,v],axis=-1)
 
-def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,name='ref1',weight=1):
+def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,name='ref1',weight=5):
 
   with tf.variable_scope('fb_loss'):
 
@@ -75,8 +77,8 @@ def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,name='r
     flow_backward = sops.replace_nonfinite(flow_backward)
     # flow_forward = tf.Print(flow_forward,[flow_forward],'forward ye hai ')
     # flow_backward = tf.Print(flow_backward,[flow_backward],'backward ye hai ')
-    flow_forward = tf.check_numerics(flow_forward,'flow_forward Nan Value found')
-    flow_backward = tf.check_numerics(flow_backward,'flow_backward Nan Value found')
+    # flow_forward = tf.check_numerics(flow_forward,'flow_forward Nan Value found')
+    # flow_backward = tf.check_numerics(flow_backward,'flow_backward Nan Value found')
 
     flow_forward_denormed = denormalize_flow(flow_forward)
     # flow_forward_denormed = sops.replace_nonfinite(flow_forward_denormed)
@@ -101,7 +103,7 @@ def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,name='r
 
 
     # step 4
-    fb_loss = sops.replace_nonfinite(endpoint_loss(-B,flow_forward,weight,'fb_loss',False))
+    fb_loss = sops.replace_nonfinite(endpoint_loss(-B,flow_forward,weight,'fb_loss',True))
 
     # tf.losses.compute_weighted_loss(fb_loss,weights=weight)
 

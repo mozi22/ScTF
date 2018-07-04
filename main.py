@@ -91,8 +91,8 @@ class DatasetReader:
             self.log('Using Flying, Monkaa and PTB Datasets ... ')
             self.log()
 
-            train_filenames = [prefix+self.filenames_train[1],prefix+self.filenames_train[2],prefix+self.filenames_train[3]]
-            test_filenames = [prefix+self.filenames_test[1],prefix+self.filenames_test[2],prefix+self.filenames_test[3]]
+            train_filenames = [prefix+self.filenames_train[1],prefix+self.filenames_train[2],prefix+'/ptb/'+self.filenames_train[3]]
+            test_filenames = [prefix+self.filenames_test[1],prefix+self.filenames_test[2],prefix+'/ptb/'+self.filenames_test[3]]
             self.dataset_used = 4
 
         # driving, flying, monkaa, ptb
@@ -131,7 +131,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 2
+        self.section_type = 0
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -312,15 +312,16 @@ class DatasetReader:
         self.summary_op = tf.summary.merge(train_summaries)
         self.summary_op_test = tf.summary.merge(test_summaries)
 
-        if self.FLAGS['LOAD_WITH_NEW_LEARNING_RATE'] == True:
-            # Create a saver.
-            varsss = self.optimistic_restore(tf.train.latest_checkpoint(self.FLAGS['TRAIN_DIR']+'/train'))
 
-            b = tf.global_variables()
+        all_vars = tf.global_variables()
 
-            saver = tf.train.Saver(var_list=b[:len(varsss)])
-        else:
-            saver = tf.train.Saver(tf.global_variables())
+        evolution1_vars = []
+        for i in all_vars:
+            if not 's_evolution2' in i.op.name :
+                evolution1_vars.append(i)
+
+        saver = tf.train.Saver(evolution1_vars)
+        saver2 = tf.train.Saver(tf.global_variables())
 
         # Build an initialization operation to run below.
         init = tf.global_variables_initializer()
@@ -472,7 +473,7 @@ class DatasetReader:
             # Save the model checkpoint periodically.
             if step % 5000 == 0 or (step + 1) == self.FLAGS['MAX_STEPS']:
                 checkpoint_path = os.path.join(self.FLAGS['TRAIN_DIR']+'/train', 'model.ckpt')
-                saver.save(sess, checkpoint_path, global_step=step)
+                saver2.save(sess, checkpoint_path, global_step=step)
 
 
             # if step == self.FLAGS['MAX_STEPS']+2:
@@ -586,7 +587,7 @@ class DatasetReader:
 
 
     def remove_ptb_records(self,network_input_images,network_input_labels):
-        return network_input_images[0:12,:,:,:], network_input_labels[0:12,:,:,:]
+        return network_input_images[0:8,:,:,:], network_input_labels[0:8,:,:,:]
 
     def remove_mid_records(self,network_input_images,network_input_labels):
     
@@ -722,6 +723,8 @@ class DatasetReader:
 
         # Build inference Graph. - forward flow
         predict_flows = network.train_network(concatenated_FB_images)
+        predict_flows2 = network.train_network(predict_flows[0],'s_evolution2','s_evolution2')
+
 
         self.write_forward_backward_images(network_input_images,network_input_images_back,network_input_labels,network_input_labels_back,summary_type)
         flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images,summary_type)
@@ -742,32 +745,32 @@ class DatasetReader:
         # losses sections[self.section_type]
 
 
-        # with tf.variable_scope('fb_loss_refine_3'):
-        #     _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref3'][0],
-        #                                             flows_dict['predict_flow_ref3'][1],
-        #                                             name='ref3')
-        # with tf.variable_scope('fb_loss_refine_2'):
-        #     _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref2'][0],
-        #                                             flows_dict['predict_flow_ref2'][1],
-        #                                             name='ref2'
-        #                                             # ,losses_helper.ease_in_quad(self.global_step,
-        #                                             #                            0,
-        #                                             #                            1.0,
-        #                                             #                            30000.0,
-        #                                             #                            50000,
-        #                                             #                            'fb_loss_refine_3')
-        #                                             )
-        # with tf.variable_scope('fb_loss_refine_1'):
-        #     _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref1'][0],
-        #                                             flows_dict['predict_flow_ref1'][1],
-        #                                             name='ref1'
-        #                                             # ,losses_helper.ease_in_quad(self.global_step,
-        #                                             #                            0,
-        #                                             #                            1.0,
-        #                                             #                            30000.0,
-        #                                             #                            100000,
-        #                                             #                            'fb_loss_refine_2')
-        #                                             )
+        with tf.variable_scope('fb_loss_refine_3'):
+            _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref3'][0],
+                                                    flows_dict['predict_flow_ref3'][1],
+                                                    name='ref3')
+        with tf.variable_scope('fb_loss_refine_2'):
+            _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref2'][0],
+                                                    flows_dict['predict_flow_ref2'][1],
+                                                    name='ref2'
+                                                    # ,losses_helper.ease_in_quad(self.global_step,
+                                                    #                            0,
+                                                    #                            1.0,
+                                                    #                            30000.0,
+                                                    #                            50000,
+                                                    #                            'fb_loss_refine_3')
+                                                    )
+        with tf.variable_scope('fb_loss_refine_1'):
+            _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref1'][0],
+                                                    flows_dict['predict_flow_ref1'][1],
+                                                    name='ref1'
+                                                    # ,losses_helper.ease_in_quad(self.global_step,
+                                                    #                            0,
+                                                    #                            1.0,
+                                                    #                            30000.0,
+                                                    #                            100000,
+                                                    #                            'fb_loss_refine_2')
+                                                    )
 
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
@@ -839,20 +842,20 @@ class DatasetReader:
         # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flows[0])
 
 
-        # scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
-        #                                                                         np.array([1,2,4,8,16]),
-        #                                                                         np.array([1,1,1,1,1]))
+        scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels[:,:,:,0:2],
+                                                                                np.array([1,2,4,8,16]),
+                                                                                np.array([1,1,1,1,1]))
 
-        # scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(predict_flow2_forward,
-        #                                                                         np.array([1,2,4,8,16]),
-        #                                                                         np.array([1,1,1,1,1]))
+        scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(flows_dict['predict_flow'][0],
+                                                                                np.array([1,2,4,8,16]),
+                                                                                np.array([1,1,1,1,1]))
 
-        # _ = losses_helper.scale_invariant_gradient_loss(
-        #         scale_invariant_gradient_image_pred,
-        #         scale_invariant_gradient_image_gt,
-        #         0.0001,
-        #         self.FLAGS['MAX_STEPS'],
-        #         self.global_step)
+        _ = losses_helper.scale_invariant_gradient_loss(
+                scale_invariant_gradient_image_pred,
+                scale_invariant_gradient_image_gt,
+                0.0001,
+                self.FLAGS['MAX_STEPS'],
+                self.global_step)
 
 
  
@@ -872,6 +875,8 @@ class DatasetReader:
             # session. This helps the clarity of presentation on tensorboard.
 
             loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)
+
+
             tf.summary.scalar(loss_name, l)
 
         return total_loss
@@ -1068,9 +1073,12 @@ class DatasetReader:
             # Note that each grad_and_vars looks like the following:
             #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
 
-
             grads = []
             for g, _ in grad_and_vars:
+
+                if g == None:
+                    continue
+
                 # Add 0 dimension to the gradients to represent the tower.
                 expanded_g = tf.expand_dims(g, 0)
 
@@ -1079,6 +1087,8 @@ class DatasetReader:
 
             # Average over the 'tower' dimension.
 
+            if len(grads) == 0:
+                continue
             grad = tf.concat(axis=0, values=grads)
             grad = tf.reduce_mean(grad, 0)
 
@@ -1088,6 +1098,8 @@ class DatasetReader:
             v = grad_and_vars[0][1]
             grad_and_var = (grad, v)
             average_grads.append(grad_and_var)
+
+
         return average_grads
 
 

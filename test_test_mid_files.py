@@ -2,6 +2,9 @@ import data_reader
 import losses_helper
 import tensorflow as tf
 import network
+import numpy as np
+import ijremote as ij
+ij.setHost('tcp://linus:13463')
 
 def get_network_input_forward(image_batch,label_batch):
     return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
@@ -10,7 +13,7 @@ filee = ['../dataset_synthetic/mid_TEST.tfrecords']
 
 
 
-test_dataset = data_reader.read_with_dataset_api(1,filee,version='1')
+test_dataset = data_reader.read_with_dataset_api_test(1,filee,version='1')
 test_iterator = test_dataset.make_one_shot_iterator()
 
 
@@ -55,10 +58,10 @@ def get_predict_flow_forward_backward(predict_flows):
     predict_flow_backward_ref1 = tf.expand_dims(predict_flow_ref1[1,:,:,:],axis=0)
 
     return {
-        'predict_flow': [predict_flow_forward, predict_flow_backward],
-        'predict_flow_ref3': [predict_flow_forward_ref3,predict_flow_backward_ref3],
-        'predict_flow_ref2': [predict_flow_forward_ref2, predict_flow_backward_ref2],
-        'predict_flow_ref1': [predict_flow_forward_ref1, predict_flow_backward_ref1]
+        'predict_flow': [-predict_flow_forward, -predict_flow_backward],
+        'predict_flow_ref3': [-predict_flow_forward_ref3,-predict_flow_backward_ref3],
+        'predict_flow_ref2': [-predict_flow_forward_ref2, -predict_flow_backward_ref2],
+        'predict_flow_ref1': [-predict_flow_forward_ref1, -predict_flow_backward_ref1]
     }
 
 X = tf.placeholder(dtype=tf.float32, shape=(1, 2, 224, 384, 8))
@@ -74,11 +77,14 @@ concatenated_FB_images = tf.concat([X_forward,X_backward],axis=0)
 
 
 predict_flows = network.train_network(concatenated_FB_images)
-flows_dict = get_predict_flow_forward_backward(predict_flows)
+predict_flows2 = network.train_network(predict_flows[0],'s_evolution2','s_evolution2')
+flows_dict = get_predict_flow_forward_backward(predict_flows2)
 
 ################ epe loss #######################
+denormalized_flow = losses_helper.denormalize_flow(flows_dict['predict_flow'][0])
 
-total_loss = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(Y_forward, flows_dict['predict_flow'][0]))))
+
+total_loss = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(Y_forward, denormalized_flow))))
 
 
 # sess.run(test_iterator.initializer)
@@ -116,7 +122,6 @@ img_forward_predict_v_ref1 = tf.concat([tf.expand_dims(network_input_labels_refi
 img_fb_predict = tf.concat([tf.expand_dims(flows_dict['predict_flow'][0][:,:,:,0],axis=-1),tf.expand_dims(flows_dict['predict_flow'][1][:,:,:,1],axis=-1)],axis=2)
 
 
-denormalized_flow = losses_helper.denormalize_flow(flows_dict['predict_flow'][0])
 warped_img = losses_helper.flow_warp(X_forward[:,:,:,4:7],denormalized_flow)
 
 
@@ -141,27 +146,31 @@ summary_op = tf.summary.merge(summaies)
 
 
 sess = tf.InteractiveSession()
-load_model_ckpt(sess,'ckpt/driving/flying/train/')
+load_model_ckpt(sess,'ckpt/driving/evolution_network/train/')
 
 
-test_summary_writer = tf.summary.FileWriter('./testboard/', sess.graph)
+test_summary_writer = tf.summary.FileWriter('./testboard/mid', sess.graph)
 
 
 for i in range(0,1000):
 
-	print('iteration '+str(i))
-	test_image_batch_fine, test_label_batch_fine, filenamee1, filenamee2 = sess.run([test_image_batch, test_label_batch, filename1, filename2])
+    print('iteration '+str(i))
+    test_image_batch_fine, test_label_batch_fine, filenamee1, filenamee2 = sess.run([test_image_batch, test_label_batch, filename1, filename2])
 
-	print(filenamee1)
-	print(filenamee2)
 
-	summary_str_test, total_loss2 = sess.run([summary_op,total_loss],feed_dict={
-	            X: test_image_batch_fine,
-	            Y: test_label_batch_fine
-	})
+    summary_str_test, total_loss2,denormalize_f,Y_forwardd,X_forwardd = sess.run([summary_op,total_loss,denormalized_flow,Y_forward,X_forward],feed_dict={
+                X: test_image_batch_fine,
+                Y: test_label_batch_fine
+    })
 
-	test_summary_writer.add_summary(summary_str_test, i)
+    print(filenamee1)
+    print(filenamee2)
+    ij.setImage('normal_img',np.transpose(X_forwardd[:,:,:,:],[0,3,1,2]))
+    ij.setImage('normal_lbl',np.transpose(Y_forwardd[:,:,:,:],[0,3,1,2]))
+    ij.setImage('prediction',np.transpose(denormalize_f,[0,3,1,2]))
 
-	print(total_loss2)
+    test_summary_writer.add_summary(summary_str_test, i)
+
+    print(total_loss2)
 
 test_summary_writer.close()

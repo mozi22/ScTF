@@ -82,7 +82,7 @@ class SyntheticTFRecordsWriter:
 		# self.flyingdata_FILES_IDS = [6,8]
 
 		# self.dataset_root = '../dataset_synthetic_sm50/'
-		self.dataset_save = '../dataset_synthetic/'
+		self.dataset_save = '../dataset_synthetic/ptb/'
 		self.dataset_root = '../dataset_synthetic/'
 
 		self.dataset_ptb_root = '../dataset_ptb/'
@@ -186,11 +186,10 @@ class SyntheticTFRecordsWriter:
 
 		print('Converting '+ dataset + '...')
 
-		self.u_factor = 0.414814815
-		self.v_factor = 0.4
+		self.u_factor = 0.201801802
+		self.v_factor = 0.276258993
 
-		input_size = math.ceil(960 * self.v_factor), math.floor(540 * self.u_factor)
-
+		input_size = math.floor(1390 * self.v_factor), math.floor(1110 * self.u_factor)
 		test_writer = self.init_tfrecord_writer(self.dataset_save+'mid_TEST.tfrecords')
 
 
@@ -238,8 +237,9 @@ class SyntheticTFRecordsWriter:
 				disp1 = disp1.resize(input_size, Image.NEAREST)
 				disp2 = disp2.resize(input_size, Image.NEAREST)
 
-				disp1 = np.array(disp1)
-				disp2 = np.array(disp2)
+				disp1 = np.array(disp1) 
+				disp2 = np.array(disp2) 
+
 
 				depth1 = self.get_depth_from_disp(disp1).astype(np.float32)
 				depth2 = self.get_depth_from_disp(disp2).astype(np.float32)
@@ -254,7 +254,7 @@ class SyntheticTFRecordsWriter:
 				depth_change = np.zeros_like(img1)[:,:,0].astype(np.float32)
 
 
-				flow_expanded_u = np.expand_dims(disp1,axis=2) 
+				flow_expanded_u = np.expand_dims(disp1 * self.u_factor,axis=2) 
 				flow_expanded_v = np.expand_dims(np.zeros_like(disp1),axis=2)
 				optical_flow = np.concatenate([flow_expanded_u,flow_expanded_v],axis=-1).astype(np.float32)
 
@@ -286,7 +286,7 @@ class SyntheticTFRecordsWriter:
 		input_size = math.ceil(960 * self.v_factor), math.floor(540 * self.u_factor)
 
 		test_writer = self.init_tfrecord_writer(self.dataset_save+'ptb_TEST.tfrecords')
-		train_writer = self.init_tfrecord_writer(self.dataset_save+'ptb_TRAIN.tfrecords')
+		# train_writer = self.init_tfrecord_writer(self.dataset_save+'ptb_TRAIN.tfrecords')
 
 		# dataset_max_values = [36277,31452,29610,65168,34026,65168,65168,65168,39217,65168,
 		# 					  65168,65168,65168,65168,65168,65168,65168,18042,65168,65168,
@@ -299,8 +299,11 @@ class SyntheticTFRecordsWriter:
 		# 					  65168,37144,65168,63516,17847,65168,22517,65168,65168,65168,
 		# 					  65168,49099,65168,65168,65168]
 
+		second_image = 5
 
 		for set_type,dirss in enumerate(self.ptb_folders):
+			if set_type == 0:
+				continue
 			path = self.dataset_ptb_root + self.ptb_folders[set_type] + '/'
 
 
@@ -336,14 +339,22 @@ class SyntheticTFRecordsWriter:
 
 				for i in range(0,len(files_depth)):
 
-					if i == len(files_depth) - 1:
+					if i == len(files_depth) - second_image:
 						break
 
+					if not '_add' in rgb_path and not set_type is 1:
+						continue
+					else:
+						print(rgb_path)
+
+
 					img1_path_final = rgb_path + '/' + files_rgb[i]
-					img2_path_final = rgb_path + '/' + files_rgb[i+1]
+					img2_path_final = rgb_path + '/' + files_rgb[i+second_image]
 
 					depth1_path_final = depth_path + '/' + files_depth[i]
-					depth2_path_final = depth_path + '/' + files_depth[i+1]
+					depth2_path_final = depth_path + '/' + files_depth[i+second_image]
+
+
 
 					img1 = Image.open(img1_path_final)
 					img2 = Image.open(img2_path_final)
@@ -365,7 +376,7 @@ class SyntheticTFRecordsWriter:
 
 					depth1 = depth1.astype(np.float32)
 					depth2 = depth2.astype(np.float32)
-				
+
 					# normalize depth values
 					# depth1 = depth1 / max_value
 					# depth2 = depth2 / max_value
@@ -379,6 +390,7 @@ class SyntheticTFRecordsWriter:
 					depth_change = np.zeros_like(img1)
 
 					optical_flow = np.delete(optical_flow,1,axis=2)
+
 					depth_change = depth_change[:,:,0]
 
 					depth_change = depth_change.astype(np.float32)
@@ -397,19 +409,19 @@ class SyntheticTFRecordsWriter:
 
 					filenames = img1_path_final, img2_path_final
 
-					if set_type == 0:
-						self.create_tf_example(patches,
-							'',
-							train_writer,
-							filenames)
-					else:
-						self.create_tf_example(patches,
-							'',
-							test_writer,
-							filenames)
+					# if set_type == 0:
+					# 	self.create_tf_example(patches,
+					# 		'',
+					# 		train_writer,
+					# 		filenames)
+					# else:
+					self.create_tf_example(patches,
+						'',
+						test_writer,
+						filenames)
 
 
-		self.close_writer(train_writer)
+		# self.close_writer(train_writer)
 		self.close_writer(test_writer)
 
 	def visualize_ptb_image(self,depth,show_as_img=False):
