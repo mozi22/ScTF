@@ -710,6 +710,8 @@ class DatasetReader:
          Tensor of shape [] containing the total loss for a batch of data
         """
 
+
+    
         network_input_images, network_input_labels = self.get_network_input_forward(images,labels)
         network_input_images_back, network_input_labels_back = self.get_network_input_backward(images,labels)
 
@@ -744,6 +746,7 @@ class DatasetReader:
         _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref3'][0],
                                                 flows_dict['predict_flow_ref3'][1],
                                                 scope='fb_loss_refine_3'+summary_type)
+
         _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref2'][0],
                                                 flows_dict['predict_flow_ref2'][1],
                                                 scope='fb_loss_refine_2'+summary_type
@@ -838,7 +841,8 @@ class DatasetReader:
                 scale_invariant_gradient_image_gt,
                 0.0001,
                 self.FLAGS['MAX_STEPS'],
-                self.global_step)
+                self.global_step,
+                scope='scale_invariant_gradient_loss'+summary_type)
 
 
  
@@ -858,7 +862,11 @@ class DatasetReader:
             # session. This helps the clarity of presentation on tensorboard.
 
             loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)
-            tf.summary.scalar(loss_name+summary_type, l)
+            
+            if summary_type == '_train':            
+                tf.summary.scalar(loss_name+summary_type, l)
+            elif summary_type =='_test' and not '_train' in loss_name:
+                tf.summary.scalar(loss_name+summary_type, l)
 
         return total_loss
 

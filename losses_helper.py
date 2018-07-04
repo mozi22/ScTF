@@ -200,7 +200,7 @@ def scale_invariant_gradient( inp, deltas, weights, epsilon=0.001):
 
 # loss value ranges around 80 to 100
 # taken from DEMON Network
-def scale_invariant_gradient_loss(inp, gt, epsilon,decay_steps,global_step,weight=100):
+def scale_invariant_gradient_loss(inp, gt, epsilon,decay_steps,global_step,weight=100,scope='scale_invariant_gradient_loss'):
   """Computes the scale invariant gradient loss
   inp: Tensor
       Tensor with the scale invariant gradient images computed on the prediction
@@ -210,7 +210,7 @@ def scale_invariant_gradient_loss(inp, gt, epsilon,decay_steps,global_step,weigh
     epsilon value for avoiding division by zero
   """
 
-  with tf.variable_scope('scale_invariant_gradient_loss'):
+  with tf.variable_scope(scope):
     num_channels_inp = inp.get_shape().as_list()[1]
     num_channels_gt = gt.get_shape().as_list()[1]
     assert num_channels_inp%2==0
