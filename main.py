@@ -869,8 +869,7 @@ class DatasetReader:
 
             loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)
 
-            if not '/value_2' in loss_name:
-                tf.summary.scalar(loss_name + summary_type, l)
+            tf.summary.scalar(loss_name + summary_type, l)
 
         return total_loss
 
