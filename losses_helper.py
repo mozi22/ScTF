@@ -4,9 +4,9 @@ import lmbspecialops as sops
 import math
 
 # loss value ranges around 0.01 to 0.1
-def photoconsistency_loss(img,predicted_flow, weight=7, typee='forward'):
+def photoconsistency_loss(img,predicted_flow, weight=7, scope='photoconsistency_loss',typee='forward'):
 
-  with tf.variable_scope('photoconsistency_loss_' + typee):
+  with tf.variable_scope(scope):
 
 
     img1, img2 = get_separate_rgb_images(img)
@@ -48,9 +48,9 @@ def denormalize_flow(flow):
 
     return tf.concat([u,v],axis=-1)
 
-def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,name='ref1',weight=5):
+def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,scope='fb_loss',weight=5):
 
-  with tf.variable_scope('fb_loss'):
+  with tf.variable_scope(scope):
 
     # predicted_flow = sops.replace_nonfinite(predicted_flow)
     '''
@@ -98,8 +98,8 @@ def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,name='r
 
     # B = get_occulation_aware_image(flow_forward,B)
 
-    tf.summary.image('flow_backward_warped_u_loss'+name,tf.expand_dims(B[:,:,:,0],axis=-1))
-    tf.summary.image('flow_backward_warped_v_loss'+name,tf.expand_dims(B[:,:,:,1],axis=-1))
+    # tf.summary.image('flow_backward_warped_u_loss'+name,tf.expand_dims(B[:,:,:,0],axis=-1))
+    # tf.summary.image('flow_backward_warped_v_loss'+name,tf.expand_dims(B[:,:,:,1],axis=-1))
 
 
     # step 4
@@ -138,10 +138,7 @@ def endpoint_loss(gt_flow,predicted_flow,weight=500,scope='epe_loss',stop_grad=F
     epe_loss = tf.check_numerics(epe_loss,'numeric checker')
     # epe_loss = tf.Print(epe_loss,[epe_loss],'epeloss ye hai ')
 
-    if summary_type == '_test':
-      tf.summary.scalar('weighted_epe_loss'+summary_type,epe_loss * weight)
-    else:
-      tf.losses.compute_weighted_loss(epe_loss,weights=weight)
+    tf.losses.compute_weighted_loss(epe_loss,weights=weight)
   
   return epe_loss
 

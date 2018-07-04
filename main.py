@@ -448,7 +448,7 @@ class DatasetReader:
             #     summary_str = sess.run(self.summary_op)
             #     summary_writer.add_summary(summary_str, step)
 
-            if step % 100 == 0 and step!=0:
+            if step % 10 == 0 and step!=0:
                 summary_str = sess.run(self.summary_op, feed_dict={
                     self.alternate_global_step: alternate_global_stepper
                 })
@@ -744,32 +744,17 @@ class DatasetReader:
         # losses sections[self.section_type]
 
 
-        with tf.variable_scope('fb_loss_refine_3'):
-            _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref3'][0],
-                                                    flows_dict['predict_flow_ref3'][1],
-                                                    name='ref3')
-        with tf.variable_scope('fb_loss_refine_2'):
-            _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref2'][0],
-                                                    flows_dict['predict_flow_ref2'][1],
-                                                    name='ref2'
-                                                    # ,losses_helper.ease_in_quad(self.global_step,
-                                                    #                            0,
-                                                    #                            1.0,
-                                                    #                            30000.0,
-                                                    #                            50000,
-                                                    #                            'fb_loss_refine_3')
-                                                    )
-        with tf.variable_scope('fb_loss_refine_1'):
-            _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref1'][0],
-                                                    flows_dict['predict_flow_ref1'][1],
-                                                    name='ref1'
-                                                    # ,losses_helper.ease_in_quad(self.global_step,
-                                                    #                            0,
-                                                    #                            1.0,
-                                                    #                            30000.0,
-                                                    #                            100000,
-                                                    #                            'fb_loss_refine_2')
-                                                    )
+        _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref3'][0],
+                                                flows_dict['predict_flow_ref3'][1],
+                                                scope='fb_loss_refine_3'+summary_type)
+        _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref2'][0],
+                                                flows_dict['predict_flow_ref2'][1],
+                                                scope='fb_loss_refine_2'+summary_type
+                                                )
+        _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref1'][0],
+                                                flows_dict['predict_flow_ref1'][1],
+                                                scope='fb_loss_refine_1'+summary_type
+                                                )
 
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
@@ -790,20 +775,12 @@ class DatasetReader:
         network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
         network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-        with tf.variable_scope('photoconsistency_loss_refine_forward_3'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0])
-        with tf.variable_scope('photoconsistency_loss_refine_forward_2'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0])
-        with tf.variable_scope('photoconsistency_loss_refine_forward_1'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0])
-
-
-        with tf.variable_scope('photoconsistency_loss_refine_backward_3'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][1],7,'backward')
-        with tf.variable_scope('photoconsistency_loss_refine_backward_2'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][1],7,'backward')
-        with tf.variable_scope('photoconsistency_loss_refine_backward_1'):
-            _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][1],7,'backward')
+        _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0],7,'photoconsistency_loss_refine_forward_3'+summary_type)
+        _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0],7,'photoconsistency_loss_refine_forward_2'+summary_type)
+        _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0],7,'photoconsistency_loss_refine_forward_1'+summary_type)
+        _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][1],7,'photoconsistency_loss_refine_backward_3'+summary_type,'backward')
+        _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][1],7,'photoconsistency_loss_refine_backward_2'+summary_type,'backward')
+        _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][1],7,'photoconsistency_loss_refine_backward_1'+summary_type,'backward')
 
 
         # unsupervised losses done. Now remove ptb. Since it doesn't have ground truth.
@@ -817,8 +794,8 @@ class DatasetReader:
         '''
             Applying epe loss on full resolution
         '''
-        _ = losses_helper.endpoint_loss(network_input_labels,flows_dict['predict_flow'][0],summary_type=summary_type)
-        _ = losses_helper.endpoint_loss(network_input_labels,flows_dict2['predict_flow'][0],summary_type=summary_type + '_evoltuion2')
+        _ = losses_helper.endpoint_loss(network_input_labels,flows_dict['predict_flow'][0],scope='epe_loss_evolution1'+summary_type,summary_type=summary_type)
+        _ = losses_helper.endpoint_loss(network_input_labels,flows_dict2['predict_flow'][0],scope='epe_loss_evolution2'+summary_type,summary_type=summary_type + '_evoltuion2')
 
         '''
             Applying epe loss on lower resolutions
@@ -831,15 +808,12 @@ class DatasetReader:
         network_input_labels_refine1 = losses_helper.downsample_label(network_input_labels,
                                         size=[80,128],factorU=0.5,factorV=0.5)
 
-        with tf.variable_scope('epe_loss_refine_3'):
-            _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict['predict_flow_ref3'][0],100,summary_type=summary_type)
-            _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict2['predict_flow_ref3'][0],100,summary_type=summary_type + '_evoltuion2')
-        with tf.variable_scope('epe_loss_refine_2'):
-            _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict['predict_flow_ref2'][0],100,summary_type=summary_type)
-            _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict2['predict_flow_ref2'][0],100,summary_type=summary_type + '_evoltuion2')
-        with tf.variable_scope('epe_loss_refine_1'):
-            _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict['predict_flow_ref1'][0],100,summary_type=summary_type)
-            _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict2['predict_flow_ref1'][0],100,summary_type=summary_type + '_evoltuion2')
+        _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict['predict_flow_ref3'][0],100,scope='epe_ref_3_evolution1'+summary_type,summary_type=summary_type)
+        _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict2['predict_flow_ref3'][0],100,scope='epe_ref_3_evolution2'+summary_type,summary_type=summary_type + '_evoltuion2')
+        _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict['predict_flow_ref2'][0],100,scope='epe_ref_2_evolution1'+summary_type,summary_type=summary_type)
+        _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict2['predict_flow_ref2'][0],100,scope='epe_ref_2_evolution2'+summary_type,summary_type=summary_type + '_evoltuion2')
+        _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict['predict_flow_ref1'][0],100,scope='epe_ref_1_evolution1'+summary_type,summary_type=summary_type)
+        _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict2['predict_flow_ref1'][0],100,scope='epe_ref_1_evolution2'+summary_type,summary_type=summary_type + '_evoltuion2')
 
         # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flows[0])
         # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flows[0])
@@ -862,7 +836,9 @@ class DatasetReader:
                 scale_invariant_gradient_image_gt,
                 0.0001,
                 self.FLAGS['MAX_STEPS'],
-                self.global_step)
+                self.global_step,
+                100,
+                'scale_invariant_gradient_loss_evolution1'+summary_type)
 
         _ = losses_helper.scale_invariant_gradient_loss(
                 scale_invariant_gradient_image_pred2,
@@ -871,7 +847,7 @@ class DatasetReader:
                 self.FLAGS['MAX_STEPS'],
                 self.global_step,
                 100,
-                'scale_invariant_gradient_loss_evolution2')
+                'scale_invariant_gradient_loss_evolution2'+summary_type)
 
 
  
@@ -890,10 +866,11 @@ class DatasetReader:
             # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
             # session. This helps the clarity of presentation on tensorboard.
 
+
             loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)
 
-
-            tf.summary.scalar(loss_name, l)
+            if not '/value_2' in loss_name:
+                tf.summary.scalar(loss_name + summary_type, l)
 
         return total_loss
 
