@@ -448,7 +448,7 @@ class DatasetReader:
             #     summary_str = sess.run(self.summary_op)
             #     summary_writer.add_summary(summary_str, step)
 
-            if step % 10 == 0 and step!=0:
+            if step % 300 == 0 and step!=0:
                 summary_str = sess.run(self.summary_op, feed_dict={
                     self.alternate_global_step: alternate_global_stepper
                 })
