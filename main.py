@@ -315,13 +315,13 @@ class DatasetReader:
 
         all_vars = tf.global_variables()
 
-        evolution1_vars = []
-        for i in all_vars:
-            if not 's_evolution2' in i.op.name :
-                evolution1_vars.append(i)
+        # evolution1_vars = []
+        # for i in all_vars:
+        #     if not 's_evolution2' in i.op.name :
+        #         evolution1_vars.append(i)
 
-        saver = tf.train.Saver(evolution1_vars)
-        saver2 = tf.train.Saver(tf.global_variables())
+        # saver = tf.train.Saver(evolution1_vars)
+        saver = tf.train.Saver(tf.global_variables())
 
         # Build an initialization operation to run below.
         init = tf.global_variables_initializer()
@@ -470,7 +470,7 @@ class DatasetReader:
             # Save the model checkpoint periodically.
             if step % 5000 == 0 or (step + 1) == self.FLAGS['MAX_STEPS']:
                 checkpoint_path = os.path.join(self.FLAGS['TRAIN_DIR']+'/train', 'model.ckpt')
-                saver2.save(sess, checkpoint_path, global_step=step)
+                saver.save(sess, checkpoint_path, global_step=step)
 
 
             # if step == self.FLAGS['MAX_STEPS']+2:
@@ -809,12 +809,12 @@ class DatasetReader:
                                         size=[80,128],factorU=0.5,factorV=0.5)
 
         _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict['predict_flow_ref3'][0],100,scope='epe_ref_3_evolution1'+summary_type,summary_type=summary_type)
-        _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict2['predict_flow_ref3'][0],100,scope='epe_ref_3_evolution2'+summary_type,summary_type=summary_type + '_evoltuion2')
         _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict['predict_flow_ref2'][0],100,scope='epe_ref_2_evolution1'+summary_type,summary_type=summary_type)
-        _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict2['predict_flow_ref2'][0],100,scope='epe_ref_2_evolution2'+summary_type,summary_type=summary_type + '_evoltuion2')
         _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict['predict_flow_ref1'][0],100,scope='epe_ref_1_evolution1'+summary_type,summary_type=summary_type)
-        _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict2['predict_flow_ref1'][0],100,scope='epe_ref_1_evolution2'+summary_type,summary_type=summary_type + '_evoltuion2')
 
+        _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict2['predict_flow_ref3'][0],100,scope='epe_ref_3_evolution2'+summary_type,summary_type=summary_type + '_evoltuion2')
+        _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict2['predict_flow_ref2'][0],100,scope='epe_ref_2_evolution2'+summary_type,summary_type=summary_type + '_evoltuion2')
+        _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict2['predict_flow_ref1'][0],100,scope='epe_ref_1_evolution2'+summary_type,summary_type=summary_type + '_evoltuion2')
         # _ = losses_helper.photoconsistency_loss(network_input_images,predict_flows[0])
         # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flows[0])
 
@@ -869,7 +869,11 @@ class DatasetReader:
 
             loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)
 
-            tf.summary.scalar(loss_name + summary_type, l)
+            if summary_type == '_train':            
+                tf.summary.scalar(loss_name+summary_type, l)
+            elif summary_type =='_test' and not '_train' in loss_name:
+                tf.summary.scalar(loss_name+summary_type, l)
+
 
         return total_loss
 
