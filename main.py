@@ -131,7 +131,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 0
+        self.section_type = 1
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -449,7 +449,7 @@ class DatasetReader:
             #     summary_str = sess.run(self.summary_op)
             #     summary_writer.add_summary(summary_str, step)
 
-            if step % 10 == 0 and step!=0:
+            if step % 100 == 0 and step!=0:
                 summary_str = sess.run(self.summary_op, feed_dict={
                     self.alternate_global_step: alternate_global_stepper
                 })
@@ -931,7 +931,7 @@ class DatasetReader:
 
         concatenated_fb_u_ptb = tf.concat([tf.expand_dims(predict_flow_forward[8:12,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward[8:12,:,:,0],axis=-1)],axis=-2)
         concatenated_fb_v_ptb = tf.concat([tf.expand_dims(predict_flow_forward[8:12,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward[8:12,:,:,1],axis=-1)],axis=-2)
-
+range(
         # tf.summary.image('concatenated_fb_ref4_u'+summary_type,concatenated_fb_ref4_u)
         # tf.summary.image('concatenated_fb_ref4_v'+summary_type,concatenated_fb_ref4_v)
 
