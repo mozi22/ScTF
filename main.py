@@ -131,7 +131,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 1
+        self.section_type = 0
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -320,8 +320,8 @@ class DatasetReader:
             if not 's_evolution2' in i.op.name :
                 evolution1_vars.append(i)
 
-        saver = tf.train.Saver(evolution1_vars)
-        saver2 = tf.train.Saver(tf.global_variables())
+        # saver = tf.train.Saver(evolution1_vars)
+        saver = tf.train.Saver(tf.global_variables())
 
         # Build an initialization operation to run below.
         init = tf.global_variables_initializer()
@@ -471,7 +471,7 @@ class DatasetReader:
             # Save the model checkpoint periodically.
             if step % 5000 == 0 or (step + 1) == self.FLAGS['MAX_STEPS']:
                 checkpoint_path = os.path.join(self.FLAGS['TRAIN_DIR']+'/train', 'model.ckpt')
-                saver2.save(sess, checkpoint_path, global_step=step)
+                saver.save(sess, checkpoint_path, global_step=step)
 
 
             # if step == self.FLAGS['MAX_STEPS']+2:
@@ -573,13 +573,13 @@ class DatasetReader:
 
         network_input_labels_u = network_input_labels[:,:,:,0] * 0.714285714
         network_input_labels_v = network_input_labels[:,:,:,1] * 0.666666667
-        network_input_labels_w = network_input_labels[:,:,:,2]
+        # network_input_labels_w = network_input_labels[:,:,:,2]
 
         network_input_labels_u = tf.expand_dims(network_input_labels_u,axis=-1)
         network_input_labels_v = tf.expand_dims(network_input_labels_v,axis=-1)
-        network_input_labels_w = tf.expand_dims(network_input_labels_w,axis=-1)
+        # network_input_labels_w = tf.expand_dims(network_input_labels_w,axis=-1)
 
-        network_input_labels = tf.concat([network_input_labels_u,network_input_labels_v,network_input_labels_w],axis=3)
+        network_input_labels = tf.concat([network_input_labels_u,network_input_labels_v],axis=3)
 
         return network_input_images, network_input_labels
 
@@ -602,42 +602,42 @@ class DatasetReader:
     def write_forward_backward_images(self,forward,backward,forward_flow,backward_flow,summary_type='_train'):
 
         # driving
-        forward_input_images = tf.concat([forward[0:4,:,:,0:3],forward[0:4,:,:,4:7]],axis=-2)
-        forward_input_depths = tf.concat([tf.expand_dims(forward[0:4,:,:,3],axis=-1),tf.expand_dims(forward[0:4,:,:,7],axis=-1)],axis=-2)
+        forward_input_images = tf.concat([forward[0:4,:,:,0:3],forward[0:4,:,:,3:6]],axis=-2)
+        # forward_input_depths = tf.concat([tf.expand_dims(forward[0:4,:,:,3],axis=-1),tf.expand_dims(forward[0:4,:,:,7],axis=-1)],axis=-2)
 
-        backward_input_images = tf.concat([backward[0:4,:,:,0:3],backward[0:4,:,:,4:7]],axis=-2)
-        backward_input_depths = tf.concat([tf.expand_dims(backward[0:4,:,:,3],axis=-1),tf.expand_dims(backward[0:4,:,:,7],axis=-1)],axis=-2)
+        backward_input_images = tf.concat([backward[0:4,:,:,0:3],backward[0:4,:,:,3:6]],axis=-2)
+        # backward_input_depths = tf.concat([tf.expand_dims(backward[0:4,:,:,3],axis=-1),tf.expand_dims(backward[0:4,:,:,7],axis=-1)],axis=-2)
 
         tf.summary.image('input_images_forward_flying'+summary_type,forward_input_images)
-        tf.summary.image('input_depths_forward_flying'+summary_type,forward_input_depths)
+        # tf.summary.image('input_depths_forward_flying'+summary_type,forward_input_depths)
         tf.summary.image('input_images_backward_flying'+summary_type,backward_input_images)
-        tf.summary.image('input_depths_backward_flying'+summary_type,backward_input_depths)
+        # tf.summary.image('input_depths_backward_flying'+summary_type,backward_input_depths)
 
         if self.section_type > 0  and self.section_type is not 4:
             # flying
-            forward_input_images = tf.concat([forward[4:8,:,:,0:3],forward[4:8,:,:,4:7]],axis=-2)
-            forward_input_depths = tf.concat([tf.expand_dims(forward[4:8,:,:,3],axis=-1),tf.expand_dims(forward[4:8,:,:,7],axis=-1)],axis=-2)
+            forward_input_images = tf.concat([forward[4:8,:,:,0:3],forward[4:8,:,:,3:6]],axis=-2)
+            # forward_input_depths = tf.concat([tf.expand_dims(forward[4:8,:,:,3],axis=-1),tf.expand_dims(forward[4:8,:,:,7],axis=-1)],axis=-2)
 
-            backward_input_images = tf.concat([backward[4:8,:,:,0:3],backward[4:8,:,:,4:7]],axis=-2)
-            backward_input_depths = tf.concat([tf.expand_dims(backward[4:8,:,:,3],axis=-1),tf.expand_dims(backward[4:8,:,:,7],axis=-1)],axis=-2)
+            backward_input_images = tf.concat([backward[4:8,:,:,0:3],backward[4:8,:,:,3:6]],axis=-2)
+            # backward_input_depths = tf.concat([tf.expand_dims(backward[4:8,:,:,3],axis=-1),tf.expand_dims(backward[4:8,:,:,7],axis=-1)],axis=-2)
 
             tf.summary.image('input_images_forward_monkaa'+summary_type,forward_input_images)
-            tf.summary.image('input_depths_forward_monkaa'+summary_type,forward_input_depths)
+            # tf.summary.image('input_depths_forward_monkaa'+summary_type,forward_input_depths)
             tf.summary.image('input_images_backward_monkaa'+summary_type,backward_input_images)
-            tf.summary.image('input_depths_backward_monkaa'+summary_type,backward_input_depths)
+            # tf.summary.image('input_depths_backward_monkaa'+summary_type,backward_input_depths)
 
         if self.section_type > 1  and self.section_type is not 4:
             # monkaa
-            forward_input_images = tf.concat([forward[8:12,:,:,0:3],forward[8:12,:,:,4:7]],axis=-2)
-            forward_input_depths = tf.concat([tf.expand_dims(forward[8:12,:,:,3],axis=-1),tf.expand_dims(forward[8:12,:,:,7],axis=-1)],axis=-2)
+            forward_input_images = tf.concat([forward[8:12,:,:,0:3],forward[8:12,:,:,3:6]],axis=-2)
+            # forward_input_depths = tf.concat([tf.expand_dims(forward[8:12,:,:,3],axis=-1),tf.expand_dims(forward[8:12,:,:,7],axis=-1)],axis=-2)
 
             backward_input_images = tf.concat([backward[8:12,:,:,0:3],backward[8:12,:,:,4:7]],axis=-2)
-            backward_input_depths = tf.concat([tf.expand_dims(backward[8:12,:,:,3],axis=-1),tf.expand_dims(backward[8:12,:,:,7],axis=-1)],axis=-2)
+            # backward_input_depths = tf.concat([tf.expand_dims(backward[8:12,:,:,3],axis=-1),tf.expand_dims(backward[8:12,:,:,7],axis=-1)],axis=-2)
 
             tf.summary.image('input_images_forward_ptb'+summary_type,forward_input_images)
-            tf.summary.image('input_depths_forward_ptb'+summary_type,forward_input_depths)
+            # tf.summary.image('input_depths_forward_ptb'+summary_type,forward_input_depths)
             tf.summary.image('input_images_backward_ptb'+summary_type,backward_input_images)
-            tf.summary.image('input_depths_backward_ptb'+summary_type,backward_input_depths)
+            # tf.summary.image('input_depths_backward_ptb'+summary_type,backward_input_depths)
 
         # ground truth
         label_flow_u = tf.concat([tf.expand_dims(forward_flow[0:4,:,:,0],axis=-1),tf.expand_dims(backward_flow[0:4,:,:,0],axis=-1)],axis=-2)
@@ -664,22 +664,22 @@ class DatasetReader:
 
         if self.section_type > 2 and self.section_type is not 4:
 
-            forward_input_images = tf.concat([forward[12:16,:,:,0:3],forward[12:16,:,:,4:7]],axis=-2)
-            forward_input_depths = tf.concat([tf.expand_dims(forward[12:16,:,:,3],axis=-1),tf.expand_dims(forward[12:16,:,:,7],axis=-1)],axis=-2)
+            forward_input_images = tf.concat([forward[12:16,:,:,0:3],forward[12:16,:,:,3:6]],axis=-2)
+            # forward_input_depths = tf.concat([tf.expand_dims(forward[12:16,:,:,3],axis=-1),tf.expand_dims(forward[12:16,:,:,7],axis=-1)],axis=-2)
 
-            backward_input_images = tf.concat([backward[12:16,:,:,0:3],backward[12:16,:,:,4:7]],axis=-2)
-            backward_input_depths = tf.concat([tf.expand_dims(backward[12:16,:,:,3],axis=-1),tf.expand_dims(backward[12:16,:,:,7],axis=-1)],axis=-2)
+            backward_input_images = tf.concat([backward[12:16,:,:,0:3],backward[12:16,:,:,3:6]],axis=-2)
+            # backward_input_depths = tf.concat([tf.expand_dims(backward[12:16,:,:,3],axis=-1),tf.expand_dims(backward[12:16,:,:,7],axis=-1)],axis=-2)
 
             tf.summary.image('input_images_ptb_forward'+summary_type,forward_input_images)
-            tf.summary.image('input_depths_ptb_forward'+summary_type,forward_input_depths)
+            # tf.summary.image('input_depths_ptb_forward'+summary_type,forward_input_depths)
             tf.summary.image('input_images_ptb_backward'+summary_type,backward_input_images)
-            tf.summary.image('input_depths_ptb_backward'+summary_type,backward_input_depths)
+            # tf.summary.image('input_depths_ptb_backward'+summary_type,backward_input_depths)
 
             # middlebury
-            forward_input_images = tf.concat([forward[16:20,:,:,0:3],forward[16:20,:,:,4:7]],axis=-2)
+            forward_input_images = tf.concat([forward[16:20,:,:,0:3],forward[16:20,:,:,3:6]],axis=-2)
             forward_input_depths = tf.concat([tf.expand_dims(forward[16:20,:,:,3],axis=-1),tf.expand_dims(forward[16:20,:,:,7],axis=-1)],axis=-2)
 
-            backward_input_images = tf.concat([backward[16:20,:,:,0:3],backward[16:20,:,:,4:7]],axis=-2)
+            backward_input_images = tf.concat([backward[16:20,:,:,0:3],backward[16:20,:,:,3:6]],axis=-2)
             backward_input_depths = tf.concat([tf.expand_dims(backward[16:20,:,:,3],axis=-1),tf.expand_dims(backward[16:20,:,:,7],axis=-1)],axis=-2)
 
             tf.summary.image('input_images_middlebury_forward'+summary_type,forward_input_images)
@@ -688,16 +688,16 @@ class DatasetReader:
             tf.summary.image('input_depths_middlebury_backward'+summary_type,backward_input_depths)
         else:
             # middlebury
-            forward_input_images = tf.concat([forward[12:16,:,:,0:3],forward[12:16,:,:,4:7]],axis=-2)
-            forward_input_depths = tf.concat([tf.expand_dims(forward[12:16,:,:,3],axis=-1),tf.expand_dims(forward[12:16,:,:,7],axis=-1)],axis=-2)
+            forward_input_images = tf.concat([forward[12:16,:,:,0:3],forward[12:16,:,:,3:6]],axis=-2)
+            # forward_input_depths = tf.concat([tf.expand_dims(forward[12:16,:,:,3],axis=-1),tf.expand_dims(forward[12:16,:,:,7],axis=-1)],axis=-2)
 
-            backward_input_images = tf.concat([backward[12:16,:,:,0:3],backward[12:16,:,:,4:7]],axis=-2)
-            backward_input_depths = tf.concat([tf.expand_dims(backward[12:16,:,:,3],axis=-1),tf.expand_dims(backward[12:16,:,:,7],axis=-1)],axis=-2)
+            backward_input_images = tf.concat([backward[12:16,:,:,0:3],backward[12:16,:,:,3:6]],axis=-2)
+            # backward_input_depths = tf.concat([tf.expand_dims(backward[12:16,:,:,3],axis=-1),tf.expand_dims(backward[12:16,:,:,7],axis=-1)],axis=-2)
 
             tf.summary.image('input_images_middlebury_forward'+summary_type,forward_input_images)
-            tf.summary.image('input_depths_middlebury_forward'+summary_type,forward_input_depths)
+            # tf.summary.image('input_depths_middlebury_forward'+summary_type,forward_input_depths)
             tf.summary.image('input_images_middlebury_backward'+summary_type,backward_input_images)
-            tf.summary.image('input_depths_middlebury_backward'+summary_type,backward_input_depths)
+            # tf.summary.image('input_depths_middlebury_backward'+summary_type,backward_input_depths)
 
 
     def tower_loss(self,scope, images, labels,summary_type='_train'):
@@ -931,7 +931,7 @@ class DatasetReader:
 
         concatenated_fb_u_ptb = tf.concat([tf.expand_dims(predict_flow_forward[8:12,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward[8:12,:,:,0],axis=-1)],axis=-2)
         concatenated_fb_v_ptb = tf.concat([tf.expand_dims(predict_flow_forward[8:12,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward[8:12,:,:,1],axis=-1)],axis=-2)
-range(
+
         # tf.summary.image('concatenated_fb_ref4_u'+summary_type,concatenated_fb_ref4_u)
         # tf.summary.image('concatenated_fb_ref4_v'+summary_type,concatenated_fb_ref4_v)
 
@@ -987,7 +987,7 @@ range(
         concated_flows_v_driving = tf.concat([network_input_labels[0:4,:,:,1:2],predict_flow2[0:4,:,:,1:2]],axis=-2)
 
         denormalized_flow = losses_helper.denormalize_flow(predict_flow2)
-        warped_img = losses_helper.flow_warp(network_input_images[:,:,:,4:7],denormalized_flow)
+        warped_img = losses_helper.flow_warp(network_input_images[:,:,:,3:6],denormalized_flow)
 
         tf.summary.image('concated_flows_u_flying'+summary_type,concated_flows_u_driving)
         tf.summary.image('concated_flows_v_flying'+summary_type,concated_flows_v_driving)

@@ -13,6 +13,7 @@ def photoconsistency_loss(img,predicted_flow, weight=7, typee='forward',scope='p
     predicted_flow = denormalize_flow(predicted_flow)
 
     if not typee is 'forward':
+
       # backward flow
       warped_img = flow_warp(img1,predicted_flow)
       img2 = get_occulation_aware_image(img2,warped_img)
@@ -300,7 +301,7 @@ def downsample_label(gt_flow,size=[224,384],factorU=0.5,factorV=0.5):
 
 
 def get_separate_rgb_images(img):
-  return img[:,:,:,0:3],img[:,:,:,4:7]
+  return img[:,:,:,0:3],img[:,:,:,3:6]
 
 def get_separate_depth_images(img):
   return img[:,:,:,3],img[:,:,:,7]
