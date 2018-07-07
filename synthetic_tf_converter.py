@@ -50,7 +50,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 4
+		self.dataset_number = 6
 		# these are inverse depths
 		self.max_depth_driving = 0.232809
 		# self.max_depth_driving_chng = 2.70248
@@ -253,8 +253,7 @@ class SyntheticTFRecordsWriter:
 
 				depth_change = np.zeros_like(img1)[:,:,0].astype(np.float32)
 
-
-				flow_expanded_u = np.expand_dims(disp1 * self.u_factor,axis=2) 
+				flow_expanded_u = np.expand_dims(disp1 * self.u_factor,axis=2)
 				flow_expanded_v = np.expand_dims(np.zeros_like(disp1),axis=2)
 				optical_flow = np.concatenate([flow_expanded_u,flow_expanded_v],axis=-1).astype(np.float32)
 

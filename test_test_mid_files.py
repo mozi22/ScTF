@@ -146,7 +146,7 @@ summary_op = tf.summary.merge(summaies)
 
 
 sess = tf.InteractiveSession()
-load_model_ckpt(sess,'ckpt/driving/evolution_network/train/')
+load_model_ckpt(sess,'ckpt/driving/evolutionary_network/train/')
 
 
 test_summary_writer = tf.summary.FileWriter('./testboard/mid', sess.graph)
@@ -157,10 +157,9 @@ for i in range(0,1000):
     print('iteration '+str(i))
     test_image_batch_fine, test_label_batch_fine, filenamee1, filenamee2 = sess.run([test_image_batch, test_label_batch, filename1, filename2])
 
-
     summary_str_test, total_loss2,denormalize_f,Y_forwardd,X_forwardd = sess.run([summary_op,total_loss,denormalized_flow,Y_forward,X_forward],feed_dict={
-                X: test_image_batch_fine,
-                Y: test_label_batch_fine
+        X: test_image_batch_fine,
+        Y: test_label_batch_fine
     })
 
     print(filenamee1)

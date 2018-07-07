@@ -98,8 +98,8 @@ def _parse_function(example_proto):
     image1 = tf.divide(image1,[255])
     image2 = tf.divide(image2,[255])
 
-    # final_result = train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
-    final_result = train_for_opticalflow(image1,image2,optical_flow)
+    final_result = train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
+    # final_result = train_for_opticalflow(image1,image2,optical_flow)
 
     return final_result["input_n"], final_result["label_n"], features['filename1'], features['filename2']
 
