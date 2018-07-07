@@ -131,7 +131,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 0
+        self.section_type = 1
 
         parser = configp.ConfigParser()
         parser.read(file)
