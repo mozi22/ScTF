@@ -146,7 +146,7 @@ summary_op = tf.summary.merge(summaies)
 
 
 sess = tf.InteractiveSession()
-load_model_ckpt(sess,'ckpt/driving/evolution_network/train/')
+load_model_ckpt(sess,'ckpt/driving/evolutionary_network/train/')
 
 
 test_summary_writer = tf.summary.FileWriter('./testboard/mid', sess.graph)
