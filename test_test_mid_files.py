@@ -77,8 +77,8 @@ concatenated_FB_images = tf.concat([X_forward,X_backward],axis=0)
 
 
 predict_flows = network.train_network(concatenated_FB_images)
-predict_flows2 = network.train_network(predict_flows[0],'s_evolution2','s_evolution2')
-flows_dict = get_predict_flow_forward_backward(predict_flows2)
+# predict_flows2 = network.train_network(predict_flows[0],'s_evolution2','s_evolution2')
+flows_dict = get_predict_flow_forward_backward(predict_flows)
 
 ################ epe loss #######################
 denormalized_flow = losses_helper.denormalize_flow(flows_dict['predict_flow'][0])
@@ -146,7 +146,7 @@ summary_op = tf.summary.merge(summaies)
 
 
 sess = tf.InteractiveSession()
-load_model_ckpt(sess,'ckpt/driving/evolution_network/train/')
+load_model_ckpt(sess,'ckpt/driving/network_with_fb/train/')
 
 
 test_summary_writer = tf.summary.FileWriter('./testboard/mid', sess.graph)

@@ -145,6 +145,7 @@ def train_network(image_pair,scope_name='down_convs',other_scopes=''):
     with tf.variable_scope(scope_name, reuse=tf.AUTO_REUSE):
 
         conv0 = convrelu2(name='conv0', inputs=image_pair, filters=16, kernel_size=5, stride=1,activation=myLeakyRelu)
+
         conv1 = convrelu2(name='conv1', inputs=conv0, filters=32, kernel_size=5, stride=2,activation=myLeakyRelu)
 
         conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=3, stride=2,activation=myLeakyRelu)

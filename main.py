@@ -131,7 +131,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 1
+        self.section_type = 2
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -931,7 +931,6 @@ class DatasetReader:
 
         concatenated_fb_u_ptb = tf.concat([tf.expand_dims(predict_flow_forward[8:12,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward[8:12,:,:,0],axis=-1)],axis=-2)
         concatenated_fb_v_ptb = tf.concat([tf.expand_dims(predict_flow_forward[8:12,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward[8:12,:,:,1],axis=-1)],axis=-2)
-range(
         # tf.summary.image('concatenated_fb_ref4_u'+summary_type,concatenated_fb_ref4_u)
         # tf.summary.image('concatenated_fb_ref4_v'+summary_type,concatenated_fb_ref4_v)
 
