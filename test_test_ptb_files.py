@@ -6,7 +6,9 @@ import network
 def get_network_input_forward(image_batch,label_batch):
     return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
  
-filee = ['../dataset_synthetic/ptb_TEST.tfrecords']
+
+ds = 'monkaa'
+filee = ['../dataset_synthetic/'+ds+'_TEST.tfrecords']
 
 
 
@@ -78,7 +80,7 @@ flows_dict = get_predict_flow_forward_backward(predict_flows)
 
 ################ epe loss #######################
 
-total_loss = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(Y_forward, flows_dict['predict_flow'][0]))))
+total_loss = losses_helper.endpoint_loss(Y_forward,flows_dict['predict_flow'][0],scope='epe_loss_evolution1')
 
 
 # sess.run(test_iterator.initializer)
@@ -141,12 +143,13 @@ summary_op = tf.summary.merge(summaies)
 
 
 sess = tf.InteractiveSession()
-load_model_ckpt(sess,'ckpt/driving/flying/train/')
+load_model_ckpt(sess,'ckpt/driving/evolutionary_network/train/')
 
 
-test_summary_writer = tf.summary.FileWriter('./testboard/', sess.graph)
+test_summary_writer = tf.summary.FileWriter('./testboard/'+ds, sess.graph)
 
-
+step = 0
+total_losser = 0
 for i in range(0,1000):
 
     print('iteration '+str(i))
@@ -162,6 +165,10 @@ for i in range(0,1000):
 
     test_summary_writer.add_summary(summary_str_test, i)
 
-    print(total_loss2)
+    step += 1
+    total_losser = total_losser + total_loss2
 
+
+avg_loss = total_losser / step
+print(avg_loss)
 test_summary_writer.close()
