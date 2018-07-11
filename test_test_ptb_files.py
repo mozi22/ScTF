@@ -6,8 +6,8 @@ import network
 def get_network_input_forward(image_batch,label_batch):
     return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
  
-filee = ['../dataset_synthetic/ptb_TEST.tfrecords']
-
+ds = 'ptb'
+filee = ['../dataset_synthetic/'+ds+'_TEST.tfrecords']
 
 
 test_dataset = data_reader.read_with_dataset_api_test(1,filee,version='1')
@@ -141,27 +141,26 @@ summary_op = tf.summary.merge(summaies)
 
 
 sess = tf.InteractiveSession()
-load_model_ckpt(sess,'ckpt/driving/flying/train/')
+load_model_ckpt(sess,'ckpt/driving/network_with_fb/train/')
 
 
-test_summary_writer = tf.summary.FileWriter('./testboard/', sess.graph)
+test_summary_writer = tf.summary.FileWriter('./testboard/'+ds, sess.graph)
 
+step = 0
+while True:
 
-for i in range(0,1000):
-
-    print('iteration '+str(i))
+    print('iteration '+str(step))
     test_image_batch_fine, test_label_batch_fine, filenamee1, filenamee2 = sess.run([test_image_batch, test_label_batch, filename1, filename2])
 
-    print(filenamee1)
-    print(filenamee2)
 
     summary_str_test, total_loss2 = sess.run([summary_op,total_loss],feed_dict={
                 X: test_image_batch_fine,
                 Y: test_label_batch_fine
     })
 
-    test_summary_writer.add_summary(summary_str_test, i)
+    test_summary_writer.add_summary(summary_str_test, step)
 
     print(total_loss2)
+    step+=1
 
 test_summary_writer.close()

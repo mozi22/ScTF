@@ -131,7 +131,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 2
+        self.section_type = 1
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -783,17 +783,17 @@ class DatasetReader:
         '''
 
         # _ = losses_helper.photoconsistency_loss(network_input_images,flows_dict['predict_flow'][0])
-        network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-        _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0],7,'forward',scope='photoconsistency_loss_refine_forward_3'+summary_type)
-        _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0],7,'forward',scope='photoconsistency_loss_refine_forward_2'+summary_type)
-        _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0],7,'forward',scope='photoconsistency_loss_refine_forward_1'+summary_type)
+        # _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0],7,'forward',scope='photoconsistency_loss_refine_forward_3'+summary_type)
+        # _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0],7,'forward',scope='photoconsistency_loss_refine_forward_2'+summary_type)
+        # _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0],7,'forward',scope='photoconsistency_loss_refine_forward_1'+summary_type)
 
-        _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][1],7,'backward',scope='photoconsistency_loss_refine_backward_3'+summary_type)
-        _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][1],7,'backward',scope='photoconsistency_loss_refine_backward_2'+summary_type)
-        _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][1],7,'backward',scope='photoconsistency_loss_refine_backward_1'+summary_type)
+        # _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][1],7,'backward',scope='photoconsistency_loss_refine_backward_3'+summary_type)
+        # _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][1],7,'backward',scope='photoconsistency_loss_refine_backward_2'+summary_type)
+        # _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][1],7,'backward',scope='photoconsistency_loss_refine_backward_1'+summary_type)
 
 
         # unsupervised losses done. Now remove ptb. Since it doesn't have ground truth.
@@ -828,21 +828,21 @@ class DatasetReader:
         # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flows[0])
 
 
-        scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels[:,:,:,0:2],
-                                                                                np.array([1,2,4,8,16]),
-                                                                                np.array([1,1,1,1,1]))
+        # scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels[:,:,:,0:2],
+        #                                                                         np.array([1,2,4,8,16]),
+        #                                                                         np.array([1,1,1,1,1]))
 
-        scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(flows_dict['predict_flow'][0],
-                                                                                np.array([1,2,4,8,16]),
-                                                                                np.array([1,1,1,1,1]))
+        # scale_invariant_gradient_image_pred = losses_helper.scale_invariant_gradient(flows_dict['predict_flow'][0],
+        #                                                                         np.array([1,2,4,8,16]),
+        #                                                                         np.array([1,1,1,1,1]))
 
-        _ = losses_helper.scale_invariant_gradient_loss(
-                scale_invariant_gradient_image_pred,
-                scale_invariant_gradient_image_gt,
-                0.0001,
-                self.FLAGS['MAX_STEPS'],
-                self.global_step,
-                scope='scale_invariant_gradient_loss'+summary_type)
+        # _ = losses_helper.scale_invariant_gradient_loss(
+        #         scale_invariant_gradient_image_pred,
+        #         scale_invariant_gradient_image_gt,
+        #         0.0001,
+        #         self.FLAGS['MAX_STEPS'],
+        #         self.global_step,
+        #         scope='scale_invariant_gradient_loss'+summary_type)
 
 
  
@@ -911,8 +911,8 @@ class DatasetReader:
         # tf.summary.image('predict_flow_backward_ref4_u'+summary_type,tf.expand_dims(predict_flow_backward_ref4[:,:,:,0],axis=3))
         # tf.summary.image('predict_flow_backward_ref4_v'+summary_type,tf.expand_dims(predict_flow_backward_ref4[:,:,:,1],axis=3))
 
-        # concatenated_fb_ref1_u = tf.concat([tf.expand_dims(predict_flow_forward_ref1[:,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward_ref1[:,:,:,0],axis=-1)],axis=-2)
-        # concatenated_fb_ref1_v = tf.concat([tf.expand_dims(predict_flow_forward_ref1[:,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward_ref1[:,:,:,1],axis=-1)],axis=-2)
+        concatenated_fb_ref1_u = tf.concat([tf.expand_dims(predict_flow_forward_ref1[:,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward_ref1[:,:,:,0],axis=-1)],axis=-2)
+        concatenated_fb_ref1_v = tf.concat([tf.expand_dims(predict_flow_forward_ref1[:,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward_ref1[:,:,:,1],axis=-1)],axis=-2)
 
         # concatenated_fb_ref4_u = tf.concat([tf.expand_dims(predict_flow_forward_ref4[:,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward_ref4[:,:,:,0],axis=-1)],axis=-2)
         # concatenated_fb_ref4_v = tf.concat([tf.expand_dims(predict_flow_forward_ref4[:,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward_ref4[:,:,:,1],axis=-1)],axis=-2)
