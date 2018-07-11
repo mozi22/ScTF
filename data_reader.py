@@ -145,7 +145,8 @@ def _parse_function_ptb(example_proto):
     image1 = tf.divide(image1,[255])
     image2 = tf.divide(image2,[255])
 
-    final_result = train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
+    # final_result = train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
+    final_result = train_for_opticalflow(image1,image2,optical_flow)
 
     return final_result["input_n"], final_result["label_n"], features['filename1'], features['filename2']
 
@@ -197,6 +198,7 @@ def read_with_dataset_api_test(batch_size,filenames,version='1'):
         else:
             data = data.map(map_func=_parse_function, num_parallel_calls=num_parallel_calls)
 
+        print(data)
         mapped_data.append(data)
 
     data = tuple(mapped_data)
@@ -257,30 +259,34 @@ def combine_batches_from_datasets(batches):
 
 def train_for_opticalflow(image1,image2,optical_flow):
 
-    img_pair_rgb = tf.concat([image1,image2],axis=-1)
-    img_pair_rgb_swapped = tf.concat([image2,image1],axis=-1)
 
-    optical_flow_swapped = tf.zeros(optical_flow.get_shape())
+
+    img_pair_rgbd = tf.concat([image1,image2],axis=-1)
+    img_pair_rgbd_swapped = tf.concat([image2,image1],axis=-1)
+
+    # optical_flow = optical_flow / 50
+    # comment for optical flow. Uncomment for Sceneflow
 
     # inputt = divide_inputs_to_patches(img_pair,8)
     # label = divide_inputs_to_patches(label_pair,3)
 
     # padding_input = tf.constant([[0, 0],[5, 4],[0, 0]])
-    x_dimension_padding = tf.constant([[4, 4],[0, 0],[0,0]])
+    # x_dimension_padding = tf.constant([[4, 4],[0, 0],[0,0]])
     # padding2 = tf.constant([[4, 4],[0,0]])
+    # padded_img_pair_rgbd = tf.pad(img_pair_rgbd,x_dimension_padding,'CONSTANT')
+    # padded_optical_flow_with_depth_change = tf.pad(optical_flow_with_depth_change,x_dimension_padding,'CONSTANT')
 
-    padded_img_pair_rgb = tf.pad(img_pair_rgb,x_dimension_padding,'CONSTANT')
-    padded_optical_flow = tf.pad(optical_flow,x_dimension_padding,'CONSTANT')
+    # padded_img_pair_rgbd_swapped = tf.pad(img_pair_rgbd_swapped,x_dimension_padding,'CONSTANT')
+    # padded_optical_flow_with_depth_change_swapped = tf.pad(optical_flow_with_depth_change_swapped,x_dimension_padding,'CONSTANT')
+    optical_flow_with_depth_change_swapped = tf.zeros(optical_flow.get_shape())
 
-    padded_img_pair_rgb_swapped = tf.pad(img_pair_rgb_swapped,x_dimension_padding,'CONSTANT')
-    padded_optical_flow_swapped = tf.pad(optical_flow_swapped,x_dimension_padding,'CONSTANT')
-
-    fb_rgb_img_pair = tf.stack([padded_img_pair_rgb,padded_img_pair_rgb_swapped])
-    fb_rgb_optflow = tf.stack([padded_optical_flow,padded_optical_flow_swapped])
+    fb_rgbd_img_pair = tf.stack([img_pair_rgbd,img_pair_rgbd_swapped])
+    fb_rgbd_optflow_with_depth_change = tf.stack([optical_flow,optical_flow_with_depth_change_swapped])
+    print(fb_rgbd_optflow_with_depth_change)
 
     return {
-        'input_n': fb_rgb_img_pair,
-        'label_n': fb_rgb_optflow
+        'input_n': fb_rgbd_img_pair,
+        'label_n': fb_rgbd_optflow_with_depth_change
     }
 
 def decode_pfm(path):
