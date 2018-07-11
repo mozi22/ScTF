@@ -9,7 +9,7 @@ ij.setHost('tcp://linus:13463')
 def get_network_input_forward(image_batch,label_batch):
     return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
 
-ds = 'ptb'
+ds = 'mid'
 filee = ['../dataset_synthetic/'+ds+'_TEST.tfrecords']
 
 
@@ -183,7 +183,7 @@ while True:
     # ij.setImage('normal_lbl',np.transpose(Y_forwardd[:,:,:,:],[0,3,1,2]))
     # ij.setImage('prediction',np.transpose(denormalize_f,[0,3,1,2]))
 
-    # test_summary_writer.add_summary(summary_str_test, i)
+    test_summary_writer.add_summary(summary_str_test, step)
 
 
 test_summary_writer.close()

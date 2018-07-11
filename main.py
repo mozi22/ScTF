@@ -743,30 +743,30 @@ class DatasetReader:
         # losses sections[self.section_type]
 
 
-        _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref3'][0],
-                                                flows_dict['predict_flow_ref3'][1],
-                                                scope='fb_loss_refine_3'+summary_type)
+        # _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref3'][0],
+        #                                         flows_dict['predict_flow_ref3'][1],
+        #                                         scope='fb_loss_refine_3'+summary_type)
 
-        _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref2'][0],
-                                                flows_dict['predict_flow_ref2'][1],
-                                                scope='fb_loss_refine_2'+summary_type
-                                                # ,losses_helper.ease_in_quad(self.global_step,
-                                                #                            0,
-                                                #                            1.0,
-                                                #                            30000.0,
-                                                #                            50000,
-                                                #                            'fb_loss_refine_3')
-                                                )
-        _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref1'][0],
-                                                flows_dict['predict_flow_ref1'][1],
-                                                scope='fb_loss_refine_1'+summary_type
-                                                # ,losses_helper.ease_in_quad(self.global_step,
-                                                #                            0,
-                                                #                            1.0,
-                                                #                            30000.0,
-                                                #                            100000,
-                                                #                            'fb_loss_refine_2')
-                                                )
+        # _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref2'][0],
+        #                                         flows_dict['predict_flow_ref2'][1],
+        #                                         scope='fb_loss_refine_2'+summary_type
+        #                                         # ,losses_helper.ease_in_quad(self.global_step,
+        #                                         #                            0,
+        #                                         #                            1.0,
+        #                                         #                            30000.0,
+        #                                         #                            50000,
+        #                                         #                            'fb_loss_refine_3')
+        #                                         )
+        # _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref1'][0],
+        #                                         flows_dict['predict_flow_ref1'][1],
+        #                                         scope='fb_loss_refine_1'+summary_type
+        #                                         # ,losses_helper.ease_in_quad(self.global_step,
+        #                                         #                            0,
+        #                                         #                            1.0,
+        #                                         #                            30000.0,
+        #                                         #                            100000,
+        #                                         #                            'fb_loss_refine_2')
+        #                                         )
 
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
@@ -783,17 +783,17 @@ class DatasetReader:
         '''
 
         # _ = losses_helper.photoconsistency_loss(network_input_images,flows_dict['predict_flow'][0])
-        # network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        # network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        # network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-        # _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0],7,'forward',scope='photoconsistency_loss_refine_forward_3'+summary_type)
-        # _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0],7,'forward',scope='photoconsistency_loss_refine_forward_2'+summary_type)
-        # _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0],7,'forward',scope='photoconsistency_loss_refine_forward_1'+summary_type)
+        _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0],7,'forward',scope='photoconsistency_loss_refine_forward_3'+summary_type)
+        _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0],7,'forward',scope='photoconsistency_loss_refine_forward_2'+summary_type)
+        _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0],7,'forward',scope='photoconsistency_loss_refine_forward_1'+summary_type)
 
-        # _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][1],7,'backward',scope='photoconsistency_loss_refine_backward_3'+summary_type)
-        # _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][1],7,'backward',scope='photoconsistency_loss_refine_backward_2'+summary_type)
-        # _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][1],7,'backward',scope='photoconsistency_loss_refine_backward_1'+summary_type)
+        _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][1],7,'backward',scope='photoconsistency_loss_refine_backward_3'+summary_type)
+        _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][1],7,'backward',scope='photoconsistency_loss_refine_backward_2'+summary_type)
+        _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][1],7,'backward',scope='photoconsistency_loss_refine_backward_1'+summary_type)
 
 
         # unsupervised losses done. Now remove ptb. Since it doesn't have ground truth.
@@ -1097,39 +1097,39 @@ class DatasetReader:
         print(message)
 
 
-    def optimistic_restore(self, save_file, ignore_vars=None, verbose=False, ignore_incompatible_shapes=False):
-        """This function tries to restore all variables in the save file.
-        This function ignores variables that do not exist or have incompatible shape.
-        Raises TypeError if the there is a type mismatch for compatible shapes.
+    # def optimistic_restore(self, save_file, ignore_vars=None, verbose=False, ignore_incompatible_shapes=False):
+    #     """This function tries to restore all variables in the save file.
+    #     This function ignores variables that do not exist or have incompatible shape.
+    #     Raises TypeError if the there is a type mismatch for compatible shapes.
         
-        session: tf.Session
-            The tf session
-        save_file: str
-            Path to the checkpoint without the .index, .meta or .data extensions.
-        ignore_vars: list, tuple or set of str
-            These variables will be ignored.
-        verbose: bool
-            If True prints which variables will be restored
-        ignore_incompatible_shapes: bool
-            If True ignores variables with incompatible shapes.
-            If False raises a runtime error f shapes are incompatible.
-        """
-        def vprint(*args, **kwargs): 
-            if verbose: print(*args, flush=True, **kwargs)
-        # def dbg(*args, **kwargs): print(*args, flush=True, **kwargs)
-        def dbg(*args, **kwargs): pass
-        if ignore_vars is None:
-            ignore_vars = []
+    #     session: tf.Session
+    #         The tf session
+    #     save_file: str
+    #         Path to the checkpoint without the .index, .meta or .data extensions.
+    #     ignore_vars: list, tuple or set of str
+    #         These variables will be ignored.
+    #     verbose: bool
+    #         If True prints which variables will be restored
+    #     ignore_incompatible_shapes: bool
+    #         If True ignores variables with incompatible shapes.
+    #         If False raises a runtime error f shapes are incompatible.
+    #     """
+    #     def vprint(*args, **kwargs): 
+    #         if verbose: print(*args, flush=True, **kwargs)
+    #     # def dbg(*args, **kwargs): print(*args, flush=True, **kwargs)
+    #     def dbg(*args, **kwargs): pass
+    #     if ignore_vars is None:
+    #         ignore_vars = []
 
-        reader = tf.train.NewCheckpointReader(save_file)
-        var_to_shape_map = reader.get_variable_to_shape_map()
+    #     reader = tf.train.NewCheckpointReader(save_file)
+    #     var_to_shape_map = reader.get_variable_to_shape_map()
 
-        var_list = []
-        for key in sorted(var_to_shape_map):
-            if 'Adam' in key: 
-                var_list.append(key)
+    #     var_list = []
+    #     for key in sorted(var_to_shape_map):
+    #         if 'Adam' in key: 
+    #             var_list.append(key)
 
-        return var_list 
+    #     return var_list 
 
 
 
