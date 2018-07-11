@@ -9,7 +9,7 @@ ij.setHost('tcp://linus:13463')
 def get_network_input_forward(image_batch,label_batch):
     return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
  
-ds = 'ptb'
+ds = 'mid'
 filee = ['../dataset_synthetic/'+ds+'_TEST.tfrecords']
 
 
@@ -78,15 +78,15 @@ concatenated_FB_images = tf.concat([X_forward,X_backward],axis=0)
 
 
 predict_flows = network.train_network(concatenated_FB_images)
-predict_flows2 = network.train_network(predict_flows[0],'s_evolution2','s_evolution2')
-flows_dict = get_predict_flow_forward_backward(predict_flows2)
+# predict_flows2 = network.train_network(predict_flows[0],'s_evolution2','s_evolution2')
+flows_dict = get_predict_flow_forward_backward(predict_flows)
 
 ################ epe loss #######################
 denormalized_flow = losses_helper.denormalize_flow(flows_dict['predict_flow'][0])
 
 
-# total_loss = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(Y_forward, denormalized_flow))))
-total_loss = losses_helper.endpoint_loss(Y_forward,flows_dict['predict_flow'][0],scope='epe_loss_evolution1')
+total_loss = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(Y_forward, denormalized_flow))))
+# total_loss = losses_helper.endpoint_loss(Y_forward,flows_dict['predict_flow'][0],scope='epe_loss_evolution1')
 
 
 # sess.run(test_iterator.initializer)
@@ -180,7 +180,8 @@ while True:
 
 
     # print(filenamee1)
-    # print(filenamee2)
+    print(filenamee2)
+    print(total_loss2)
     # ij.setImage('normal_img',np.transpose(X_forwardd[:,:,:,:],[0,3,1,2]))
     # ij.setImage('normal_lbl',np.transpose(Y_forwardd[:,:,:,:],[0,3,1,2]))
     # ij.setImage('prediction',np.transpose(denormalize_f,[0,3,1,2]))
