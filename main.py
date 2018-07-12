@@ -743,30 +743,30 @@ class DatasetReader:
         # losses sections[self.section_type]
 
 
-        # _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref3'][0],
-        #                                         flows_dict['predict_flow_ref3'][1],
-        #                                         scope='fb_loss_refine_3'+summary_type)
+        _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref3'][0],
+                                                flows_dict['predict_flow_ref3'][1],
+                                                scope='fb_loss_refine_3'+summary_type)
 
-        # _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref2'][0],
-        #                                         flows_dict['predict_flow_ref2'][1],
-        #                                         scope='fb_loss_refine_2'+summary_type
-        #                                         # ,losses_helper.ease_in_quad(self.global_step,
-        #                                         #                            0,
-        #                                         #                            1.0,
-        #                                         #                            30000.0,
-        #                                         #                            50000,
-        #                                         #                            'fb_loss_refine_3')
-        #                                         )
-        # _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref1'][0],
-        #                                         flows_dict['predict_flow_ref1'][1],
-        #                                         scope='fb_loss_refine_1'+summary_type
-        #                                         # ,losses_helper.ease_in_quad(self.global_step,
-        #                                         #                            0,
-        #                                         #                            1.0,
-        #                                         #                            30000.0,
-        #                                         #                            100000,
-        #                                         #                            'fb_loss_refine_2')
-        #                                         )
+        _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref2'][0],
+                                                flows_dict['predict_flow_ref2'][1],
+                                                scope='fb_loss_refine_2'+summary_type
+                                                # ,losses_helper.ease_in_quad(self.global_step,
+                                                #                            0,
+                                                #                            1.0,
+                                                #                            30000.0,
+                                                #                            50000,
+                                                #                            'fb_loss_refine_3')
+                                                )
+        _ = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref1'][0],
+                                                flows_dict['predict_flow_ref1'][1],
+                                                scope='fb_loss_refine_1'+summary_type
+                                                # ,losses_helper.ease_in_quad(self.global_step,
+                                                #                            0,
+                                                #                            1.0,
+                                                #                            30000.0,
+                                                #                            100000,
+                                                #                            'fb_loss_refine_2')
+                                                )
 
 
         # predict_flow2_label = losses_helper.downsample_label(network_input_labels)
@@ -783,17 +783,17 @@ class DatasetReader:
         '''
 
         # _ = losses_helper.photoconsistency_loss(network_input_images,flows_dict['predict_flow'][0])
-        network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-        network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine3 = tf.image.resize_images(network_input_images,[20,32],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+        # network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-        _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0],7,'forward',scope='photoconsistency_loss_refine_forward_3'+summary_type)
-        _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0],7,'forward',scope='photoconsistency_loss_refine_forward_2'+summary_type)
-        _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0],7,'forward',scope='photoconsistency_loss_refine_forward_1'+summary_type)
+        # _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0],7,'forward',scope='photoconsistency_loss_refine_forward_3'+summary_type)
+        # _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0],7,'forward',scope='photoconsistency_loss_refine_forward_2'+summary_type)
+        # _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0],7,'forward',scope='photoconsistency_loss_refine_forward_1'+summary_type)
 
-        _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][1],7,'backward',scope='photoconsistency_loss_refine_backward_3'+summary_type)
-        _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][1],7,'backward',scope='photoconsistency_loss_refine_backward_2'+summary_type)
-        _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][1],7,'backward',scope='photoconsistency_loss_refine_backward_1'+summary_type)
+        # _ = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][1],7,'backward',scope='photoconsistency_loss_refine_backward_3'+summary_type)
+        # _ = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][1],7,'backward',scope='photoconsistency_loss_refine_backward_2'+summary_type)
+        # _ = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][1],7,'backward',scope='photoconsistency_loss_refine_backward_1'+summary_type)
 
 
         # unsupervised losses done. Now remove ptb. Since it doesn't have ground truth.
