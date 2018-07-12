@@ -9,7 +9,7 @@ ij.setHost('tcp://linus:13463')
 def get_network_input_forward(image_batch,label_batch):
     return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
 
-ds = 'mid'
+ds = 'flying'
 filee = ['../dataset_synthetic/'+ds+'_TEST.tfrecords']
 
 
@@ -148,7 +148,7 @@ summary_op = tf.summary.merge(summaies)
 
 
 sess = tf.InteractiveSession()
-load_model_ckpt(sess,'ckpt/driving/network_with_fb/train/')
+load_model_ckpt(sess,'ckpt/driving/epe/train/')
 
 
 test_summary_writer = tf.summary.FileWriter('./testboard/'+ds, sess.graph)
