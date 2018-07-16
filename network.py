@@ -29,7 +29,7 @@ def convrelu2(name,inputs, filters, kernel_size, stride, activation=None):
         activation=activation,
         name=name+'x'
     )
-
+ 
     return tmp_x
     # return tf.layers.conv2d(
     #     inputs=inputs,
