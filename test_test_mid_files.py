@@ -10,7 +10,7 @@ ij.setHost('tcp://linus:13463')
 def get_network_input_forward(image_batch,label_batch):
     return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
 
-ds = 'flying'
+ds = 'ptb'
 filee = ['../dataset_synthetic/'+ds+'_TEST.tfrecords']
 
 
@@ -138,13 +138,22 @@ def get_predict_flow_forward_backward(predict_flows):
 
     predict_flow_forward_ref1 = tf.expand_dims(predict_flow_ref1[0,:,:,:],axis=0)
     predict_flow_backward_ref1 = tf.expand_dims(predict_flow_ref1[1,:,:,:],axis=0)
+    if ds == 'mid':
+        return {
+            'predict_flow': [-predict_flow_forward, -predict_flow_backward],
+            'predict_flow_ref3': [-predict_flow_forward_ref3,-predict_flow_backward_ref3],
+            'predict_flow_ref2': [-predict_flow_forward_ref2, -predict_flow_backward_ref2],
+            'predict_flow_ref1': [-predict_flow_forward_ref1, -predict_flow_backward_ref1]
+        }
+    else:
+        print('without mid')
+        return {
+            'predict_flow': [predict_flow_forward, predict_flow_backward],
+            'predict_flow_ref3': [predict_flow_forward_ref3,predict_flow_backward_ref3],
+            'predict_flow_ref2': [predict_flow_forward_ref2, predict_flow_backward_ref2],
+            'predict_flow_ref1': [predict_flow_forward_ref1, predict_flow_backward_ref1]
+        }
 
-    return {
-        'predict_flow': [-predict_flow_forward, -predict_flow_backward],
-        'predict_flow_ref3': [-predict_flow_forward_ref3,-predict_flow_backward_ref3],
-        'predict_flow_ref2': [-predict_flow_forward_ref2, -predict_flow_backward_ref2],
-        'predict_flow_ref1': [-predict_flow_forward_ref1, -predict_flow_backward_ref1]
-    }
 
 X = tf.placeholder(dtype=tf.float32, shape=(1, 2, 224, 384, 6))
 Y = tf.placeholder(dtype=tf.float32, shape=(1, 2, 224, 384, 2))
@@ -168,6 +177,7 @@ denormalized_flow = losses_helper.denormalize_flow(flows_dict['predict_flow'][0]
 
 # total_loss = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(Y_forward, denormalized_flow))))
 total_loss = losses_helper.endpoint_loss(Y_forward,flows_dict['predict_flow'][0],scope='epe_loss')
+total_lossfb = losses_helper.forward_backward_loss(flows_dict['predict_flow'][0],flows_dict['predict_flow'][1],scope='epe_loss_evolution1')
 
 
 # sess.run(test_iterator.initializer)
@@ -241,6 +251,7 @@ test_summary_writer = tf.summary.FileWriter('./testboard/'+ds, sess.graph)
 
 step = 0
 total_losser = 0
+total_losser2 = 0
 while True:
 
     print('iteration '+str(step))
@@ -249,22 +260,25 @@ while True:
         test_image_batch_fine, test_label_batch_fine, filenamee1, filenamee2 = sess.run([test_image_batch, test_label_batch, filename1, filename2])
 
 
-        summary_str_test, total_loss2,denormalize_f,Y_forwardd,X_forwardd = sess.run([summary_op,total_loss,denormalized_flow,Y_forward,X_forward],feed_dict={
+        summary_str_test, total_loss2,total_lossfbb,denormalize_f,Y_forwardd,X_forwardd = sess.run([summary_op,total_loss,total_lossfb,denormalized_flow,Y_forward,X_forward],feed_dict={
                     X: test_image_batch_fine,
                     Y: test_label_batch_fine
         })
 
         step += 1
         total_losser += total_loss2
+        total_losser2 += total_lossfbb
     except tf.errors.OutOfRangeError:
         print('finish')
+        print('epe')
         avg = total_losser / step
         print(avg)
+        print('fb')
+        avg2 = total_losser2 / step
+        print(avg2)
         break
 
 
-    if step == 5:
-        break
 
     # print(filenamee1)
     # print(filenamee2)
