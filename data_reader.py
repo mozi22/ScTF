@@ -205,7 +205,7 @@ def read_with_dataset_api_test(batch_size,filenames,version='1'):
 
     dataset = tf.data.Dataset.zip(data)
 
-    dataset = dataset.shuffle(buffer_size=50).apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
+    dataset = dataset.apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
     dataset = dataset.prefetch(batch_size)
     # testing_ds_api(dataset)
 
