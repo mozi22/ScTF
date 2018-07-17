@@ -3,6 +3,7 @@ import numpy as np
 import lmbspecialops as sops
 from PIL import Image
 import ijremote as ij
+import os
 def tf_record_input_pipeline(filenames,version='1'):
 
     # Create a list of filenames and pass it to a queue
@@ -331,96 +332,55 @@ def train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow):
         'label_n': fb_rgbd_optflow_with_depth_change
     }
 
-def test(img_pair,img_pair2):
-
-    sess = tf.InteractiveSession()
-    # img_1 = tf.constant([[[1,2],[5,6]],[[9,10],[13,14]]],dtype=tf.float32)
-    # img_2 = tf.constant([[[3,4],[7,8]],[[11,12],[15,16]]],dtype=tf.float32)
-    # img_3 = tf.constant([[[1,2],[5,6]],[[9,10],[13,14]]],dtype=tf.float32)
-    # img_4 = tf.constant([[[3,4],[7,8]],[[11,12],[15,16]]],dtype=tf.float32)
-
-    # img_pair = tf.concat([img_1,img_2],axis=-1)
-    # img_pair2 = tf.concat([img_2,img_1],axis=-1)
-
-
-    # img_pair_final2 = tf.constant([[[3,4,1,2],[7,8,5,6]],[[11,12,9,10],[15,16,13,14]]],dtype=tf.float32)
-
-    img_pair_final = tf.stack([img_pair,img_pair2])
-
-    labels_final = tf.constant([[[1,2,3],[4,5,6]],[[7,8,9],[10,11,12]]],dtype=tf.float32)
-    labels_final = tf.zeros(labels_final.get_shape(),dtype=tf.float32)
-
-    images, labels = tf.train.shuffle_batch(
-                        [ img_pair_final , labels_final ],
-                        batch_size=16,
-                        capacity=100,
-                        num_threads=48,
-                        min_after_dequeue=1,
-                        enqueue_many=False)
-
-    images = tf.Print(images,[images[0,0,:,:,0:3]],summarize=10000,message='jalalala')
-    sess.run(tf.global_variables_initializer())
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(sess=sess,coord=coord)
-
-    # print(sess.run(images[0,0,:,:,0:3]))
-    coord.request_stop()
-    coord.join(threads)
-# combines the depth value in the image RGB values to make it an RGBD tensor.
-# where the resulting tensor will have depth values in the 4th element of 3rd dimension i.e [0][0][3].
-# where [x][x][0] = R, [x][x][1] = G, [x][x][2] = B, [x][x][3] = D
-def combine_depth_values(image,depth,rank):
-    depth = tf.expand_dims(depth,rank)
-    return tf.concat([image,depth],rank)
-
-
-def warp(img,flow,input_pipeline_dimensions):
-    x = list(range(0,input_pipeline_dimensions[1]))
-    y = list(range(0,input_pipeline_dimensions[0]))
-    X, Y = tf.meshgrid(x, y)
-
-    X = tf.cast(X,np.float32) + flow[:,:,0]
-    Y = tf.cast(Y,np.float32) + flow[:,:,1]
-
-    con = tf.stack([X,Y])
-    result = tf.transpose(con,[1,2,0])
-    result = tf.expand_dims(result,0)
-
-
-    return tf.contrib.resampler.resampler(img[np.newaxis,:,:,:],result)
-
-
-def divide_inputs_to_patches(image,last_dimension):
-
-    
-    image = tf.expand_dims(image,0)
-    ksize = [1, 54, 96, 1]
-
-    image_patches = tf.extract_image_patches(
-        image, ksize, ksize, [1, 1, 1, 1], 'VALID')
-    image_patches_reshaped = tf.reshape(image_patches, [-1, 54, 96, last_dimension])
-
-    return image_patches_reshaped
 
 
 
-def get_depth_chng_from_disparity_chng(disparity,disparity_change):
 
-    disparity_change = tf.add(disparity,disparity_change)
-
-    depth1 = get_depth_from_disparity(disparity)
-    calcdepth = get_depth_from_disparity(disparity_change)
-
-    return tf.subtract(depth1,calcdepth)
+def parse_flyingthings3d_dataset():
 
 
-def get_depth_from_disparity(disparity):
-    # focal_length = 35
-    # baseline = 1
-    # focal_length * baseline = 35
+    for filename in os.listdir('/misc/lmbraid19/muazzama/dataset_synthetic/flyingthings3d/disparity_change/TRAIN/C/'):
+        print(filename)
 
-    focal_length = tf.constant([35],dtype=tf.float32)
 
-    disp_to_depth = tf.divide(focal_length,disparity)
+    print('')
+    print('mozi')
+    print('')
+    for filename in os.listdir('/misc/lmbraid19/muazzama/dataset_synthetic/flyingthings3d/optical_flow/TRAIN/C/'):
+        print(filename)
 
-    return disp_to_depth
+        # folders_range = 
+
+        # for data_type in self.data_types:
+        #     for let in self.letters:
+
+
+        #         for folder_id in range(0,folders_range):
+
+
+
+        #             path = self.dataset_root + '/'.join([dataset,'camera_data',tnt,let,"%04d" % (folder_id,)])
+
+        #             if os.path.isdir(path) == False:
+        #                 continue
+
+        #             self.camera_data = self.load_camera_file(path)
+
+        #             for direction in self.directions:
+        #                 for time in self.times:
+        #                     for file_id in range(self.flying_data_file_limit[0],self.flying_data_file_limit[1]):
+
+        #                         if file_id == self.flying_data_file_limit[1] - 1:
+        #                             break
+
+
+        #                         disparity_path = (path + '/' + direction).replace('camera_data','disparity') + '/' + str("%04d" % (file_id,)) + '.pfm'
+        #                         disparity_path2 = (path + '/' + direction).replace('camera_data','disparity') + '/' + str("%04d" % (file_id+1,)) + '.pfm'
+        #                         disparity_change_path = (path + '/' + time + '/' + direction).replace('camera_data','disparity_change') + '/' + str("%04d" % (file_id,)) + '.pfm'
+        #                         optical_flow_path = (path.replace('camera_data','optical_flow') + '/' + time + '/' + direction + '/' + self.get_optical_flow_file_name(direction,time,"%04d" % (file_id,))) + '.pfm'
+
+        #                         frames_finalpass_webp_path = (path + '/' + direction).replace('camera_data','frames_finalpass_webp') + '/' + str("%04d" % (file_id,)) + '.webp'
+        #                         frames_finalpass_webp_path2 = (path + '/' + direction).replace('camera_data','frames_finalpass_webp') + '/' + str("%04d" % (file_id+1,)) + '.webp'
+
+
+parse_flyingthings3d_dataset()
