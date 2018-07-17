@@ -139,12 +139,21 @@ def get_predict_flow_forward_backward(predict_flows):
     predict_flow_forward_ref1 = tf.expand_dims(predict_flow_ref1[0,:,:,:],axis=0)
     predict_flow_backward_ref1 = tf.expand_dims(predict_flow_ref1[1,:,:,:],axis=0)
 
-    return {
-        'predict_flow': [-predict_flow_forward, -predict_flow_backward],
-        'predict_flow_ref3': [-predict_flow_forward_ref3,-predict_flow_backward_ref3],
-        'predict_flow_ref2': [-predict_flow_forward_ref2, -predict_flow_backward_ref2],
-        'predict_flow_ref1': [-predict_flow_forward_ref1, -predict_flow_backward_ref1]
-    }
+    if ds == 'mid':
+        return {
+            'predict_flow': [-predict_flow_forward, -predict_flow_backward],
+            'predict_flow_ref3': [-predict_flow_forward_ref3,-predict_flow_backward_ref3],
+            'predict_flow_ref2': [-predict_flow_forward_ref2, -predict_flow_backward_ref2],
+            'predict_flow_ref1': [-predict_flow_forward_ref1, -predict_flow_backward_ref1]
+        }
+    else:
+        print('without mid')
+        return {
+            'predict_flow': [predict_flow_forward, predict_flow_backward],
+            'predict_flow_ref3': [predict_flow_forward_ref3,predict_flow_backward_ref3],
+            'predict_flow_ref2': [predict_flow_forward_ref2, predict_flow_backward_ref2],
+            'predict_flow_ref1': [predict_flow_forward_ref1, predict_flow_backward_ref1]
+        }
 
 X = tf.placeholder(dtype=tf.float32, shape=(1, 2, 224, 384, 8))
 Y = tf.placeholder(dtype=tf.float32, shape=(1, 2, 224, 384, 3))
@@ -167,7 +176,8 @@ denormalized_flow = losses_helper.denormalize_flow(flows_dict['predict_flow'][0]
 
 
 # total_loss = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(Y_forward, denormalized_flow))))
-total_loss = losses_helper.endpoint_loss(Y_forward,flows_dict['predict_flow'][0],scope='epe_loss')
+total_loss = losses_helper.endpoint_loss(Y_forward,flows_dict['predict_flow'][0],scope='epe_loss_evolution1')
+# total_lossfb = losses_helper.forward_backward_loss(flows_dict['predict_flow'][0],flows_dict['predict_flow'][1],scope='epe_loss_evolution1')
 
 
 # sess.run(test_iterator.initializer)
@@ -234,13 +244,14 @@ summary_op = tf.summary.merge(summaies)
 
 
 sess = tf.InteractiveSession()
-load_model_ckpt(sess,'ckpt/driving/network_with_fb/train/')
+load_model_ckpt(sess,'ckpt/driving/epe/train/')
 
 
 test_summary_writer = tf.summary.FileWriter('./testboard/'+ds, sess.graph)
 
 step = 0
 total_losser = 0
+# total_losser2 = 0
 while True:
 
     print('iteration '+str(step))
@@ -256,15 +267,19 @@ while True:
 
         step += 1
         total_losser += total_loss2
+        # total_losser2 += total_lossfbb
     except tf.errors.OutOfRangeError:
         print('finish')
         avg = total_losser / step
+        # avg2 = total_losser2 / step
         print(avg)
+        # print('fb loss')
+        # print(avg2)
         break
 
 
-    if step == 5:
-        break
+    # if step == 5:
+    #     break
 
     # print(filenamee1)
     # print(filenamee2)
