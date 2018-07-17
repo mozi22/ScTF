@@ -10,7 +10,7 @@ ij.setHost('tcp://linus:13463')
 def get_network_input_forward(image_batch,label_batch):
     return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
 
-ds = 'ptb'
+ds = 'monkaa'
 filee = ['../dataset_synthetic/'+ds+'_TEST.tfrecords']
 
 
