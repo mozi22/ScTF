@@ -10,7 +10,7 @@ ij.setHost('tcp://linus:13463')
 def get_network_input_forward(image_batch,label_batch):
     return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
  
-ds = 'flying'
+ds = 'ptb'
 filee = ['../dataset_synthetic/'+ds+'_TEST.tfrecords']
 
 
@@ -170,10 +170,10 @@ flows_dict = get_predict_flow_forward_backward(predict_flows2)
 ################ epe loss #######################
 denormalized_flow = losses_helper.denormalize_flow(flows_dict['predict_flow'][0])
 
-
 # total_loss = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(Y_forward, denormalized_flow))))
-total_loss = losses_helper.endpoint_loss(Y_forward,flows_dict['predict_flow'][0],scope='epe_loss_evolution1')
+# total_loss = losses_helper.endpoint_loss(Y_forward,flows_dict['predict_flow'][0],scope='epe_loss_evolution1')
 # total_loss = losses_helper.forward_backward_loss(flows_dict['predict_flow'][0],flows_dict['predict_flow'][1],scope='epe_loss_evolution1')
+total_loss = losses_helper.photoconsistency_loss(X_forward,flows_dict['predict_flow'][0])
 
 
 # sess.run(test_iterator.initializer)
@@ -268,8 +268,8 @@ while True:
         print(avg)
         break
 
-    if step == 5:
-        break
+    # if step == 5:
+    #     break
 
 
     # print(filenamee1)
