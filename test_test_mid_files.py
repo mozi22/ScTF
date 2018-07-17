@@ -268,6 +268,8 @@ while True:
         print(avg)
         break
 
+    if step == 5:
+        break
 
 
     # print(filenamee1)
