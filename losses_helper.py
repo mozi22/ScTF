@@ -4,7 +4,7 @@ import lmbspecialops as sops
 import math
 
 # loss value ranges around 0.01 to 0.1
-def photoconsistency_loss(img,predicted_flow, weight=7, typee='forward',scope='pc_loss'):
+def photoconsistency_loss(img,predicted_flow, weight=7, scope='photoconsistency_loss',typee='forward'):
 
   with tf.variable_scope(scope):
 
@@ -13,26 +13,25 @@ def photoconsistency_loss(img,predicted_flow, weight=7, typee='forward',scope='p
     predicted_flow = denormalize_flow(predicted_flow)
 
     if not typee is 'forward':
-
       # backward flow
       warped_img = flow_warp(img1,predicted_flow)
       img2 = get_occulation_aware_image(img2,warped_img)
       img2 = tf.stop_gradient(img2)
-      # pc_loss = endpoint_loss(img2, warped_img,weight,'pc_loss_backward')
-      pc_loss = tf.sqrt((img2**2) + (warped_img**2) + 1e-6)
+      pc_loss = endpoint_loss(img2, warped_img,weight,'pc_loss_backward')
+      # pc_loss = tf.sqrt((img2**2) + (warped_img**2) + 1e-6)
     else:
       # forward flow
       warped_img = flow_warp(img2,predicted_flow)
       img1 = get_occulation_aware_image(img1,warped_img)
       img1 = tf.stop_gradient(img1)
-      # pc_loss = endpoint_loss(img1, warped_img,weight,'pc_loss_forward')
-      pc_loss = tf.sqrt((img1**2) + (warped_img**2) + 1e-6)
+      pc_loss = endpoint_loss(img1, warped_img,weight,'pc_loss_forward')
+      # pc_loss = tf.sqrt((img1**2) + (warped_img**2) + 1e-6)
       
 
 
 
     # pc_loss = tf.Print(pc_loss,[pc_loss],'pcloss ye hai ')
-    tf.losses.compute_weighted_loss(pc_loss,weights=weight)
+    # pc_loss = tf.losses.compute_weighted_loss(pc_loss,weights=weight)
     # tf.summary.scalar('pc_loss',sops.replace_nonfinite(pc_loss))
 
   return pc_loss
@@ -49,7 +48,7 @@ def denormalize_flow(flow):
 
     return tf.concat([u,v],axis=-1)
 
-def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,scope='ref1',weight=5):
+def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,scope='fb_loss',weight=5):
 
   with tf.variable_scope(scope):
 
@@ -136,7 +135,7 @@ def endpoint_loss(gt_flow,predicted_flow,weight=500,scope='epe_loss',stop_grad=F
 
     epe_loss = tf.reduce_mean(sops.replace_nonfinite(epe_loss))
 
-    # epe_loss = tf.check_numerics(epe_loss,'numeric checker')
+    epe_loss = tf.check_numerics(epe_loss,'numeric checker')
     # epe_loss = tf.Print(epe_loss,[epe_loss],'epeloss ye hai ')
 
     tf.losses.compute_weighted_loss(epe_loss,weights=weight)
@@ -201,7 +200,7 @@ def scale_invariant_gradient( inp, deltas, weights, epsilon=0.001):
 
 # loss value ranges around 80 to 100
 # taken from DEMON Network
-def scale_invariant_gradient_loss(inp, gt, epsilon,decay_steps,global_step,weight=100,scope='scale_invariant_gradient_loss'):
+def scale_invariant_gradient_loss(inp, gt, epsilon,decay_steps,global_step,weight=100,name='scale_invariant_gradient_loss'):
   """Computes the scale invariant gradient loss
   inp: Tensor
       Tensor with the scale invariant gradient images computed on the prediction
@@ -211,7 +210,7 @@ def scale_invariant_gradient_loss(inp, gt, epsilon,decay_steps,global_step,weigh
     epsilon value for avoiding division by zero
   """
 
-  with tf.variable_scope(scope):
+  with tf.variable_scope(name):
     num_channels_inp = inp.get_shape().as_list()[1]
     num_channels_gt = gt.get_shape().as_list()[1]
     assert num_channels_inp%2==0
