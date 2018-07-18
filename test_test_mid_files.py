@@ -10,7 +10,7 @@ ij.setHost('tcp://linus:13463')
 def get_network_input_forward(image_batch,label_batch):
     return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
 
-ds = 'flying'
+ds = 'mid'
 filee = ['../dataset_synthetic/'+ds+'_TEST.tfrecords']
 
 
@@ -239,12 +239,17 @@ summaies.append(tf.summary.image('lbl_pred_ref2_flow_v',img_forward_predict_v_re
 summaies.append(tf.summary.image('lbl_pred_ref1_flow_u',img_forward_predict_u_ref1))
 summaies.append(tf.summary.image('lbl_pred_ref1_flow_v',img_forward_predict_v_ref1))
 summaies.append(tf.summary.image('predfb_final_flow_u',img_fb_predict))
+summaies.append(tf.summary.image('pred_final_flow_u',tf.expand_dims(flows_dict['predict_flow'][0][:,:,:,0],axis=-1)))
+summaies.append(tf.summary.image('pred_final_flow_v',tf.expand_dims(flows_dict['predict_flow'][0][:,:,:,1],axis=-1)))
+
+summaies.append(tf.summary.image('lbl_final_flow_u',tf.expand_dims(Y_forward[:,:,:,0],axis=-1)))
+summaies.append(tf.summary.image('lbl_final_flow_v',tf.expand_dims(Y_forward[:,:,:,1],axis=-1)))
 
 summary_op = tf.summary.merge(summaies)
 
 
 sess = tf.InteractiveSession()
-load_model_ckpt(sess,'ckpt/driving/epe/train/')
+load_model_ckpt(sess,'ckpt/driving/network_with_fb/train/')
 
 
 test_summary_writer = tf.summary.FileWriter('./testboard/'+ds, sess.graph)
@@ -278,8 +283,8 @@ while True:
         break
 
 
-    # if step == 5:
-    #     break
+    if step == 400:
+        break
 
     # print(filenamee1)
     # print(filenamee2)
