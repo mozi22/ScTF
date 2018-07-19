@@ -95,8 +95,11 @@ def _parse_function(example_proto):
     depth_chng = tf.reshape(depth_chng,[input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_depth_change")
 
 
-    image1 = tf.divide(image1,[255])
-    image2 = tf.divide(image2,[255])
+    # image1 = tf.divide(image1,[255])
+    # image2 = tf.divide(image2,[255])
+
+    image1 = tf.image.per_image_standardization(image1)
+    image2 = tf.image.per_image_standardization(image2)
 
     final_result = train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
 
