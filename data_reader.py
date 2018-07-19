@@ -4,6 +4,8 @@ import lmbspecialops as sops
 from PIL import Image
 import ijremote as ij
 import os
+import csv
+import re
 def tf_record_input_pipeline(filenames,version='1'):
 
     # Create a list of filenames and pass it to a queue
@@ -334,53 +336,3 @@ def train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow):
 
 
 
-
-
-def parse_flyingthings3d_dataset():
-
-
-    for filename in os.listdir('/misc/lmbraid19/muazzama/dataset_synthetic/flyingthings3d/disparity_change/TRAIN/C/'):
-        print(filename)
-
-
-    print('')
-    print('mozi')
-    print('')
-    for filename in os.listdir('/misc/lmbraid19/muazzama/dataset_synthetic/flyingthings3d/optical_flow/TRAIN/C/'):
-        print(filename)
-
-        # folders_range = 
-
-        # for data_type in self.data_types:
-        #     for let in self.letters:
-
-
-        #         for folder_id in range(0,folders_range):
-
-
-
-        #             path = self.dataset_root + '/'.join([dataset,'camera_data',tnt,let,"%04d" % (folder_id,)])
-
-        #             if os.path.isdir(path) == False:
-        #                 continue
-
-        #             self.camera_data = self.load_camera_file(path)
-
-        #             for direction in self.directions:
-        #                 for time in self.times:
-        #                     for file_id in range(self.flying_data_file_limit[0],self.flying_data_file_limit[1]):
-
-        #                         if file_id == self.flying_data_file_limit[1] - 1:
-        #                             break
-
-
-        #                         disparity_path = (path + '/' + direction).replace('camera_data','disparity') + '/' + str("%04d" % (file_id,)) + '.pfm'
-        #                         disparity_path2 = (path + '/' + direction).replace('camera_data','disparity') + '/' + str("%04d" % (file_id+1,)) + '.pfm'
-        #                         disparity_change_path = (path + '/' + time + '/' + direction).replace('camera_data','disparity_change') + '/' + str("%04d" % (file_id,)) + '.pfm'
-        #                         optical_flow_path = (path.replace('camera_data','optical_flow') + '/' + time + '/' + direction + '/' + self.get_optical_flow_file_name(direction,time,"%04d" % (file_id,))) + '.pfm'
-
-        #                         frames_finalpass_webp_path = (path + '/' + direction).replace('camera_data','frames_finalpass_webp') + '/' + str("%04d" % (file_id,)) + '.webp'
-        #                         frames_finalpass_webp_path2 = (path + '/' + direction).replace('camera_data','frames_finalpass_webp') + '/' + str("%04d" % (file_id+1,)) + '.webp'
-
-
-parse_flyingthings3d_dataset()
