@@ -55,7 +55,7 @@ def _upsample_prediction(inp, num_outputs):
     output = tf.layers.conv2d_transpose(
         inputs=inp,
         filters=num_outputs,
-        kernel_size=4,
+        kernel_size=3,
         strides=2,
         padding='same',
         activation=None,
@@ -87,8 +87,8 @@ def _predict_flow(inp):
 
     output = tf.layers.conv2d(
         inputs=tmp,
-        filters=3,
-        kernel_size=1,
+        filters=2,
+        kernel_size=3,
         strides=1,
         padding='same',
         name='conv2_pred_flow',

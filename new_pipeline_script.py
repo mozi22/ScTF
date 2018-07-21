@@ -5,7 +5,7 @@ import csv
 import re
 import numpy as np
 from PIL import Image
-import network2
+import network
 import losses_helper
 
 def write_flyingthings3d_dataset_csv():
@@ -17,10 +17,10 @@ def write_flyingthings3d_dataset_csv():
     optical_flow_folder = 'optical_flow'
     images_folder = 'frames_finalpass_webp'
 
-    modules = ['/TRAIN/A/','/TRAIN/B/','/TRAIN/C/']
+    modules = ['/TRAIN/C/']
 
 
-    with open('flying.csv', 'w') as csvfile:
+    with open('flyingA.csv', 'w') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
         for module_name in modules:
@@ -222,26 +222,27 @@ def endpoint_loss(gt_flow,predicted_flow,weight=1,scope='epe_loss',stop_grad=Fal
 
   with tf.variable_scope(scope):
 
-    if stop_grad == False:
-      gt_flow = tf.stop_gradient(gt_flow)
+    # if stop_grad == False:
+    #   gt_flow = tf.stop_gradient(gt_flow)
 
 
+    
     # get u & v value for gt
     gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
     gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
-    gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
+    # gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
 
     # get u & v value for predicted_flow
     pred_u = tf.slice(predicted_flow,[0,0,0,0],[-1,-1,-1,1])
     pred_v = tf.slice(predicted_flow,[0,0,0,1],[-1,-1,-1,1])
-    pred_w = tf.slice(predicted_flow,[0,0,0,2],[-1,-1,-1,1])
+    # pred_w = tf.slice(predicted_flow,[0,0,0,2],[-1,-1,-1,1])
 
 
     diff_u = sops.replace_nonfinite(gt_u - pred_u)
     diff_v = sops.replace_nonfinite(gt_v - pred_v)
-    diff_w = sops.replace_nonfinite(gt_w - pred_w)
+    # diff_w = sops.replace_nonfinite(gt_w - pred_w)
 
-    epe_loss = tf.sqrt((diff_u**2) + (diff_v**2) + (diff_w**2) + 1e-6)
+    epe_loss = tf.sqrt((diff_u**2) + (diff_v**2) + 1e-6)
 
     epe_loss = tf.reduce_mean(sops.replace_nonfinite(epe_loss))
 
@@ -254,7 +255,7 @@ def endpoint_loss(gt_flow,predicted_flow,weight=1,scope='epe_loss',stop_grad=Fal
 
 def read_flying_ds():
 
-    filename_queue = tf.train.string_input_producer(["flying.csv"])
+    filename_queue = tf.train.string_input_producer(["flyingA.csv"])
 
     reader = tf.TextLineReader()
     key, value = reader.read(filename_queue)
@@ -279,13 +280,16 @@ def read_flying_ds():
     a1 = tf.transpose(a1,[2,0,1])
     a2 = tf.transpose(a2,[2,0,1])
     a6 = tf.transpose(a6,[2,0,1])
-    combined_depths_as_channels = tf.concat([tf.expand_dims(a3,axis=0),tf.expand_dims(a4,axis=0),tf.expand_dims(a5,axis=0)],axis=0)
+    combined_depths_as_channels = tf.concat([tf.expand_dims(a3,axis=0),
+                                             tf.expand_dims(a4,axis=0)
+                                             # tf.expand_dims(a5,axis=0)
+                                             ],axis=0)
 
 
     combined_depths_as_channels = tf.concat([a1,a2,a6,combined_depths_as_channels],axis=0)
 
     # crop the same place from all the 12 portions.
-    combined_depths_as_channels = tf.random_crop(combined_depths_as_channels,[12,256,256])
+    combined_depths_as_channels = tf.random_crop(combined_depths_as_channels,[11,256,256])
 
 
     # disintegrate all information to it's original form, in [C,H,W] tensor
@@ -294,11 +298,12 @@ def read_flying_ds():
     opt_flow = combined_depths_as_channels[6:8,:,:] # note here we are only taking 2 channels of optical flow. Third one is 0 anyways.
     depth1 = tf.expand_dims(combined_depths_as_channels[9,:,:],axis=0)
     depth2 = tf.expand_dims(combined_depths_as_channels[10,:,:],axis=0)
-    depth_chng = tf.expand_dims(combined_depths_as_channels[11,:,:],axis=0)
+    # depth_chng = tf.expand_dims(combined_depths_as_channels[11,:,:],axis=0)
 
 
     img_pair_depth = tf.concat([img1,depth1,img2,depth2],axis=0)
-    optical_flow = tf.concat([opt_flow,depth_chng],axis=0)
+    # optical_flow = tf.concat([opt_flow,depth_chng],axis=0)
+    optical_flow = opt_flow
 
     img_pair_depth = tf.transpose(img_pair_depth,[1,2,0])
     gt_flow = tf.transpose(optical_flow,[1,2,0])
@@ -306,12 +311,12 @@ def read_flying_ds():
     img_pair_depth = tf.expand_dims(img_pair_depth,axis=0)
     gt_flow = tf.expand_dims(gt_flow,axis=0)
 
-    predict_flows = network2.train_network(img_pair_depth)
+    predict_flows = network.train_network(img_pair_depth)[0]
 
     epe_loss = endpoint_loss(gt_flow,predict_flows)
 
 
-    MAX_STEPS = 200000
+    MAX_STEPS = 50000
 
     global_step = tf.get_variable(
         'global_step', [],
@@ -321,7 +326,7 @@ def read_flying_ds():
                                               MAX_STEPS, 0.000001,
                                               power=3)
 
-    opt = tf.train.AdamOptimizer(learning_rate).minimize(epe_loss,var_list=tf.trainable_variables())
+    opt = tf.train.AdamOptimizer(learning_rate).minimize(epe_loss)
 
 
 
@@ -329,15 +334,15 @@ def read_flying_ds():
     summaries.append(tf.summary.scalar('epe_loss', epe_loss))
     summaries.append(tf.summary.image('predicted_flow_u',tf.expand_dims(predict_flows[:,:,:,0],axis=-1)))
     summaries.append(tf.summary.image('predicted_flow_v',tf.expand_dims(predict_flows[:,:,:,1],axis=-1)))
-    summaries.append(tf.summary.image('predicted_flow_w',tf.expand_dims(predict_flows[:,:,:,2],axis=-1)))
+    # summaries.append(tf.summary.image('predicted_flow_w',tf.expand_dims(predict_flows[:,:,:,2],axis=-1)))
     summaries.append(tf.summary.image('gt_flow_u',tf.expand_dims(gt_flow[:,:,:,0],axis=-1)))
     summaries.append(tf.summary.image('gt_flow_v',tf.expand_dims(gt_flow[:,:,:,1],axis=-1)))
-    summaries.append(tf.summary.image('gt_flow_w',tf.expand_dims(gt_flow[:,:,:,2],axis=-1)))
+    # summaries.append(tf.summary.image('gt_flow_w',tf.expand_dims(gt_flow[:,:,:,2],axis=-1)))
     summaries.append(tf.summary.image('inp_img1',img_pair_depth[:,:,:,0:3]))
     summaries.append(tf.summary.image('inp_img2',img_pair_depth[:,:,:,4:7]))
     summaries.append(tf.summary.image('inp_depth1',tf.expand_dims(img_pair_depth[:,:,:,3],axis=-1)))
     summaries.append(tf.summary.image('inp_depth2',tf.expand_dims(img_pair_depth[:,:,:,7],axis=-1)))
-    summaries.append(tf.summary.image('depth_change',depth_chng))
+    # summaries.append(tf.summary.image('depth_change',tf.expand_dims(depth_chng,axis=-1)))
     summary_op = tf.summary.merge(summaries)
 
 
@@ -345,7 +350,7 @@ def read_flying_ds():
     saver = tf.train.Saver(tf.global_variables())
 
 
-    save_directory = 'testing/'
+    save_directory = 'ckptp/'
 
     with tf.Session() as sess:
         coord = tf.train.Coordinator()
@@ -371,34 +376,6 @@ def read_flying_ds():
 
         coord.request_stop()
         coord.join(threads)
-
-
-    # with tf.Session() as sess:
-    #   coord = tf.train.Coordinator()
-    #   threads = tf.train.start_queue_runners(coord=coord)
-    #   sess.run(tf.global_variables_initializer())
-
-    #   print(sess.run(img_pair_depth))
-    #   print(sess.run(optical_flow))
-    #   print(sess.run(a1).shape)
-    #   print(sess.run(a2).shape)
-    #   print(sess.run(a3).shape)
-    #   print(sess.run(a4).shape)
-    #   print(sess.run(a5).shape)
-    #   print(sess.run(a6).shape)
-    #   print(sess.run(combined_depths_as_channels).shape)
-    #   # for i in range(1200):
-    #   #   # Retrieve a single instance:
-    #   #   example, label = sess.run([features, col5])
-
-    #   #   print(example)
-
-    #   coord.request_stop()
-    #   coord.join(threads)
-
-
-
-
 
 
 read_flying_ds()
