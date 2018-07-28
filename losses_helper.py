@@ -34,7 +34,7 @@ def photoconsistency_loss(img,predicted_flow, weight=7, scope='photoconsistency_
     pc_loss = tf.losses.compute_weighted_loss(pc_loss,weights=weight)
     # tf.summary.scalar('pc_loss',sops.replace_nonfinite(pc_loss))
 
-  return pc_loss
+  return pc_loss, warped_img
 
 def denormalize_flow(flow):
 
