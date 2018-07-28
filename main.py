@@ -448,7 +448,7 @@ class DatasetReader:
             #     summary_str = sess.run(self.summary_op)
             #     summary_writer.add_summary(summary_str, step)
 
-            if step % 300 == 0 and step!=0:
+            if step % 200 == 0 and step!=0:
                 summary_str = sess.run(self.summary_op, feed_dict={
                     self.alternate_global_step: alternate_global_stepper
                 })
@@ -898,21 +898,41 @@ class DatasetReader:
         tf.summary.image('rgb_rgb_input',rgb_input)
         tf.summary.image('d_input',d_input)
 
-        tf.summary.image('rgb_lbl_fb_prediction',rgb_concat)
+        tf.summary.image('rgb_lbl_fb_prediction_u',tf.expand_dims(rgb_concat[:,:,:,0],axis=-1))
+        tf.summary.image('rgb_lbl_fb_prediction_v',tf.expand_dims(rgb_concat[:,:,:,1],axis=-1))
+
         tf.summary.image('depth_lbl_fb_prediction',depth_concat)
-        tf.summary.image('rgbd_lbl_fb_prediction',rgbd_concat)
 
-        tf.summary.image('rgb_lbl_fb_prediction_ref1',rgb_concat_ref1)
+        tf.summary.image('rgbd_lbl_fb_prediction_u',tf.expand_dims(rgbd_concat[:,:,:,0],axis=-1))
+        tf.summary.image('rgbd_lbl_fb_prediction_v',tf.expand_dims(rgbd_concat[:,:,:,1],axis=-1))
+        tf.summary.image('rgbd_lbl_fb_prediction_w',tf.expand_dims(rgbd_concat[:,:,:,2],axis=-1))
+
+        tf.summary.image('rgb_lbl_fb_prediction_ref1_u',tf.expand_dims(rgb_concat_ref1[:,:,:,0],axis=-1))
+        tf.summary.image('rgb_lbl_fb_prediction_ref1_v',tf.expand_dims(rgb_concat_ref1[:,:,:,1],axis=-1))
+
         tf.summary.image('depth_lbl_fb_prediction_ref1',depth_concat_ref1)
-        tf.summary.image('rgbd_lbl_fb_prediction_ref1',rgbd_concat_ref1)
 
-        tf.summary.image('rgb_lbl_fb_prediction_ref2',rgb_concat_ref2)
+        tf.summary.image('rgbd_lbl_fb_prediction_ref1_u',tf.expand_dims(rgbd_concat_ref1[:,:,:,0],axis=-1))
+        tf.summary.image('rgbd_lbl_fb_prediction_ref1_v',tf.expand_dims(rgbd_concat_ref1[:,:,:,1],axis=-1))
+        tf.summary.image('rgbd_lbl_fb_prediction_ref1_w',tf.expand_dims(rgbd_concat_ref1[:,:,:,2],axis=-1))
+
+
+        tf.summary.image('rgb_lbl_fb_prediction_ref2_u',tf.expand_dims(rgb_concat_ref2[:,:,:,0],axis=-1))
+        tf.summary.image('rgb_lbl_fb_prediction_ref2_v',tf.expand_dims(rgb_concat_ref2[:,:,:,1],axis=-1))
+
         tf.summary.image('depth_lbl_fb_prediction_ref2',depth_concat_ref2)
-        tf.summary.image('rgbd_lbl_fb_prediction_ref2',rgbd_concat_ref2)
+        tf.summary.image('rgbd_lbl_fb_prediction_ref2_u',tf.expand_dims(rgbd_concat_ref2[:,:,:,0],axis=-1))
+        tf.summary.image('rgbd_lbl_fb_prediction_ref2_v',tf.expand_dims(rgbd_concat_ref2[:,:,:,1],axis=-1))
+        tf.summary.image('rgbd_lbl_fb_prediction_ref2_w',tf.expand_dims(rgbd_concat_ref2[:,:,:,2],axis=-1))
 
-        tf.summary.image('rgb_lbl_fb_prediction_ref3',rgb_concat_ref3)
+        tf.summary.image('rgb_lbl_fb_prediction_ref3_u',tf.expand_dims(rgb_concat_ref3[:,:,:,0],axis=-1))
+        tf.summary.image('rgb_lbl_fb_prediction_ref3_v',tf.expand_dims(rgb_concat_ref3[:,:,:,1],axis=-1))
+
         tf.summary.image('depth_lbl_fb_prediction_ref3',depth_concat_ref3)
-        tf.summary.image('rgbd_lbl_fb_prediction_ref3',rgbd_concat_ref3)
+
+        tf.summary.image('rgbd_lbl_fb_prediction_ref3_u',tf.expand_dims(rgbd_concat_ref3[:,:,:,0],axis=-1))
+        tf.summary.image('rgbd_lbl_fb_prediction_ref3_v',tf.expand_dims(rgbd_concat_ref3[:,:,:,1],axis=-1))
+        tf.summary.image('rgbd_lbl_fb_prediction_ref3_w',tf.expand_dims(rgbd_concat_ref3[:,:,:,2],axis=-1))
 
         tf.summary.image('fb_pc_ref_1_rgb',fb_pc_ref_1_rgb)
         tf.summary.image('fb_pc_ref_2_rgb',fb_pc_ref_2_rgb)
@@ -923,13 +943,28 @@ class DatasetReader:
         tf.summary.image('fb_pc_ref_3_rgbd',fb_pc_ref_3_rgbd)
 
 
-        tf.summary.image('fb_fb_ref_1_rgb',fb_fb_ref_1_rgb)
-        tf.summary.image('fb_fb_ref_2_rgb',fb_fb_ref_2_rgb)
-        tf.summary.image('fb_fb_ref_3_rgb',fb_fb_ref_3_rgb)
+        tf.summary.image('fb_fb_ref_1_rgb_u',tf.expand_dims(fb_fb_ref_1_rgb[:,:,:,0],axis=-1))
+        tf.summary.image('fb_fb_ref_1_rgb_v',tf.expand_dims(fb_fb_ref_1_rgb[:,:,:,1],axis=-1))
 
-        tf.summary.image('fb_fb_ref_1_rgbd',fb_fb_ref_1_rgbd)
-        tf.summary.image('fb_fb_ref_2_rgbd',fb_fb_ref_2_rgbd)
-        tf.summary.image('fb_fb_ref_3_rgbd',fb_fb_ref_3_rgbd)
+        tf.summary.image('fb_fb_ref_2_rgb_u',tf.expand_dims(fb_fb_ref_2_rgb[:,:,:,0],axis=-1))
+        tf.summary.image('fb_fb_ref_2_rgb_v',tf.expand_dims(fb_fb_ref_2_rgb[:,:,:,1],axis=-1))
+
+        tf.summary.image('fb_fb_ref_3_rgb_u',tf.expand_dims(fb_fb_ref_3_rgb[:,:,:,0],axis=-1))
+        tf.summary.image('fb_fb_ref_3_rgb_v',tf.expand_dims(fb_fb_ref_3_rgb[:,:,:,1],axis=-1))
+
+
+
+        tf.summary.image('fb_fb_ref_1_rgbd_u',tf.expand_dims(fb_fb_ref_1_rgbd[:,:,:,0],axis=-1))
+        tf.summary.image('fb_fb_ref_1_rgbd_v',tf.expand_dims(fb_fb_ref_1_rgbd[:,:,:,1],axis=-1))
+        tf.summary.image('fb_fb_ref_1_rgbd_w',tf.expand_dims(fb_fb_ref_1_rgbd[:,:,:,2],axis=-1))
+
+        tf.summary.image('fb_fb_ref_2_rgbd_u',tf.expand_dims(fb_fb_ref_2_rgbd[:,:,:,0],axis=-1))
+        tf.summary.image('fb_fb_ref_2_rgbd_v',tf.expand_dims(fb_fb_ref_2_rgbd[:,:,:,1],axis=-1))
+        tf.summary.image('fb_fb_ref_2_rgbd_w',tf.expand_dims(fb_fb_ref_2_rgbd[:,:,:,2],axis=-1))
+
+        tf.summary.image('fb_fb_ref_3_rgbd_u',tf.expand_dims(fb_fb_ref_3_rgbd[:,:,:,0],axis=-1))
+        tf.summary.image('fb_fb_ref_3_rgbd_v',tf.expand_dims(fb_fb_ref_3_rgbd[:,:,:,1],axis=-1))
+        tf.summary.image('fb_fb_ref_3_rgbd_w',tf.expand_dims(fb_fb_ref_3_rgbd[:,:,:,2],axis=-1))
 
 
 
