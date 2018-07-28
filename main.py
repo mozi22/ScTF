@@ -131,7 +131,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 0
+        self.section_type = 1
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -819,7 +819,7 @@ class DatasetReader:
         # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flows[0])
 
 
-        scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels[:,:,:,0:2],
+        scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
                                                                                 np.array([1,2,4,8,16]),
                                                                                 np.array([1,1,1,1,1]))
 
