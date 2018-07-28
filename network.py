@@ -142,7 +142,7 @@ def change_nans_to_zeros(x):
 def train_network(image_pair,scope_name='down_convs',other_scopes='',prediction_output=3):
 
     # contracting part
-    with tf.variable_scope(scope_name):
+    with tf.variable_scope(scope_name, reuse=tf.AUTO_REUSE):
 
         conv0 = convrelu2(name='conv0', inputs=image_pair, filters=16, kernel_size=5, stride=1,activation=myLeakyRelu)
         conv1 = convrelu2(name='conv1', inputs=conv0, filters=32, kernel_size=5, stride=2,activation=myLeakyRelu)
@@ -161,16 +161,16 @@ def train_network(image_pair,scope_name='down_convs',other_scopes='',prediction_
 
 
     # predict flow
-    with tf.variable_scope('predict_flow5'+other_scopes):
+    with tf.variable_scope('predict_flow5'+other_scopes, reuse=tf.AUTO_REUSE):
         predict_flow4 = _predict_flow(conv5_1,prediction_output)
 
-    with tf.variable_scope('upsample_flow4to3'+other_scopes):
+    with tf.variable_scope('upsample_flow4to3'+other_scopes, reuse=tf.AUTO_REUSE):
         predict_flow4to3 = _upsample_prediction(predict_flow4, prediction_output)
         # predict_flow4to3 = change_nans_to_zeros(predict_flow4to3)
 
 
 
-    with tf.variable_scope('refine4'+other_scopes):
+    with tf.variable_scope('refine4'+other_scopes, reuse=tf.AUTO_REUSE):
         concat4 = _refine(
             inp=conv5_1,
             num_outputs=512,
@@ -182,7 +182,7 @@ def train_network(image_pair,scope_name='down_convs',other_scopes='',prediction_
 
 
     # shape=(8, 20, 32, 384)
-    with tf.variable_scope('refine3'+other_scopes):
+    with tf.variable_scope('refine3'+other_scopes, reuse=tf.AUTO_REUSE):
         concat3 = _refine(
             inp=concat4, 
             num_outputs=256, 
@@ -192,7 +192,7 @@ def train_network(image_pair,scope_name='down_convs',other_scopes='',prediction_
         predict_flow_ref3 = _predict_flow(concat3,prediction_output)
 
     # shape=(8, 40, 64, 192)
-    with tf.variable_scope('refine2'+other_scopes):
+    with tf.variable_scope('refine2'+other_scopes, reuse=tf.AUTO_REUSE):
         concat2 = _refine(
             inp=concat3, 
             num_outputs=128,
@@ -201,7 +201,7 @@ def train_network(image_pair,scope_name='down_convs',other_scopes='',prediction_
         predict_flow_ref2 = _predict_flow(concat2,prediction_output)
 
     # shape=(8, 80, 128, 96)
-    with tf.variable_scope('refine1'+other_scopes):
+    with tf.variable_scope('refine1'+other_scopes, reuse=tf.AUTO_REUSE):
         concat1 = _refine(
             inp=concat2,
             num_outputs=64, 
@@ -210,7 +210,7 @@ def train_network(image_pair,scope_name='down_convs',other_scopes='',prediction_
         predict_flow_ref1 = _predict_flow(concat1,prediction_output)
 
 
-    with tf.variable_scope('refine0'+other_scopes):
+    with tf.variable_scope('refine0'+other_scopes, reuse=tf.AUTO_REUSE):
         concat0 = _refine(
             inp=concat1,
             num_outputs=32, 
@@ -218,7 +218,7 @@ def train_network(image_pair,scope_name='down_convs',other_scopes='',prediction_
         )
 
 
-    with tf.variable_scope('predict_flow2'+other_scopes):
+    with tf.variable_scope('predict_flow2'+other_scopes, reuse=tf.AUTO_REUSE):
 
         predict_flow = _predict_flow(concat0,prediction_output)
     

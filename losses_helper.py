@@ -17,6 +17,7 @@ def photoconsistency_loss(img,predicted_flow, weight=7, scope='photoconsistency_
       warped_img = flow_warp(img1,predicted_flow)
       img2 = get_occulation_aware_image(img2,warped_img)
       img2 = tf.stop_gradient(img2)
+
       # pc_loss = endpoint_loss(img2, warped_img,weight,'pc_loss_backward')
       pc_loss = tf.sqrt((img2**2) + (warped_img**2) + 1e-6)
     else:
@@ -48,7 +49,7 @@ def denormalize_flow(flow):
 
     return tf.concat([u,v],axis=-1)
 
-def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,scope='fb_loss',weight=5):
+def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,scope='fb_loss',weight=5,network_index=0):
 
   with tf.variable_scope(scope):
 
@@ -103,7 +104,10 @@ def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,scope='
 
 
     # step 4
-    fb_loss = sops.replace_nonfinite(endpoint_loss(-B,flow_forward,weight,'fb_loss',True))
+    if network_index == 0:
+      fb_loss = endpoint_loss2(-B,flow_forward,weight,'fb_loss',True)
+    else:
+      fb_loss = endpoint_loss3(-B,flow_forward,weight,'fb_loss',True)
 
     # tf.losses.compute_weighted_loss(fb_loss,weights=weight)
 
@@ -111,7 +115,66 @@ def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,scope='
 
 # loss value ranges around 0.01 to 2.0
 # defined here :: https://arxiv.org/pdf/1702.02295.pdf
-def endpoint_loss(gt_flow,predicted_flow,weight=500,scope='epe_loss',stop_grad=False,summary_type='_train'):
+def endpoint_loss1(gt_flow,predicted_flow,weight=500,scope='epe_loss1',stop_grad=False,summary_type='_train'):
+
+  with tf.variable_scope(scope):
+
+    if stop_grad == False:
+      gt_flow = tf.stop_gradient(gt_flow)
+
+
+    # get u & v value for gt
+    gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
+
+    # get u & v value for predicted_flow
+    pred_u = tf.slice(predicted_flow,[0,0,0,0],[-1,-1,-1,1])
+
+
+    diff_u = sops.replace_nonfinite(gt_u - pred_u)
+
+    epe_loss = tf.sqrt((diff_u**2)  + 1e-6)
+
+    epe_loss = tf.reduce_mean(sops.replace_nonfinite(epe_loss))
+
+    epe_loss = tf.check_numerics(epe_loss,'numeric checker')
+    # epe_loss = tf.Print(epe_loss,[epe_loss],'epeloss ye hai ')
+
+    tf.losses.compute_weighted_loss(epe_loss,weights=weight)
+  
+  return epe_loss
+
+def endpoint_loss2(gt_flow,predicted_flow,weight=500,scope='epe_loss2',stop_grad=False,summary_type='_train'):
+
+  with tf.variable_scope(scope):
+
+    if stop_grad == False:
+      gt_flow = tf.stop_gradient(gt_flow)
+
+
+    # get u & v value for gt
+    gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
+    gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
+
+    # get u & v value for predicted_flow
+    pred_u = tf.slice(predicted_flow,[0,0,0,0],[-1,-1,-1,1])
+    pred_v = tf.slice(predicted_flow,[0,0,0,1],[-1,-1,-1,1])
+
+
+    diff_u = sops.replace_nonfinite(gt_u - pred_u)
+    diff_v = sops.replace_nonfinite(gt_v - pred_v)
+
+    epe_loss = tf.sqrt((diff_u**2) + (diff_v**2) + 1e-6)
+
+    epe_loss = tf.reduce_mean(sops.replace_nonfinite(epe_loss))
+
+    epe_loss = tf.check_numerics(epe_loss,'numeric checker')
+    # epe_loss = tf.Print(epe_loss,[epe_loss],'epeloss ye hai ')
+
+    tf.losses.compute_weighted_loss(epe_loss,weights=weight)
+  
+  return epe_loss
+
+def endpoint_loss3(gt_flow,predicted_flow,weight=500,scope='epe_loss3',stop_grad=False,summary_type='_train'):
 
   with tf.variable_scope(scope):
 

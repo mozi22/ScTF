@@ -722,13 +722,13 @@ class DatasetReader:
         depth_concatenated = tf.concat([tf.expand_dims(concatenated_FB_images[:,:,:,3],axis=-1),tf.expand_dims(concatenated_FB_images[:,:,:,7],axis=-1)],axis=-1)
 
         # Build inference Graph. - forward flow
-        predict_flows_rgb = network.train_network(rgb_rgb_concatenated,'ev1_opt','ev1_opt',2)
+        predict_flows_uv = network.train_network(rgb_rgb_concatenated,'ev1_opt','ev1_opt',2)
         predict_flows_d = network.train_network(depth_concatenated,'ev1_d','ev1_d',1)
 
-        pred_flow_rgb = predict_flows_rgb[0]
-        pred_flow_rgb_ref1 = predict_flows_rgb[1]
-        pred_flow_rgb_ref2 = predict_flows_rgb[2]
-        pred_flow_rgb_ref3 = predict_flows_rgb[3]
+        pred_flow_rgb = predict_flows_uv[0]
+        pred_flow_rgb_ref1 = predict_flows_uv[1]
+        pred_flow_rgb_ref2 = predict_flows_uv[2]
+        pred_flow_rgb_ref3 = predict_flows_uv[3]
 
 
         pred_flow_d = predict_flows_d[0]
@@ -736,20 +736,20 @@ class DatasetReader:
         pred_flow_d_ref2 = predict_flows_d[2]
         pred_flow_d_ref3 = predict_flows_d[3]
 
-        predict_flows_rgbd = tf.concat([pred_flow_rgb,pred_flow_d],axis=-1)
-        predict_flows_rgbd_ref1 = tf.concat([pred_flow_rgb_ref1,pred_flow_d_ref1],axis=-1)
-        predict_flows_rgbd_ref2 = tf.concat([pred_flow_rgb_ref2,pred_flow_d_ref2],axis=-1)
-        predict_flows_rgbd_ref3 = tf.concat([pred_flow_rgb_ref3,pred_flow_d_ref3],axis=-1)
+        predict_flows_uvw = tf.concat([pred_flow_rgb,pred_flow_d],axis=-1)
+        predict_flows_uvw_ref1 = tf.concat([pred_flow_rgb_ref1,pred_flow_d_ref1],axis=-1)
+        predict_flows_uvw_ref2 = tf.concat([pred_flow_rgb_ref2,pred_flow_d_ref2],axis=-1)
+        predict_flows_uvw_ref3 = tf.concat([pred_flow_rgb_ref3,pred_flow_d_ref3],axis=-1)
 
-        predict_flows_rgbd = network.train_network(depth_concatenated,'ev1_rgbd','ev1_rgbd',3)
+        predict_flows_uvw = network.train_network(depth_concatenated,'ev1_rgbd','ev1_rgbd',3)
 
 
 
         # minimize losses
 
-        flows_dict = self.get_predict_flow_forward_backward(predict_flows_rgb)
+        flows_dict = self.get_predict_flow_forward_backward(predict_flows_uv)
         flows_dict2 = self.get_predict_flow_forward_backward(predict_flows_d)
-        flows_dict3 = self.get_predict_flow_forward_backward(predict_flows_rgbd)
+        flows_dict3 = self.get_predict_flow_forward_backward(predict_flows_uvw)
 
 
         _, flow_B_ref3 = losses_helper.forward_backward_loss(flows_dict['predict_flow_ref3'][0],flows_dict['predict_flow_ref3'][1],scope='fb_ref_3_rgb'+summary_type)
@@ -770,37 +770,41 @@ class DatasetReader:
         network_input_labels_refine2 = losses_helper.downsample_label(network_input_labels,size=[40,64],factorU=0.25,factorV=0.25)
         network_input_labels_refine1 = losses_helper.downsample_label(network_input_labels,size=[80,128],factorU=0.5,factorV=0.5)
 
-        _ = losses_helper.endpoint_loss(network_input_labels[:,:,:,0:3],flows_dict['predict_flow'][0],scope='epe_loss_rgb'+summary_type,summary_type=summary_type + 'epe_loss_rgb')
-        _ = losses_helper.endpoint_loss(tf.expand_dims(network_input_labels[:,:,:,3],axis=-1),flows_dict2['predict_flow'][0],scope='epe_loss_d'+summary_type,summary_type=summary_type + 'epe_loss_d')
-        _ = losses_helper.endpoint_loss(network_input_labels,flows_dict3['predict_flow'][0],scope='epe_loss_rgbd'+summary_type,summary_type=summary_type + 'epe_loss_rgbd')
 
-        _ = losses_helper.endpoint_loss(network_input_labels_refine3[:,:,:,0:3],flows_dict['predict_flow_ref3'][0],100,scope='epe_ref_3_rgb'+summary_type,summary_type=summary_type + 'epe_ref_3_rgb')
-        _ = losses_helper.endpoint_loss(network_input_labels_refine2[:,:,:,0:3],flows_dict['predict_flow_ref2'][0],100,scope='epe_ref_2_rgb'+summary_type,summary_type=summary_type + 'epe_ref_2_rgb')
-        _ = losses_helper.endpoint_loss(network_input_labels_refine1[:,:,:,0:3],flows_dict['predict_flow_ref1'][0],100,scope='epe_ref_1_rgb'+summary_type,summary_type=summary_type + 'epe_ref_1_rgb')
+        _ = losses_helper.endpoint_loss2(network_input_labels[:,:,:,0:2],flows_dict['predict_flow'][0],scope='epe_loss_rgb'+summary_type,summary_type=summary_type + 'epe_loss_rgb')
+        _ = losses_helper.endpoint_loss1(tf.expand_dims(network_input_labels[:,:,:,2],axis=-1),flows_dict2['predict_flow'][0],scope='epe_loss_d'+summary_type,summary_type=summary_type + 'epe_loss_d')
+        _ = losses_helper.endpoint_loss3(network_input_labels,flows_dict3['predict_flow'][0],scope='epe_loss_rgbd'+summary_type,summary_type=summary_type + 'epe_loss_rgbd')
 
-        _ = losses_helper.endpoint_loss(tf.expand_dims(network_input_labels_refine3[:,:,:,3],axis=-1),flows_dict2['predict_flow_ref3'][0],100,scope='epe_ref_3_d'+summary_type,summary_type=summary_type + 'epe_ref_3_d')
-        _ = losses_helper.endpoint_loss(tf.expand_dims(network_input_labels_refine2[:,:,:,3],axis=-1),flows_dict2['predict_flow_ref2'][0],100,scope='epe_ref_2_d'+summary_type,summary_type=summary_type + 'epe_ref_2_d')
-        _ = losses_helper.endpoint_loss(tf.expand_dims(network_input_labels_refine1[:,:,:,3],axis=-1),flows_dict2['predict_flow_ref1'][0],100,scope='epe_ref_1_d'+summary_type,summary_type=summary_type + 'epe_ref_1_d')
+        _ = losses_helper.endpoint_loss2(network_input_labels_refine3[:,:,:,0:2],flows_dict['predict_flow_ref3'][0],100,scope='epe_ref_3_rgb'+summary_type,summary_type=summary_type + 'epe_ref_3_rgb')
+        _ = losses_helper.endpoint_loss1(tf.expand_dims(network_input_labels_refine3[:,:,:,2],axis=-1),flows_dict2['predict_flow_ref3'][0],100,scope='epe_ref_3_d'+summary_type,summary_type=summary_type + 'epe_ref_3_d')
+        _ = losses_helper.endpoint_loss3(network_input_labels_refine3,flows_dict3['predict_flow_ref3'][0],100,scope='epe_ref_3_rgbd'+summary_type,summary_type=summary_type + 'epe_ref_3_rgbd')
 
-        _ = losses_helper.endpoint_loss(network_input_labels_refine3,flows_dict3['predict_flow_ref3'][0],100,scope='epe_ref_3_rgbd'+summary_type,summary_type=summary_type + 'epe_ref_3_rgbd')
-        _ = losses_helper.endpoint_loss(network_input_labels_refine2,flows_dict3['predict_flow_ref2'][0],100,scope='epe_ref_2_rgbd'+summary_type,summary_type=summary_type + 'epe_ref_2_rgbd')
-        _ = losses_helper.endpoint_loss(network_input_labels_refine1,flows_dict3['predict_flow_ref1'][0],100,scope='epe_ref_1_rgbd'+summary_type,summary_type=summary_type + 'epe_ref_1_rgbd')
+        _ = losses_helper.endpoint_loss2(network_input_labels_refine2[:,:,:,0:2],flows_dict['predict_flow_ref2'][0],100,scope='epe_ref_2_rgb'+summary_type,summary_type=summary_type + 'epe_ref_2_rgb')
+        _ = losses_helper.endpoint_loss1(tf.expand_dims(network_input_labels_refine2[:,:,:,2],axis=-1),flows_dict2['predict_flow_ref2'][0],100,scope='epe_ref_2_d'+summary_type,summary_type=summary_type + 'epe_ref_2_d')
+        _ = losses_helper.endpoint_loss3(network_input_labels_refine2,flows_dict3['predict_flow_ref2'][0],100,scope='epe_ref_2_rgbd'+summary_type,summary_type=summary_type + 'epe_ref_2_rgbd')
+
+        _ = losses_helper.endpoint_loss2(network_input_labels_refine1[:,:,:,0:2],flows_dict['predict_flow_ref1'][0],100,scope='epe_ref_1_rgb'+summary_type,summary_type=summary_type + 'epe_ref_1_rgb')
+        _ = losses_helper.endpoint_loss1(tf.expand_dims(network_input_labels_refine1[:,:,:,2],axis=-1),flows_dict2['predict_flow_ref1'][0],100,scope='epe_ref_1_d'+summary_type,summary_type=summary_type + 'epe_ref_1_d')
+        _ = losses_helper.endpoint_loss3(network_input_labels_refine1,flows_dict3['predict_flow_ref1'][0],100,scope='epe_ref_1_rgbd'+summary_type,summary_type=summary_type + 'epe_ref_1_rgbd')
 
 
         '''
             Applying sigl loss on full resolution only
         '''
 
-        scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,np.array([1,2,4,8,16]),np.array([1,1,1,1,1]))
-        scale_invariant_gradient_image_rgb = losses_helper.scale_invariant_gradient(flows_dict['predict_flow'][0],np.array([1,2,4,8,16]),np.array([1,1,1,1,1]))
+        scale_invariant_gradient_image_gt_uvw = losses_helper.scale_invariant_gradient(network_input_labels,np.array([1,2,4,8,16]),np.array([1,1,1,1,1]))
+        scale_invariant_gradient_image_gt_uv = losses_helper.scale_invariant_gradient(network_input_labels[:,:,:,0:2],np.array([1,2,4,8,16]),np.array([1,1,1,1,1]))
+        scale_invariant_gradient_image_gt_d = losses_helper.scale_invariant_gradient(tf.expand_dims(network_input_labels[:,:,:,2],axis=-1),np.array([1,2,4,8,16]),np.array([1,1,1,1,1]))
+
+        scale_invariant_gradient_image_uv = losses_helper.scale_invariant_gradient(flows_dict['predict_flow'][0],np.array([1,2,4,8,16]),np.array([1,1,1,1,1]))
         scale_invariant_gradient_image_d = losses_helper.scale_invariant_gradient(flows_dict2['predict_flow'][0],np.array([1,2,4,8,16]),np.array([1,1,1,1,1]))
-        scale_invariant_gradient_image_rgbd = losses_helper.scale_invariant_gradient(flows_dict3['predict_flow'][0],np.array([1,2,4,8,16]),np.array([1,1,1,1,1]))
+        scale_invariant_gradient_image_uvw = losses_helper.scale_invariant_gradient(flows_dict3['predict_flow'][0],np.array([1,2,4,8,16]),np.array([1,1,1,1,1]))
 
 
 
         _ = losses_helper.scale_invariant_gradient_loss(
-                scale_invariant_gradient_image_rgb,
-                scale_invariant_gradient_image_gt[:,:,:,0:3],
+                scale_invariant_gradient_image_uv,
+                scale_invariant_gradient_image_gt_uv,
                 0.0001,
                 self.FLAGS['MAX_STEPS'],
                 self.global_step,
@@ -809,7 +813,7 @@ class DatasetReader:
 
         _ = losses_helper.scale_invariant_gradient_loss(
                 scale_invariant_gradient_image_d,
-                tf.expand_dims(scale_invariant_gradient_image_gt[:,:,:,3],axis=-1),
+                scale_invariant_gradient_image_gt_d,
                 0.0001,
                 self.FLAGS['MAX_STEPS'],
                 self.global_step,
@@ -817,8 +821,8 @@ class DatasetReader:
                 'scale_invariant_gradient_loss_d'+summary_type)
 
         _ = losses_helper.scale_invariant_gradient_loss(
-                scale_invariant_gradient_image_rgbd,
-                scale_invariant_gradient_image_gt,
+                scale_invariant_gradient_image_uvw,
+                scale_invariant_gradient_image_gt_uvw,
                 0.0001,
                 self.FLAGS['MAX_STEPS'],
                 self.global_step,
@@ -833,19 +837,21 @@ class DatasetReader:
         network_input_images_refine2 = tf.image.resize_images(network_input_images,[40,64],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
         network_input_images_refine1 = tf.image.resize_images(network_input_images,[80,128],method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-        _, f_pc_ref_3_rgb = losses_helper.photoconsistency_loss(network_input_images_refine3[:,:,:,0:3],flows_dict['predict_flow_ref3'][0],7,'f_pc_ref_3_rgb'+summary_type)
-        _, f_pc_ref_2_rgb = losses_helper.photoconsistency_loss(network_input_images_refine2[:,:,:,0:3],flows_dict['predict_flow_ref2'][0],7,'f_pc_ref_2_rgb'+summary_type)
-        _, f_pc_ref_1_rgb = losses_helper.photoconsistency_loss(network_input_images_refine1[:,:,:,0:3],flows_dict['predict_flow_ref1'][0],7,'f_pc_ref_1_rgb'+summary_type)
-
-        _, b_pc_ref_3_rgb = losses_helper.photoconsistency_loss(network_input_images_refine3[:,:,:,0:3],flows_dict['predict_flow_ref3'][1],7,'b_pc_ref_3_rgb'+summary_type,'backward')
-        _, b_pc_ref_2_rgb = losses_helper.photoconsistency_loss(network_input_images_refine2[:,:,:,0:3],flows_dict['predict_flow_ref2'][1],7,'b_pc_ref_2_rgb'+summary_type,'backward')
-        _, b_pc_ref_1_rgb = losses_helper.photoconsistency_loss(network_input_images_refine1[:,:,:,0:3],flows_dict['predict_flow_ref1'][1],7,'b_pc_ref_1_rgb'+summary_type,'backward')
+        _, f_pc_ref_3_rgb = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][0],7,'f_pc_ref_3_rgb'+summary_type)
+        _, b_pc_ref_3_rgb = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict['predict_flow_ref3'][1],7,'b_pc_ref_3_rgb'+summary_type,'backward')
 
         _, f_pc_ref_3_rgbd = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict3['predict_flow_ref3'][0],7,'f_pc_ref_3_rgbd'+summary_type)
+        _, b_pc_ref_3_rgbd = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict3['predict_flow_ref3'][1],7,'b_pc_ref_3_rgbd'+summary_type,'backward')
+
+        _, f_pc_ref_2_rgb = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][0],7,'f_pc_ref_2_rgb'+summary_type)
+        _, f_pc_ref_1_rgb = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][0],7,'f_pc_ref_1_rgb'+summary_type)
+
+        _, b_pc_ref_2_rgb = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict['predict_flow_ref2'][1],7,'b_pc_ref_2_rgb'+summary_type,'backward')
+        _, b_pc_ref_1_rgb = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict['predict_flow_ref1'][1],7,'b_pc_ref_1_rgb'+summary_type,'backward')
+
         _, f_pc_ref_2_rgbd = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict3['predict_flow_ref2'][0],7,'f_pc_ref_2_rgbd'+summary_type)
         _, f_pc_ref_1_rgbd = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict3['predict_flow_ref1'][0],7,'f_pc_ref_1_rgbd'+summary_type)
 
-        _, b_pc_ref_3_rgbd = losses_helper.photoconsistency_loss(network_input_images_refine3,flows_dict3['predict_flow_ref3'][1],7,'b_pc_ref_3_rgbd'+summary_type,'backward')
         _, b_pc_ref_2_rgbd = losses_helper.photoconsistency_loss(network_input_images_refine2,flows_dict3['predict_flow_ref2'][1],7,'b_pc_ref_2_rgbd'+summary_type,'backward')
         _, b_pc_ref_1_rgbd = losses_helper.photoconsistency_loss(network_input_images_refine1,flows_dict3['predict_flow_ref1'][1],7,'b_pc_ref_1_rgbd'+summary_type,'backward')
 
@@ -853,33 +859,41 @@ class DatasetReader:
 
 
         ######## summaries ########
-        rgb_concat = tf.concat([network_input_labels[:,:,:,0:3],flows_dict['predict_flow'][0],flows_dict['predict_flow'][1]],axis=2)
-        depth_concat = tf.concat([tf.expand_dims(network_input_labels[:,:,:,3],axis=-1),flows_dict2['predict_flow'][0],flows_dict2['predict_flow'][1]],axis=2)
+        rgb_concat = tf.concat([network_input_labels[:,:,:,0:2],flows_dict['predict_flow'][0],flows_dict['predict_flow'][1]],axis=2)
+        depth_concat = tf.concat([tf.expand_dims(network_input_labels[:,:,:,2],axis=-1),flows_dict2['predict_flow'][0],flows_dict2['predict_flow'][1]],axis=2)
         rgbd_concat = tf.concat([network_input_labels,flows_dict3['predict_flow'][0],flows_dict3['predict_flow'][1]],axis=2)
 
-        rgb_concat_ref1 = tf.concat([network_input_labels_refine1[:,:,:,0:3],flows_dict['predict_flow_ref1'][0],flows_dict['predict_flow_ref1'][1]],axis=2)
-        depth_concat_ref1 = tf.concat([tf.expand_dims(network_input_labels_refine1[:,:,:,3],axis=-1),flows_dict2['predict_flow_ref1'][0],flows_dict2['predict_flow_ref1'][1]],axis=2)
+        rgb_concat_ref1 = tf.concat([network_input_labels_refine1[:,:,:,0:2],flows_dict['predict_flow_ref1'][0],flows_dict['predict_flow_ref1'][1]],axis=2)
+        depth_concat_ref1 = tf.concat([tf.expand_dims(network_input_labels_refine1[:,:,:,2],axis=-1),flows_dict2['predict_flow_ref1'][0],flows_dict2['predict_flow_ref1'][1]],axis=2)
         rgbd_concat_ref1 = tf.concat([network_input_labels_refine1,flows_dict3['predict_flow_ref1'][0],flows_dict3['predict_flow_ref1'][1]],axis=2)
 
-        rgb_concat_ref2 = tf.concat([network_input_labels_refine1[:,:,:,0:3],flows_dict['predict_flow_ref2'][0],flows_dict['predict_flow_ref2'][1]],axis=2)
-        depth_concat_ref2 = tf.concat([tf.expand_dims(network_input_labels_refine1[:,:,:,3],axis=-1),flows_dict2['predict_flow_ref2'][0],flows_dict2['predict_flow_ref2'][1]],axis=2)
-        rgbd_concat_ref2 = tf.concat([network_input_labels_refine1,flows_dict3['predict_flow_ref2'][0],flows_dict3['predict_flow_ref2'][1]],axis=2)
+        rgb_concat_ref2 = tf.concat([network_input_labels_refine2[:,:,:,0:2],flows_dict['predict_flow_ref2'][0],flows_dict['predict_flow_ref2'][1]],axis=2)
+        depth_concat_ref2 = tf.concat([tf.expand_dims(network_input_labels_refine2[:,:,:,2],axis=-1),flows_dict2['predict_flow_ref2'][0],flows_dict2['predict_flow_ref2'][1]],axis=2)
+        rgbd_concat_ref2 = tf.concat([network_input_labels_refine2,flows_dict3['predict_flow_ref2'][0],flows_dict3['predict_flow_ref2'][1]],axis=2)
 
-        rgb_concat_ref3 = tf.concat([network_input_labels_refine3[:,:,:,0:3],flows_dict['predict_flow_ref3'][0],flows_dict['predict_flow_ref3'][1]],axis=2)
-        depth_concat_ref3 = tf.concat([tf.expand_dims(network_input_labels_refine3[:,:,:,3],axis=-1),flows_dict2['predict_flow_ref3'][0],flows_dict2['predict_flow_ref3'][1]],axis=2)
+        rgb_concat_ref3 = tf.concat([network_input_labels_refine3[:,:,:,0:2],flows_dict['predict_flow_ref3'][0],flows_dict['predict_flow_ref3'][1]],axis=2)
+        depth_concat_ref3 = tf.concat([tf.expand_dims(network_input_labels_refine3[:,:,:,2],axis=-1),flows_dict2['predict_flow_ref3'][0],flows_dict2['predict_flow_ref3'][1]],axis=2)
         rgbd_concat_ref3 = tf.concat([network_input_labels_refine3,flows_dict3['predict_flow_ref3'][0],flows_dict3['predict_flow_ref3'][1]],axis=2)
 
-        rgb_input = tf.concat([rgb_rgb_concatenated[:,:,:,0:3],rgb_rgb_concatenated[:,:,:,3:5]],axis=2)
+        rgb_input = tf.concat([rgb_rgb_concatenated[:,:,:,0:3],rgb_rgb_concatenated[:,:,:,3:6 ]],axis=2)
         d_input = tf.concat([tf.expand_dims(depth_concatenated[:,:,:,0],axis=-1),tf.expand_dims(depth_concatenated[:,:,:,1],axis=-1)],axis=2)
 
-        warped_fb_rgb_3_2_1 = tf.concat([flow_B_ref3,flow_B_ref2,flow_B_ref1],axis=2)
-        warped_fb_rgbd_3_2_1 = tf.concat([flow3_B_ref3,flow3_B_ref2,flow3_B_ref1],axis=2)
+        fb_pc_ref_1_rgb = tf.concat([network_input_images_refine1[:,:,:,0:3],f_pc_ref_1_rgb,b_pc_ref_1_rgb],axis=2)
+        fb_pc_ref_2_rgb = tf.concat([network_input_images_refine2[:,:,:,0:3],f_pc_ref_2_rgb,b_pc_ref_2_rgb],axis=2)
+        fb_pc_ref_3_rgb = tf.concat([network_input_images_refine3[:,:,:,0:3],f_pc_ref_3_rgb,b_pc_ref_3_rgb],axis=2)
 
-        f_pc_ref_rgb_concatenated = tf.concat([f_pc_ref_3_rgb,f_pc_ref_2_rgb,f_pc_ref_1_rgb],axis=2)
-        b_pc_ref_rgb_concatenated = tf.concat([b_pc_ref_3_rgb,b_pc_ref_2_rgb,b_pc_ref_1_rgb],axis=2)
+        fb_pc_ref_1_rgbd = tf.concat([network_input_images_refine1[:,:,:,0:3],f_pc_ref_1_rgbd,b_pc_ref_1_rgbd],axis=2)
+        fb_pc_ref_2_rgbd = tf.concat([network_input_images_refine2[:,:,:,0:3],f_pc_ref_2_rgbd,b_pc_ref_2_rgbd],axis=2)
+        fb_pc_ref_3_rgbd = tf.concat([network_input_images_refine3[:,:,:,0:3],f_pc_ref_3_rgbd,b_pc_ref_3_rgbd],axis=2)
 
-        f_pc_ref_rgbd_concatenated = tf.concat([f_pc_ref_3_rgbd,f_pc_ref_2_rgbd,f_pc_ref_1_rgbd],axis=2)
-        b_pc_ref_rgbd_concatenated = tf.concat([b_pc_ref_3_rgbd,b_pc_ref_2_rgbd,b_pc_ref_1_rgbd],axis=2)
+        fb_fb_ref_1_rgbd = tf.concat([flows_dict3['predict_flow_ref1'][0],flow3_B_ref1],axis=2)
+        fb_fb_ref_2_rgbd = tf.concat([flows_dict3['predict_flow_ref2'][0],flow3_B_ref2],axis=2)
+        fb_fb_ref_3_rgbd = tf.concat([flows_dict3['predict_flow_ref3'][0],flow3_B_ref3],axis=2)
+
+        fb_fb_ref_1_rgb = tf.concat([flows_dict['predict_flow_ref1'][0],flow_B_ref1],axis=2)
+        fb_fb_ref_2_rgb = tf.concat([flows_dict['predict_flow_ref2'][0],flow_B_ref2],axis=2)
+        fb_fb_ref_3_rgb = tf.concat([flows_dict['predict_flow_ref3'][0],flow_B_ref3],axis=2)
+
 
         tf.summary.image('rgb_rgb_input',rgb_input)
         tf.summary.image('d_input',d_input)
@@ -900,14 +914,22 @@ class DatasetReader:
         tf.summary.image('depth_lbl_fb_prediction_ref3',depth_concat_ref3)
         tf.summary.image('rgbd_lbl_fb_prediction_ref3',rgbd_concat_ref3)
 
-        tf.summary.image('warped_fb_rgb',warped_fb_rgb_3_2_1)
-        tf.summary.image('warped_fb_rgbd',warped_fb_rgbd_3_2_1)
+        tf.summary.image('fb_pc_ref_1_rgb',fb_pc_ref_1_rgb)
+        tf.summary.image('fb_pc_ref_2_rgb',fb_pc_ref_2_rgb)
+        tf.summary.image('fb_pc_ref_3_rgb',fb_pc_ref_3_rgb)
 
-        tf.summary.image('warped_f_pc_rgb',f_pc_ref_rgb_concatenated)
-        tf.summary.image('warped_b_pc_rgb',b_pc_ref_rgb_concatenated)
+        tf.summary.image('fb_pc_ref_1_rgbd',fb_pc_ref_1_rgbd)
+        tf.summary.image('fb_pc_ref_2_rgbd',fb_pc_ref_2_rgbd)
+        tf.summary.image('fb_pc_ref_3_rgbd',fb_pc_ref_3_rgbd)
 
-        tf.summary.image('warped_f_pc_rgbd',f_pc_ref_rgbd_concatenated)
-        tf.summary.image('warped_b_pc_rgbd',b_pc_ref_rgbd_concatenated)
+
+        tf.summary.image('fb_fb_ref_1_rgb',fb_fb_ref_1_rgb)
+        tf.summary.image('fb_fb_ref_2_rgb',fb_fb_ref_2_rgb)
+        tf.summary.image('fb_fb_ref_3_rgb',fb_fb_ref_3_rgb)
+
+        tf.summary.image('fb_fb_ref_1_rgbd',fb_fb_ref_1_rgbd)
+        tf.summary.image('fb_fb_ref_2_rgbd',fb_fb_ref_2_rgbd)
+        tf.summary.image('fb_fb_ref_3_rgbd',fb_fb_ref_3_rgbd)
 
 
 
