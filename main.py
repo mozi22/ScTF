@@ -718,17 +718,38 @@ class DatasetReader:
         # FB = forward-backward
         concatenated_FB_images = tf.concat([network_input_images,network_input_images_back],axis=0)
 
+        rgb_rgb_concatenated = tf.concat([concatenated_FB_images[:,:,:,0:3],concatenated_FB_images[:,:,:,4:7]],axis=-1)
+        depth_concatenated = tf.concat([tf.expand_dims(concatenated_FB_images[:,:,:,3],axis=-1),tf.expand_dims(concatenated_FB_images[:,:,:,7],axis=-1)],axis=-1)
+
         # Build inference Graph. - forward flow
-        predict_flows = network.train_network(concatenated_FB_images)
-        predict_flows2 = network.train_network(predict_flows[0],'s_evolution2','s_evolution2')
+        predict_flows_rgb = network.train_network(rgb_rgb_concatenated,'ev1_opt','ev1_opt',2)
+        predict_flows_d = network.train_network(depth_concatenated,'ev1_d','ev1_d',1)
+
+        pred_flow_rgb = predict_flows_rgb[0]
+        pred_flow_rgb_ref1 = predict_flows_rgb[1]
+        pred_flow_rgb_ref2 = predict_flows_rgb[2]
+        pred_flow_rgb_ref3 = predict_flows_rgb[3]
 
 
-        self.write_forward_backward_images(network_input_images,network_input_images_back,network_input_labels,network_input_labels_back,summary_type)
-        flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images,summary_type)
-        flows_dict2 = self.get_predict_flow_forward_backward(predict_flows2,network_input_labels,concatenated_FB_images,summary_type)
+        pred_flow_d = predict_flows_d[0]
+        pred_flow_d_ref1 = predict_flows_d[1]
+        pred_flow_d_ref2 = predict_flows_d[2]
+        pred_flow_d_ref3 = predict_flows_d[3]
 
-        self.write_flows_concatenated_side_by_side(network_input_images,network_input_labels,flows_dict['predict_flow'][0],summary_type)
-        self.write_flows_concatenated_side_by_side(network_input_images,network_input_labels,flows_dict2['predict_flow'][0],summary_type +'_evoltuion2')
+        predict_flows_rgbd = tf.concat([pred_flow_rgb,pred_flow_d],axis=-1)
+        predict_flows_rgbd_ref1 = tf.concat([pred_flow_rgb_ref1,pred_flow_d_ref1],axis=-1)
+        predict_flows_rgbd_ref2 = tf.concat([pred_flow_rgb_ref2,pred_flow_d_ref2],axis=-1)
+        predict_flows_rgbd_ref3 = tf.concat([pred_flow_rgb_ref3,pred_flow_d_ref3],axis=-1)
+
+        predict_flows_rgbd = network.train_network(depth_concatenated,'ev1_rgbd','ev1_rgbd',1)
+
+
+        # self.write_forward_backward_images(network_input_images,network_input_images_back,network_input_labels,network_input_labels_back,summary_type)
+        # flows_dict = self.get_predict_flow_forward_backward(predict_flows,network_input_labels,concatenated_FB_images,summary_type)
+        # flows_dict2 = self.get_predict_flow_forward_backward(predict_flows2,network_input_labels,concatenated_FB_images,summary_type)
+
+        # self.write_flows_concatenated_side_by_side(network_input_images,network_input_labels,flows_dict['predict_flow'][0],summary_type)
+        # self.write_flows_concatenated_side_by_side(network_input_images,network_input_labels,flows_dict2['predict_flow'][0],summary_type +'_evoltuion2')
 
 
         # # remove middlebury
@@ -819,7 +840,7 @@ class DatasetReader:
         # _ = losses_helper.depth_consistency_loss(network_input_images,predict_flows[0])
 
 
-        scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels[:,:,:,0:2],
+        scale_invariant_gradient_image_gt = losses_helper.scale_invariant_gradient(network_input_labels,
                                                                                 np.array([1,2,4,8,16]),
                                                                                 np.array([1,1,1,1,1]))
 
@@ -893,6 +914,9 @@ class DatasetReader:
         predict_flow_ref3 = predict_flows[3]
         # predict_flow_ref4 = predict_flows[4]
 
+
+
+
         # for other losses, we only consider forward flow
         predict_flow_forward = predict_flow[0:batch_half,:,:,:]
         predict_flow_backward = predict_flow[batch_half:batch_size,:,:,:]
@@ -926,36 +950,47 @@ class DatasetReader:
 
         concatenated_fb_ref3_u = tf.concat([tf.expand_dims(predict_flow_forward_ref3[0:4,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward_ref3[0:4,:,:,0],axis=-1)],axis=-2)
         concatenated_fb_ref3_v = tf.concat([tf.expand_dims(predict_flow_forward_ref3[0:4,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward_ref3[0:4,:,:,1],axis=-1)],axis=-2)
+        concatenated_fb_ref3_w = tf.concat([tf.expand_dims(predict_flow_forward_ref3[0:4,:,:,2],axis=-1),tf.expand_dims(predict_flow_backward_ref3[0:4,:,:,2],axis=-1)],axis=-2)
 
         concatenated_fb_ref2_u = tf.concat([tf.expand_dims(predict_flow_forward_ref2[0:4,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward_ref2[0:4,:,:,0],axis=-1)],axis=-2)
         concatenated_fb_ref2_v = tf.concat([tf.expand_dims(predict_flow_forward_ref2[0:4,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward_ref2[0:4,:,:,1],axis=-1)],axis=-2)
+        concatenated_fb_ref2_w = tf.concat([tf.expand_dims(predict_flow_forward_ref2[0:4,:,:,2],axis=-1),tf.expand_dims(predict_flow_backward_ref2[0:4,:,:,2],axis=-1)],axis=-2)
 
         concatenated_fb_u = tf.concat([tf.expand_dims(predict_flow_forward[0:4,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward[0:4,:,:,0],axis=-1)],axis=-2)
         concatenated_fb_v = tf.concat([tf.expand_dims(predict_flow_forward[0:4,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward[0:4,:,:,1],axis=-1)],axis=-2)
+        concatenated_fb_w = tf.concat([tf.expand_dims(predict_flow_forward[0:4,:,:,2],axis=-1),tf.expand_dims(predict_flow_backward[0:4,:,:,2],axis=-1)],axis=-2)
 
         concatenated_fb_u_monkaa = tf.concat([tf.expand_dims(predict_flow_forward[4:8,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward[4:8,:,:,0],axis=-1)],axis=-2)
         concatenated_fb_v_monkaa = tf.concat([tf.expand_dims(predict_flow_forward[4:8,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward[4:8,:,:,1],axis=-1)],axis=-2)
+        concatenated_fb_w_monkaa = tf.concat([tf.expand_dims(predict_flow_forward[4:8,:,:,2],axis=-1),tf.expand_dims(predict_flow_backward[4:8,:,:,2],axis=-1)],axis=-2)
 
         concatenated_fb_u_ptb = tf.concat([tf.expand_dims(predict_flow_forward[8:12,:,:,0],axis=-1),tf.expand_dims(predict_flow_backward[8:12,:,:,0],axis=-1)],axis=-2)
         concatenated_fb_v_ptb = tf.concat([tf.expand_dims(predict_flow_forward[8:12,:,:,1],axis=-1),tf.expand_dims(predict_flow_backward[8:12,:,:,1],axis=-1)],axis=-2)
+        concatenated_fb_w_ptb = tf.concat([tf.expand_dims(predict_flow_forward[8:12,:,:,2],axis=-1),tf.expand_dims(predict_flow_backward[8:12,:,:,2],axis=-1)],axis=-2)
 
         # tf.summary.image('concatenated_fb_ref4_u'+summary_type,concatenated_fb_ref4_u)
         # tf.summary.image('concatenated_fb_ref4_v'+summary_type,concatenated_fb_ref4_v)
 
         tf.summary.image('concatenated_fb_ref3_u'+summary_type,concatenated_fb_ref3_u)
         tf.summary.image('concatenated_fb_ref3_v'+summary_type,concatenated_fb_ref3_v)
+        tf.summary.image('concatenated_fb_ref3_w'+summary_type,concatenated_fb_ref3_w)
+
 
         tf.summary.image('concatenated_fb_ref2_u'+summary_type,concatenated_fb_ref2_u)
         tf.summary.image('concatenated_fb_ref2_v'+summary_type,concatenated_fb_ref2_v)
+        tf.summary.image('concatenated_fb_ref2_w'+summary_type,concatenated_fb_ref2_w)
 
         tf.summary.image('concatenated_fb_final_u'+summary_type,concatenated_fb_u)
         tf.summary.image('concatenated_fb_final_v'+summary_type,concatenated_fb_v)
+        tf.summary.image('concatenated_fb_final_w'+summary_type,concatenated_fb_w)
 
         tf.summary.image('concatenated_fb_final_u_monkaa'+summary_type,concatenated_fb_u_monkaa)
         tf.summary.image('concatenated_fb_final_v_monkaa'+summary_type,concatenated_fb_v_monkaa)
+        tf.summary.image('concatenated_fb_final_w_monkaa'+summary_type,concatenated_fb_w_monkaa)
 
         tf.summary.image('concatenated_fb_final_u_ptb'+summary_type,concatenated_fb_u_ptb)
         tf.summary.image('concatenated_fb_final_v_ptb'+summary_type,concatenated_fb_v_ptb)
+        tf.summary.image('concatenated_fb_final_w_ptb'+summary_type,concatenated_fb_w_ptb)
 
         # tf.summary.image('concatenated_fb_ref1_u'+summary_type,concatenated_fb_ref1_u)
         # tf.summary.image('concatenated_fb_ref1_v'+summary_type,concatenated_fb_ref1_v)
@@ -992,21 +1027,25 @@ class DatasetReader:
     def write_flows_concatenated_side_by_side(self,network_input_images,network_input_labels,predict_flow2,summary_type='_train'):
         concated_flows_u_driving = tf.concat([network_input_labels[0:4,:,:,0:1],predict_flow2[0:4,:,:,0:1]],axis=-2)
         concated_flows_v_driving = tf.concat([network_input_labels[0:4,:,:,1:2],predict_flow2[0:4,:,:,1:2]],axis=-2)
+        concated_flows_w_driving = tf.concat([network_input_labels[0:4,:,:,2:3],predict_flow2[0:4,:,:,2:3]],axis=-2)
 
         denormalized_flow = losses_helper.denormalize_flow(predict_flow2)
         warped_img = losses_helper.flow_warp(network_input_images[:,:,:,4:7],denormalized_flow)
 
         tf.summary.image('concated_flows_u_flying'+summary_type,concated_flows_u_driving)
         tf.summary.image('concated_flows_v_flying'+summary_type,concated_flows_v_driving)
+        tf.summary.image('concated_flows_w_flying'+summary_type,concated_flows_w_driving)
         tf.summary.image('flow_warp_with_original_image_flying'+summary_type,tf.concat([network_input_images[0:4,:,:,0:3],warped_img[0:4,:,:,:]],axis=-2))
 
         if self.section_type > 0  and self.section_type is not 4:
     
             concated_flows_u_flying = tf.concat([network_input_labels[4:8,:,:,0:1],predict_flow2[4:8,:,:,0:1]],axis=-2)
             concated_flows_v_flying = tf.concat([network_input_labels[4:8,:,:,1:2],predict_flow2[4:8,:,:,1:2]],axis=-2)
+            concated_flows_w_flying = tf.concat([network_input_labels[4:8,:,:,2:3],predict_flow2[4:8,:,:,2:3]],axis=-2)
 
             tf.summary.image('concated_flows_u_monkaa'+summary_type,concated_flows_u_flying)
             tf.summary.image('concated_flows_v_monkaa'+summary_type,concated_flows_v_flying)
+            tf.summary.image('concated_flows_w_monkaa'+summary_type,concated_flows_w_flying)
 
             tf.summary.image('flow_warp_with_original_image_monkaa'+summary_type,tf.concat([network_input_images[4:8,:,:,0:3],warped_img[4:8,:,:,:]],axis=-2))
 
@@ -1015,9 +1054,11 @@ class DatasetReader:
 
             concated_flows_u_monkaa = tf.concat([network_input_labels[8:12,:,:,0:1],predict_flow2[8:12,:,:,0:1]],axis=-2)
             concated_flows_v_monkaa = tf.concat([network_input_labels[8:12,:,:,1:2],predict_flow2[8:12,:,:,1:2]],axis=-2)
+            concated_flows_w_monkaa = tf.concat([network_input_labels[8:12,:,:,2:3],predict_flow2[8:12,:,:,2:3]],axis=-2)
 
             tf.summary.image('concated_flows_u_ptb'+summary_type,concated_flows_u_monkaa)
             tf.summary.image('concated_flows_v_ptb'+summary_type,concated_flows_v_monkaa)
+            tf.summary.image('concated_flows_w_ptb'+summary_type,concated_flows_w_monkaa)
 
             tf.summary.image('flow_warp_with_original_image_ptb'+summary_type,tf.concat([network_input_images[8:12,:,:,0:3],warped_img[8:12,:,:,:]],axis=-2))
 
@@ -1026,24 +1067,30 @@ class DatasetReader:
 
             concated_flows_u_ptb = tf.concat([network_input_labels[12:16,:,:,0:1],predict_flow2[12:16,:,:,0:1]],axis=-2)
             concated_flows_v_ptb = tf.concat([network_input_labels[12:16,:,:,1:2],predict_flow2[12:16,:,:,1:2]],axis=-2)
+            concated_flows_w_ptb = tf.concat([network_input_labels[12:16,:,:,2:3],predict_flow2[12:16,:,:,2:3]],axis=-2)
 
             tf.summary.image('concated_flows_u_ptb'+summary_type,concated_flows_u_ptb)
             tf.summary.image('concated_flows_v_ptb'+summary_type,concated_flows_v_ptb)
+            tf.summary.image('concated_flows_w_ptb'+summary_type,concated_flows_w_ptb)
             tf.summary.image('flow_warp_with_original_image_ptb'+summary_type,tf.concat([network_input_images[12:16,:,:,0:3],warped_img[12:16,:,:,:]],axis=-2))
 
             concated_flows_u_mid = tf.concat([network_input_labels[16:20,:,:,0:1],predict_flow2[16:20,:,:,0:1]],axis=-2)
             concated_flows_v_mid = tf.concat([network_input_labels[16:20,:,:,1:2],predict_flow2[16:20,:,:,1:2]],axis=-2)
+            concated_flows_w_mid = tf.concat([network_input_labels[16:20,:,:,2:3],predict_flow2[16:20,:,:,2:3]],axis=-2)
 
             tf.summary.image('concated_flows_u_mid'+summary_type,concated_flows_u_mid)
             tf.summary.image('concated_flows_v_mid'+summary_type,concated_flows_v_mid)
+            tf.summary.image('concated_flows_w_mid'+summary_type,concated_flows_w_mid)
             tf.summary.image('flow_warp_with_original_image_mid'+summary_type,tf.concat([network_input_images[16:20,:,:,0:3],warped_img[16:20,:,:,:]],axis=-2))
 
         else:
             concated_flows_u_mid = tf.concat([network_input_labels[12:16,:,:,0:1],predict_flow2[12:16,:,:,0:1]],axis=-2)
             concated_flows_v_mid = tf.concat([network_input_labels[12:16,:,:,1:2],predict_flow2[12:16,:,:,1:2]],axis=-2)
+            concated_flows_w_mid = tf.concat([network_input_labels[12:16,:,:,2:3],predict_flow2[12:16,:,:,2:3]],axis=-2)
 
             tf.summary.image('concated_flows_u_mid'+summary_type,concated_flows_u_mid)
             tf.summary.image('concated_flows_v_mid'+summary_type,concated_flows_v_mid)
+            tf.summary.image('concated_flows_w_mid'+summary_type,concated_flows_w_mid)
             tf.summary.image('flow_warp_with_original_image_mid'+summary_type,tf.concat([network_input_images[12:16,:,:,0:3],warped_img[12:16,:,:,:]],axis=-2))
 
 

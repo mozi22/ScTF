@@ -10,28 +10,28 @@ def photoconsistency_loss(img,predicted_flow, weight=7, scope='photoconsistency_
 
 
     img1, img2 = get_separate_rgb_images(img)
-    predicted_flow = denormalize_flow(predicted_flow)
+    predicted_flow = denormalize_flow(predicted_flow[:,:,:,0:2])
 
     if not typee is 'forward':
       # backward flow
       warped_img = flow_warp(img1,predicted_flow)
       img2 = get_occulation_aware_image(img2,warped_img)
       img2 = tf.stop_gradient(img2)
-      pc_loss = endpoint_loss(img2, warped_img,weight,'pc_loss_backward')
-      # pc_loss = tf.sqrt((img2**2) + (warped_img**2) + 1e-6)
+      # pc_loss = endpoint_loss(img2, warped_img,weight,'pc_loss_backward')
+      pc_loss = tf.sqrt((img2**2) + (warped_img**2) + 1e-6)
     else:
       # forward flow
       warped_img = flow_warp(img2,predicted_flow)
       img1 = get_occulation_aware_image(img1,warped_img)
       img1 = tf.stop_gradient(img1)
-      pc_loss = endpoint_loss(img1, warped_img,weight,'pc_loss_forward')
-      # pc_loss = tf.sqrt((img1**2) + (warped_img**2) + 1e-6)
+      # pc_loss = endpoint_loss(img1, warped_img,weight,'pc_loss_forward')
+      pc_loss = tf.sqrt((img1**2) + (warped_img**2) + 1e-6)
       
 
 
 
     # pc_loss = tf.Print(pc_loss,[pc_loss],'pcloss ye hai ')
-    # pc_loss = tf.losses.compute_weighted_loss(pc_loss,weights=weight)
+    pc_loss = tf.losses.compute_weighted_loss(pc_loss,weights=weight)
     # tf.summary.scalar('pc_loss',sops.replace_nonfinite(pc_loss))
 
   return pc_loss
@@ -107,7 +107,7 @@ def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,scope='
 
     # tf.losses.compute_weighted_loss(fb_loss,weights=weight)
 
-  return fb_loss
+  return fb_loss, B
 
 # loss value ranges around 0.01 to 2.0
 # defined here :: https://arxiv.org/pdf/1702.02295.pdf
@@ -122,16 +122,19 @@ def endpoint_loss(gt_flow,predicted_flow,weight=500,scope='epe_loss',stop_grad=F
     # get u & v value for gt
     gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
     gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
+    gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
 
     # get u & v value for predicted_flow
     pred_u = tf.slice(predicted_flow,[0,0,0,0],[-1,-1,-1,1])
     pred_v = tf.slice(predicted_flow,[0,0,0,1],[-1,-1,-1,1])
+    pred_w = tf.slice(predicted_flow,[0,0,0,2],[-1,-1,-1,1])
 
 
     diff_u = sops.replace_nonfinite(gt_u - pred_u)
     diff_v = sops.replace_nonfinite(gt_v - pred_v)
+    diff_w = sops.replace_nonfinite(gt_w - pred_w)
 
-    epe_loss = tf.sqrt((diff_u**2) + (diff_v**2) + 1e-6)
+    epe_loss = tf.sqrt((diff_u**2) + (diff_v**2) + (diff_w**2) + 1e-6)
 
     epe_loss = tf.reduce_mean(sops.replace_nonfinite(epe_loss))
 
@@ -281,21 +284,19 @@ def downsample_label(gt_flow,size=[224,384],factorU=0.5,factorV=0.5):
 
   gt_u = tf.slice(gt_flow,[0,0,0,0],[-1,-1,-1,1])
   gt_v = tf.slice(gt_flow,[0,0,0,1],[-1,-1,-1,1])
-  # gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
+  gt_w = tf.slice(gt_flow,[0,0,0,2],[-1,-1,-1,1])
 
   # since we're reducing the size, we need to reduce the flow values by the same factor.
   # decreasing width from 224 to 5 means we decreased the image by a factor ( 384 * 0.022 )
   gt_u = gt_u * factorU
   # decreasing width from 384 to 10 means we decreased the image by a factor ( 384 * 0.026 )
   gt_v = gt_v * factorV
-  # decreasing depth, in this case we'll just take the avg of factors of width and height ( 0.026 + 0.024 / 2 )
-  # gt_w = gt_w * factorW
 
   gt_u = tf.image.resize_images(gt_u,size,method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
   gt_v = tf.image.resize_images(gt_v,size,method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-  # gt_w = tf.image.resize_images(gt_w,size,method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+  gt_w = tf.image.resize_images(gt_w,size,method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
-  return tf.concat([gt_u,gt_v],axis=-1)
+  return tf.concat([gt_u,gt_v,gt_w],axis=-1)
   # return tf.concat([gt_u,gt_v,gt_w],axis=-1)
 
 

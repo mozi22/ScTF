@@ -95,11 +95,11 @@ def _parse_function(example_proto):
     depth_chng = tf.reshape(depth_chng,[input_pipeline_dimensions[0],input_pipeline_dimensions[1]],name="reshape_depth_change")
 
 
-    # image1 = tf.divide(image1,[255])
-    # image2 = tf.divide(image2,[255])
+    image1 = tf.divide(image1,[255])
+    image2 = tf.divide(image2,[255])
 
-    image1 = tf.image.per_image_standardization(image1)
-    image2 = tf.image.per_image_standardization(image2)
+    # image1 = tf.image.per_image_standardization(image1)
+    # image2 = tf.image.per_image_standardization(image2)
 
     final_result = train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
 
@@ -149,6 +149,9 @@ def _parse_function_ptb(example_proto):
 
     final_result = train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow)
 
+    print('campion')
+    print(final_result["input_n"])
+    print(final_result["label_n"])
     return final_result["input_n"], final_result["label_n"], features['filename1'], features['filename2']
 
 
@@ -299,6 +302,7 @@ def train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow):
     max_depth1 = tf.reduce_max(depth1)
     depth1 = depth1 / max_depth1
     depth2 = depth2 / max_depth1
+    depth_chng = depth_chng / max_depth1
 
     depth1 = sops.replace_nonfinite(depth1)
     depth2 = sops.replace_nonfinite(depth2)
@@ -333,6 +337,8 @@ def train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow):
         'input_n': fb_rgbd_img_pair,
         'label_n': fb_rgbd_optflow_with_depth_change
     }
+
+
 
 def test(img_pair,img_pair2):
 

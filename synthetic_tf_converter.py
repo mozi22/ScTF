@@ -50,7 +50,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 4
+		self.dataset_number = 2
 		# these are inverse depths
 		self.max_depth_driving = 0.232809
 		# self.max_depth_driving_chng = 2.70248
@@ -82,7 +82,7 @@ class SyntheticTFRecordsWriter:
 		# self.flyingdata_FILES_IDS = [6,8]
 
 		# self.dataset_root = '../dataset_synthetic_sm50/'
-		self.dataset_save = '../dataset_synthetic/ptb/'
+		self.dataset_save = '../dataset_synthetic/muazzam/'
 		self.dataset_root = '../dataset_synthetic/'
 
 		self.dataset_ptb_root = '../dataset_ptb/'
@@ -610,11 +610,7 @@ class SyntheticTFRecordsWriter:
 
 			for data_type in self.data_types:
 				for let in self.letters:
-
-
 					for folder_id in range(0,folders_range):
-
-
 
 						path = self.dataset_root + '/'.join([dataset,'camera_data',tnt,let,"%04d" % (folder_id,)])
 
@@ -638,7 +634,6 @@ class SyntheticTFRecordsWriter:
 
 									frames_finalpass_webp_path = (path + '/' + direction).replace('camera_data','frames_finalpass_webp') + '/' + str("%04d" % (file_id,)) + '.webp'
 									frames_finalpass_webp_path2 = (path + '/' + direction).replace('camera_data','frames_finalpass_webp') + '/' + str("%04d" % (file_id+1,)) + '.webp'
-
 
 									patches = self.from_paths_to_data(
 										disparity_path,

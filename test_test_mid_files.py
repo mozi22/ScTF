@@ -10,7 +10,7 @@ ij.setHost('tcp://linus:13463')
 def get_network_input_forward(image_batch,label_batch):
     return image_batch[:,0,:,:,:], label_batch[:,0,:,:,:]
  
-ds = 'mid'
+ds = 'flying'
 filee = ['../dataset_synthetic/'+ds+'_TEST.tfrecords']
 
 
@@ -162,18 +162,21 @@ X_backward, Y_backward = further_resize_imgs_lbls(X_backward, Y_backward)
 
 concatenated_FB_images = tf.concat([X_forward,X_backward],axis=0)
 
-
 predict_flows = network.train_network(concatenated_FB_images)
 predict_flows2 = network.train_network(predict_flows[0],'s_evolution2','s_evolution2')
+
+flows_dict_small = get_predict_flow_forward_backward(predict_flows)
 flows_dict = get_predict_flow_forward_backward(predict_flows2)
 
 ################ epe loss #######################
 denormalized_flow = losses_helper.denormalize_flow(flows_dict['predict_flow'][0])
+denormalized_flow_Backward = losses_helper.denormalize_flow(flows_dict['predict_flow'][1])
 
 # total_loss = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(Y_forward, denormalized_flow))))
 # total_loss = losses_helper.endpoint_loss(Y_forward,flows_dict['predict_flow'][0],scope='epe_loss_evolution1')
-# total_loss = losses_helper.forward_backward_loss(flows_dict['predict_flow'][0],flows_dict['predict_flow'][1],scope='epe_loss_evolution1')
-total_loss = losses_helper.photoconsistency_loss(X_forward,flows_dict['predict_flow'][0])
+total_loss, B = losses_helper.forward_backward_loss(flows_dict['predict_flow'][0],flows_dict['predict_flow'][1],scope='epe_loss_evolution1')
+# total_loss = losses_helper.photoconsistency_loss(X_forward,flows_dict['predict_flow'][0])
+denormalized_flow_B = losses_helper.denormalize_flow(B)
 
 
 # sess.run(test_iterator.initializer)
@@ -207,35 +210,58 @@ img_forward_predict_v_ref2 = tf.concat([tf.expand_dims(network_input_labels_refi
 img_forward_predict_u_ref1 = tf.concat([tf.expand_dims(network_input_labels_refine1[:,:,:,0],axis=-1),tf.expand_dims(flows_dict['predict_flow_ref1'][0][:,:,:,0],axis=-1)],axis=2)
 img_forward_predict_v_ref1 = tf.concat([tf.expand_dims(network_input_labels_refine1[:,:,:,1],axis=-1),tf.expand_dims(flows_dict['predict_flow_ref1'][0][:,:,:,1],axis=-1)],axis=2)
 
-
 img_fb_predict = tf.concat([tf.expand_dims(flows_dict['predict_flow'][0][:,:,:,0],axis=-1),tf.expand_dims(flows_dict['predict_flow'][1][:,:,:,1],axis=-1)],axis=2)
 
 
 warped_img = losses_helper.flow_warp(X_forward[:,:,:,4:7],denormalized_flow)
+warped_backward_img = losses_helper.flow_warp(X_forward[:,:,:,0:3],denormalized_flow_Backward)
 
 flow_color_legend = create_flow_color_legend()
 flow_color_image = create_flow_color_image(tf.transpose(denormalized_flow,[0,3,1,2]))
+gt_flow_color_image = create_flow_color_image(tf.transpose(Y_forward,[0,3,1,2]))
+flow_backward_warped_color = create_flow_color_image(tf.transpose(denormalized_flow_B,[0,3,1,2]))
+denormalized_flow_Backward2 = create_flow_color_image(tf.transpose(denormalized_flow_Backward,[0,3,1,2]))
 
-summaies.append(tf.summary.image('warped_img',tf.concat([X_forward[:,:,:,0:3],warped_img],axis=2)))
-summaies.append(tf.summary.image('image_forward',img_forward))
-summaies.append(tf.summary.image('flow_color_legend',tf.expand_dims(flow_color_legend,axis=0)))
-summaies.append(tf.summary.image('flow_color_image',flow_color_image))
-summaies.append(tf.summary.image('image_backward',img_backward))
-summaies.append(tf.summary.image('depth_forward',depth_forward))
-summaies.append(tf.summary.image('depth_backward',depth_backward))
+summaies.append(tf.summary.image('warped_img',warped_img))
+summaies.append(tf.summary.image('warped_img_backward',warped_backward_img))
+# summaies.append(tf.summary.image('image_forward',img_forward))
+
+# summaies.append(tf.summary.image('flow_color_legend',tf.expand_dims(flow_color_legend,axis=0)))
+summaies.append(tf.summary.image('forward_flow_color_image',flow_color_image))
+summaies.append(tf.summary.image('backward_flow_color_image',denormalized_flow_Backward2))
+# summaies.append(tf.summary.image('flow_backward_warped_color',flow_backward_warped_color))
+# summaies.append(tf.summary.image('gt_forward_flow_color_image',gt_flow_color_image))
+# summaies.append(tf.summary.image('image_backward',img_backward))
+# summaies.append(tf.summary.image('depth_forward',depth_forward))
+# summaies.append(tf.summary.image('depth_backward',depth_backward))
 summaies.append(tf.summary.scalar('rmse_loss',total_loss))
 
-summaies.append(tf.summary.image('lbl_pred_final_flow_u',img_forward_predict_u))
-summaies.append(tf.summary.image('lbl_pred_final_flow_v',img_forward_predict_v))
-summaies.append(tf.summary.image('lbl_pred_ref3_flow_u',img_forward_predict_u_ref3))
-summaies.append(tf.summary.image('lbl_pred_ref3_flow_v',img_forward_predict_v_ref3))
-summaies.append(tf.summary.image('lbl_pred_ref2_flow_u',img_forward_predict_u_ref2))
-summaies.append(tf.summary.image('lbl_pred_ref2_flow_v',img_forward_predict_v_ref2))
-summaies.append(tf.summary.image('lbl_pred_ref1_flow_u',img_forward_predict_u_ref1))
-summaies.append(tf.summary.image('lbl_pred_ref1_flow_v',img_forward_predict_v_ref1))
-summaies.append(tf.summary.image('predfb_final_flow_u',img_fb_predict))
+summaies.append(tf.summary.image('img1_forward',X_forward[:,:,:,0:3]))
+summaies.append(tf.summary.image('img2_forward',X_forward[:,:,:,4:7]))
+
+
+
+# summaies.append(tf.summary.image('flow_backward_warped_u_loss',tf.expand_dims(B[:,:,:,0],axis=-1)))
+# summaies.append(tf.summary.image('flow_backward_warped_v_loss',tf.expand_dims(B[:,:,:,1],axis=-1)))
+
+# summaies.append(tf.summary.image('lbl_pred_final_flow_u',img_forward_predict_u))
+# summaies.append(tf.summary.image('lbl_pred_final_flow_v',img_forward_predict_v))
+# summaies.append(tf.summary.image('lbl_pred_ref3_flow_u',img_forward_predict_u_ref3))
+# summaies.append(tf.summary.image('lbl_pred_ref3_flow_v',img_forward_predict_v_ref3))
+# summaies.append(tf.summary.image('lbl_pred_ref2_flow_u',img_forward_predict_u_ref2))
+# summaies.append(tf.summary.image('lbl_pred_ref2_flow_v',img_forward_predict_v_ref2))
+# summaies.append(tf.summary.image('lbl_pred_ref1_flow_u',img_forward_predict_u_ref1))
+# summaies.append(tf.summary.image('lbl_pred_ref1_flow_v',img_forward_predict_v_ref1))
+# summaies.append(tf.summary.image('predfb_final_flow_u',img_fb_predict))
 summaies.append(tf.summary.image('pred_final_flow_u',tf.expand_dims(flows_dict['predict_flow'][0][:,:,:,0],axis=-1)))
 summaies.append(tf.summary.image('pred_final_flow_v',tf.expand_dims(flows_dict['predict_flow'][0][:,:,:,1],axis=-1)))
+summaies.append(tf.summary.image('pred_final_flow_u_backward',tf.expand_dims(flows_dict['predict_flow'][1][:,:,:,0],axis=-1)))
+summaies.append(tf.summary.image('pred_final_flow_v_backward',tf.expand_dims(flows_dict['predict_flow'][1][:,:,:,1],axis=-1)))
+
+summaies.append(tf.summary.image('pred_final_flow_u_small',tf.expand_dims(flows_dict_small['predict_flow'][0][:,:,:,0],axis=-1)))
+summaies.append(tf.summary.image('pred_final_flow_v_small',tf.expand_dims(flows_dict_small['predict_flow'][0][:,:,:,1],axis=-1)))
+summaies.append(tf.summary.image('pred_final_flow_u_backward_small',tf.expand_dims(flows_dict_small['predict_flow'][1][:,:,:,0],axis=-1)))
+summaies.append(tf.summary.image('pred_final_flow_v_backward_small',tf.expand_dims(flows_dict_small['predict_flow'][1][:,:,:,1],axis=-1)))
 
 summaies.append(tf.summary.image('lbl_final_flow_u',tf.expand_dims(Y_forward[:,:,:,0],axis=-1)))
 summaies.append(tf.summary.image('lbl_final_flow_v',tf.expand_dims(Y_forward[:,:,:,1],axis=-1)))
@@ -273,7 +299,7 @@ while True:
         print(avg)
         break
 
-    if step == 400:
+    if step == 103:
         break
 
 
