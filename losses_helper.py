@@ -42,11 +42,13 @@ def denormalize_flow(flow):
 
     u = flow[:,:,:,0] * flow_shape[2]
     v = flow[:,:,:,1] * flow_shape[1]
+    w = flow[:,:,:,2]
 
     u = tf.expand_dims(u,axis=-1)
     v = tf.expand_dims(v,axis=-1)
+    w = tf.expand_dims(w,axis=-1)
 
-    return tf.concat([u,v],axis=-1)
+    return tf.concat([u,v,w],axis=-1)
 
 def forward_backward_loss(predicted_flow_forward,predicted_flow_backward,scope='fb_loss',weight=5):
 

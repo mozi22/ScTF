@@ -32,7 +32,38 @@ def create_flow_color_legend(size=64):
     return create_flow_color_image(flow_tensor)[0]
 
 
+def normalizeOptFlow(flow,input_size):
 
+    print(flow.shape)
+    # remove the values bigger than the image size
+    flow[:,:,0][flow[:,:,0] > input_size[0] ] = 0 # 384
+    flow[:,:,1][flow[:,:,1] > input_size[1] ] = 0 # 224
+
+    # separate the u and v values 
+    flow_u = flow[:,:,0]
+    flow_v = flow[:,:,1]
+    # np.savetxt('non_normal.txt',flow_u)
+
+    # Image.fromarray(flow[:,:,0]).show()
+    # Image.fromarray(flow[:,:,1]).show()
+
+    # opt_u = np.squeeze(flow_u).astype(np.uint8)
+    # opt_v = np.squeeze(flow_v).astype(np.uint8)
+
+    # result = np.dstack((flow_u,flow_v))
+    # opt_u = Image.fromarray(result[:,:,0]).show() 
+    # opt_v = Image.fromarray(result[:,:,1]).show()
+
+
+
+    # normalize the values by the image dimensions
+    flow_u = flow_u / input_size[0]
+    flow_v = flow_v / input_size[1]
+
+
+
+    # combine them back and return
+    return np.dstack((flow_u,flow_v))
 def create_flow_color_image(flow, denormalize=False, max_length=None, name=None):
     """Creates a color coded optical flow image with the magnitude as saturation
     and the hue as direction.
@@ -106,11 +137,13 @@ def further_resize_imgs_lbls(network_input_images,network_input_labels):
 
     network_input_labels_u = network_input_labels[:,:,:,0] * 0.714285714
     network_input_labels_v = network_input_labels[:,:,:,1] * 0.666666667
+    network_input_labels_w = network_input_labels[:,:,:,2]
  
     network_input_labels_u = tf.expand_dims(network_input_labels_u,axis=-1)
     network_input_labels_v = tf.expand_dims(network_input_labels_v,axis=-1)
+    network_input_labels_w = tf.expand_dims(network_input_labels_w,axis=-1)
  
-    network_input_labels = tf.concat([network_input_labels_u,network_input_labels_v],axis=3)
+    network_input_labels = tf.concat([network_input_labels_u,network_input_labels_v,network_input_labels_w],axis=3)
 
     return network_input_images, network_input_labels
 
@@ -163,17 +196,17 @@ X_backward, Y_backward = further_resize_imgs_lbls(X_backward, Y_backward)
 concatenated_FB_images = tf.concat([X_forward,X_backward],axis=0)
 
 
+
 predict_flows = network.train_network(concatenated_FB_images)
 predict_flows2 = network.train_network(predict_flows[0],'s_evolution2','s_evolution2')
 flows_dict = get_predict_flow_forward_backward(predict_flows2)
 
 ################ epe loss #######################
 denormalized_flow = losses_helper.denormalize_flow(flows_dict['predict_flow'][0])
-
-# total_loss = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(Y_forward, denormalized_flow))))
+total_loss = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(Y_forward, denormalized_flow))))
 # total_loss = losses_helper.endpoint_loss(Y_forward,flows_dict['predict_flow'][0],scope='epe_loss_evolution1')
 # total_loss = losses_helper.forward_backward_loss(flows_dict['predict_flow'][0],flows_dict['predict_flow'][1],scope='epe_loss_evolution1')
-total_loss = losses_helper.photoconsistency_loss(X_forward,flows_dict['predict_flow'][0])
+# total_loss = losses_helper.photoconsistency_loss(X_forward,flows_dict['predict_flow'][0])
 
 
 # sess.run(test_iterator.initializer)
@@ -214,7 +247,7 @@ img_fb_predict = tf.concat([tf.expand_dims(flows_dict['predict_flow'][0][:,:,:,0
 warped_img = losses_helper.flow_warp(X_forward[:,:,:,4:7],denormalized_flow)
 
 flow_color_legend = create_flow_color_legend()
-flow_color_image = create_flow_color_image(tf.transpose(denormalized_flow,[0,3,1,2]))
+flow_color_image = create_flow_color_image(tf.transpose(denormalized_flow[:,:,:,0:2],[0,3,1,2]))
 
 summaies.append(tf.summary.image('warped_img',tf.concat([X_forward[:,:,:,0:3],warped_img],axis=2)))
 summaies.append(tf.summary.image('image_forward',img_forward))
@@ -244,7 +277,7 @@ summary_op = tf.summary.merge(summaies)
 
 
 sess = tf.InteractiveSession()
-load_model_ckpt(sess,'ckpt/driving/evolutionary_network/train/')
+load_model_ckpt(sess,'ckpt/driving/evolutionary_network_with_depth/train/')
 
 
 test_summary_writer = tf.summary.FileWriter('./testboard/'+ds, sess.graph)
@@ -267,6 +300,7 @@ while True:
 
         step += 1
         total_losser += total_loss2
+
     except tf.errors.OutOfRangeError:
         print('finish')
         avg = total_losser / step
@@ -277,8 +311,9 @@ while True:
         break
 
 
-    # print(filenamee1)
-    # print(filenamee2)
+    print(filenamee1)
+    print(filenamee2)
+    print(total_loss2)
     # ij.setImage('normal_img',np.transpose(X_forwardd[:,:,:,:],[0,3,1,2]))
     # ij.setImage('normal_lbl',np.transpose(Y_forwardd[:,:,:,:],[0,3,1,2]))
     # ij.setImage('prediction',np.transpose(denormalize_f,[0,3,1,2]))

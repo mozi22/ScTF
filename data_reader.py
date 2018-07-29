@@ -294,12 +294,29 @@ def decode_webp(path):
     return np.array(data)
 
 
+
+def augment_depth(depth1):
+    indexes = np.random.randint(160,size=2)
+
+    print(indexes)
+    print(depth1)
+    hyperparam_distance = 4
+
+    depth1 = depth1[indexes[0]:indexes[0]+hyperparam_distance,indexes[1]:indexes[0]+hyperparam_distance].assign(tf.zeros([4,4]))
+    depth1 = depth1[indexes[0]-hyperparam_distance:indexes[0],indexes[1]-hyperparam_distance:indexes[0]].assign(tf.zeros([4,4]))
+
+    return depth1
+
+
 def train_for_sceneflow(image1,image2,depth1,depth2,depth_chng,optical_flow):
 
     max_depth1 = tf.reduce_max(depth1)
     depth1 = depth1 / max_depth1
     depth2 = depth2 / max_depth1
     depth_chng = depth_chng / max_depth1
+
+    # depth1 = augment_depth(depth1)
+    # depth2 = augment_depth(depth2)
 
     depth1 = sops.replace_nonfinite(depth1)
     depth2 = sops.replace_nonfinite(depth2)

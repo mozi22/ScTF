@@ -38,6 +38,7 @@ import csv
 from multiprocessing import Process
 import ijremote as ij
 from os.path import isfile, join
+ij.setHost('tcp://linus:13463')
 class SyntheticTFRecordsWriter:
 
 
@@ -50,7 +51,7 @@ class SyntheticTFRecordsWriter:
 		# 4 = ptb
 
 		# this param decides which dataset to parse.
-		self.dataset_number = 4
+		self.dataset_number = 5
 		# these are inverse depths
 		self.max_depth_driving = 0.232809
 		# self.max_depth_driving_chng = 2.70248
@@ -256,7 +257,10 @@ class SyntheticTFRecordsWriter:
 
 				flow_expanded_u = np.expand_dims(disp1 * self.u_factor,axis=2) 
 				flow_expanded_v = np.expand_dims(np.zeros_like(disp1),axis=2)
+
+				flow_expanded_u = flow_expanded_u.astype(np.float32)
 				optical_flow = np.concatenate([flow_expanded_u,flow_expanded_v],axis=-1).astype(np.float32)
+
 
 				patches = [{
 					'web_p': img1,
