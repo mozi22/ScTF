@@ -160,29 +160,38 @@ def train_network(image_pair,scope_name='down_convs',other_scopes=''):
 
         conv0 = convrelu2(name='conv0', inputs=image_pair, filters=64, kernel_size=5, stride=1,activation=myLeakyRelu)
         conv1 = convrelu2(name='conv1', inputs=conv0, filters=64, kernel_size=5, stride=2,activation=myLeakyRelu)
-        
-        # conv1_1 = convrelu2(name='conv1_1', inputs=conv1, filters=32, kernel_size=5, stride=1,activation=myLeakyRelu)
-        # conv1_2 = resblock(conv1_1,channels=32)
+    
+        # res        
+        conv1_1 = convrelu2(name='conv1_1', inputs=conv1, filters=64, kernel_size=5, stride=1,activation=myLeakyRelu)
+        conv1_2 = resblock(conv1_1,channels=64)
 
-        conv2 = convrelu2(name='conv2', inputs=conv1, filters=128, kernel_size=3, stride=2,activation=myLeakyRelu)
-        # conv2_1 = convrelu2(name='conv2_1', inputs=conv2, filters=64, kernel_size=3, stride=1,activation=myLeakyRelu)
-        # conv2_2 = convrelu2(name='conv2_2', inputs=conv2_1, filters=64, kernel_size=3, stride=1,activation=myLeakyRelu)
-        # conv2_3 = resblock(conv2_2,channels=64,name='resblock_1')
+        conv2 = convrelu2(name='conv2', inputs=conv1_2, filters=128, kernel_size=3, stride=2,activation=myLeakyRelu)
 
-        conv3 = convrelu2(name='conv3', inputs=conv2, filters=128, kernel_size=3, stride=2,activation=myLeakyRelu)
+        # res        
+        conv2_1 = convrelu2(name='conv2_1', inputs=conv2, filters=128, kernel_size=3, stride=1,activation=myLeakyRelu)
+        conv2_2 = convrelu2(name='conv2_2', inputs=conv2_1, filters=128, kernel_size=3, stride=1,activation=myLeakyRelu)
+        conv2_3 = resblock(conv2_2,channels=128,name='resblock_1')
+
+        conv3 = convrelu2(name='conv3', inputs=conv2_3, filters=128, kernel_size=3, stride=2,activation=myLeakyRelu)
         conv3_1 = convrelu2(name='conv3_1', inputs=conv3, filters=128, kernel_size=3, stride=1,activation=myLeakyRelu)
-        # conv3_2 = convrelu2(name='conv3_2', inputs=conv3_1, filters=128, kernel_size=3, stride=1,activation=myLeakyRelu)
-        # conv3_3 = resblock(conv3_2,channels=128,name='resblock_2')
 
-        conv4 = convrelu2(name='conv4', inputs=conv3_1, filters=256, kernel_size=3, stride=2,activation=myLeakyRelu)
+        # res        
+        conv3_2 = convrelu2(name='conv3_2', inputs=conv3_1, filters=128, kernel_size=3, stride=1,activation=myLeakyRelu)
+        conv3_3 = resblock(conv3_2,channels=128,name='resblock_2')
+
+        conv4 = convrelu2(name='conv4', inputs=conv3_3, filters=256, kernel_size=3, stride=2,activation=myLeakyRelu)
         conv4_1 = convrelu2(name='conv4_1', inputs=conv4, filters=256, kernel_size=3, stride=1,activation=myLeakyRelu)
-        # conv4_2 = convrelu2(name='conv4_2', inputs=conv4_1, filters=256, kernel_size=3, stride=1,activation=myLeakyRelu)
-        # conv4_3 = resblock(conv4_2,channels=256,name='resblock_3')
 
-        conv5 = convrelu2(name='conv5', inputs=conv4_1, filters=512, kernel_size=3, stride=2,activation=myLeakyRelu)
-        conv5_1 = convrelu2(name='conv5_1', inputs=conv5, filters=1024, kernel_size=3, stride=1,activation=myLeakyRelu)
-        # conv5_2 = convrelu2(name='conv5_2', inputs=conv5_1, filters=512, kernel_size=3, stride=1,activation=myLeakyRelu)
-        # conv5_3 = resblock(conv5_2,channels=512,name='resblock_4')
+        # res        
+        conv4_2 = convrelu2(name='conv4_2', inputs=conv4_1, filters=256, kernel_size=3, stride=1,activation=myLeakyRelu)
+        conv4_3 = resblock(conv4_2,channels=256,name='resblock_3')
+
+        conv5 = convrelu2(name='conv5', inputs=conv4_3, filters=512, kernel_size=3, stride=2,activation=myLeakyRelu)
+        conv5_1 = convrelu2(name='conv5_1', inputs=conv5, filters=512, kernel_size=3, stride=1,activation=myLeakyRelu)
+
+        # res        
+        conv5_2 = convrelu2(name='conv5_2', inputs=conv5_1, filters=512, kernel_size=3, stride=1,activation=myLeakyRelu)
+        conv5_3 = resblock(conv5_2,channels=512,name='resblock_4')
 
 
 
