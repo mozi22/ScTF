@@ -131,7 +131,7 @@ class DatasetReader:
     def preprocess(self):
         file = './configs/training.ini'
 
-        self.section_type = 1
+        self.section_type = 0
 
         parser = configp.ConfigParser()
         parser.read(file)
@@ -350,6 +350,7 @@ class DatasetReader:
 
         if self.FLAGS['LOAD_FROM_CKPT'] == True or self.section_type == 4:
             print('loading from ckpt...')
+            print(tf.train.latest_checkpoint(self.FLAGS['TRAIN_DIR']+'/train/'))
             saver.restore(sess,tf.train.latest_checkpoint(self.FLAGS['TRAIN_DIR']+'/train/'))
             # saver.restore(sess,tf.train.latest_checkpoint('./ckpt/driving/one_at_a_time_training_flying/train/'))
 

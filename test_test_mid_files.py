@@ -127,8 +127,8 @@ def create_flow_color_image(flow, denormalize=False, max_length=None, name=None)
 
     return rgb
 def load_model_ckpt(sess,filename):
-	saver = tf.train.Saver()
-	saver.restore(sess, tf.train.latest_checkpoint(filename))
+    saver = tf.train.Saver()
+    saver.restore(sess, 'ckpt/driving/evolutionary_network_with_depth/train/model.ckpt-445000')
 
 def further_resize_imgs_lbls(network_input_images,network_input_labels):
 
@@ -200,6 +200,7 @@ concatenated_FB_images = tf.concat([X_forward,X_backward],axis=0)
 predict_flows = network.train_network(concatenated_FB_images)
 predict_flows2 = network.train_network(predict_flows[0],'s_evolution2','s_evolution2')
 flows_dict = get_predict_flow_forward_backward(predict_flows2)
+flows_dict1 = get_predict_flow_forward_backward(predict_flows)
 
 ################ epe loss #######################
 denormalized_flow = losses_helper.denormalize_flow(flows_dict['predict_flow'][0])
@@ -258,6 +259,10 @@ summaies.append(tf.summary.image('depth_forward',depth_forward))
 summaies.append(tf.summary.image('depth_backward',depth_backward))
 summaies.append(tf.summary.scalar('rmse_loss',total_loss))
 
+
+summaies.append(tf.summary.image('flow_pred1',depth_backward))
+summaies.append(tf.summary.image('flow_pred2',depth_backward))
+
 summaies.append(tf.summary.image('lbl_pred_final_flow_u',img_forward_predict_u))
 summaies.append(tf.summary.image('lbl_pred_final_flow_v',img_forward_predict_v))
 summaies.append(tf.summary.image('lbl_pred_ref3_flow_u',img_forward_predict_u_ref3))
@@ -277,7 +282,7 @@ summary_op = tf.summary.merge(summaies)
 
 
 sess = tf.InteractiveSession()
-load_model_ckpt(sess,'ckpt/driving/evolutionary_network_with_depth/train/')
+load_model_ckpt(sess,'ckpt/driving/evolutionary_network/train/')
 
 
 test_summary_writer = tf.summary.FileWriter('./testboard/'+ds, sess.graph)

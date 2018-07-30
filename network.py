@@ -158,12 +158,13 @@ def train_network(image_pair,scope_name='down_convs',other_scopes=''):
     # contracting part
     with tf.variable_scope(scope_name, reuse=tf.AUTO_REUSE):
 
-        conv0 = convrelu2(name='conv0', inputs=image_pair, filters=16, kernel_size=5, stride=1,activation=myLeakyRelu)
-        conv1 = convrelu2(name='conv1', inputs=conv0, filters=32, kernel_size=5, stride=2,activation=myLeakyRelu)
+        conv0 = convrelu2(name='conv0', inputs=image_pair, filters=64, kernel_size=5, stride=1,activation=myLeakyRelu)
+        conv1 = convrelu2(name='conv1', inputs=conv0, filters=64, kernel_size=5, stride=2,activation=myLeakyRelu)
+        
         # conv1_1 = convrelu2(name='conv1_1', inputs=conv1, filters=32, kernel_size=5, stride=1,activation=myLeakyRelu)
         # conv1_2 = resblock(conv1_1,channels=32)
 
-        conv2 = convrelu2(name='conv2', inputs=conv1, filters=64, kernel_size=3, stride=2,activation=myLeakyRelu)
+        conv2 = convrelu2(name='conv2', inputs=conv1, filters=128, kernel_size=3, stride=2,activation=myLeakyRelu)
         # conv2_1 = convrelu2(name='conv2_1', inputs=conv2, filters=64, kernel_size=3, stride=1,activation=myLeakyRelu)
         # conv2_2 = convrelu2(name='conv2_2', inputs=conv2_1, filters=64, kernel_size=3, stride=1,activation=myLeakyRelu)
         # conv2_3 = resblock(conv2_2,channels=64,name='resblock_1')
@@ -179,7 +180,7 @@ def train_network(image_pair,scope_name='down_convs',other_scopes=''):
         # conv4_3 = resblock(conv4_2,channels=256,name='resblock_3')
 
         conv5 = convrelu2(name='conv5', inputs=conv4_1, filters=512, kernel_size=3, stride=2,activation=myLeakyRelu)
-        conv5_1 = convrelu2(name='conv5_1', inputs=conv5, filters=512, kernel_size=3, stride=1,activation=myLeakyRelu)
+        conv5_1 = convrelu2(name='conv5_1', inputs=conv5, filters=1024, kernel_size=3, stride=1,activation=myLeakyRelu)
         # conv5_2 = convrelu2(name='conv5_2', inputs=conv5_1, filters=512, kernel_size=3, stride=1,activation=myLeakyRelu)
         # conv5_3 = resblock(conv5_2,channels=512,name='resblock_4')
 
